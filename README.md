@@ -15,43 +15,49 @@ market survives.
 
 ## Key finding
 
-**The same data answers one archetype's question and cannot answer the other's.**
+**The same panel answers one archetype's question and barely answers the other's.**
 
 | | transactional hub | judgment centre of excellence |
 |---|---|---|
-| markets robust in the top 3 (≥90% of weightings) | **2** — India 100.0%, Mexico 98.8% | **none** |
-| markets never shortlisted (<10%) | 6 | 3 |
-| widest rank range | 2–10 | 1–10, for seven of ten markets |
+| robust in the top 3 (≥90% of weightings) | **2** — India 100.0%, Mexico 96.7% | **1** — Germany 97.8% |
+| never shortlisted (<10%) | 6 | 3 |
+| markets whose rank spans first to last | 0 | **8 of 10** |
 
-For a transactional hub, the shortlist is not a matter of opinion. India holds
-first place in 10,000 out of 10,000 weightings, and six markets reach the top
-three in under 1% of them — Switzerland and Spain in none at all, the other four
-in between 7 and 32 draws out of 10,000.
+For a transactional hub the shortlist is close to settled. India holds first
+place in 10,000 of 10,000 weightings, and Switzerland and Spain reach the top
+three in none of them.
 
-For a judgment centre, nothing is robust. Germany tops the baseline and holds a
-top-three place in 85% of weightings; seven markets have a rank range spanning
-first to last. The panel does not decide this question. Whoever sets the
-weights does, and they should be told that rather than handed a ranking.
+For a judgment centre only Germany is robust, and eight of ten markets range
+from first place to last depending on the weighting. Below Germany the panel
+does not decide the question. Whoever sets the weights does, and they should be
+told that rather than handed a ranking.
 
 ## What actually moves the ranking
 
-Three things were varied independently to find out which one the answer is
-really hostage to.
+Each row varies one thing and holds everything else fixed, reporting the largest
+change it causes in any market's odds of making the shortlist.
 
-| source of uncertainty | largest effect on a market's top-3 frequency |
-|---|---|
-| Governance scores resampled inside their published 90% interval | 0.5pp (transactional) · 6.4pp (judgment) |
-| Priorities — 10,000 draws around the declared weights | India 100% vs Poland 0.1%: decisive for the transactional hub, indecisive for the judgment centre |
-| **Normalisation transform — log vs linear** | **Singapore 29.5% → 98.2%, and the judgment top three changes membership** |
+| varied | transactional hub | judgment centre |
+|---|---:|---:|
+| **All published measurement error, combined** | 2.5pp | 12.0pp |
+| Vintage — age-adjusted or as-observed | 11.9pp | 3.2pp |
+| Normalisation — log or linear | 11.0pp | **57.4pp** |
+| Talent pillar — employed stock or education pipeline | **34.4pp** | 22.9pp |
 
-The ranking is barely sensitive to the quality of the data and highly sensitive
-to a modelling choice nobody argues about. Whether the talent pool is scaled
-logarithmically or linearly is a decision made silently, in one line, usually by
-whoever built the spreadsheet — and it swings the judgment-centre shortlist
-harder than either the published measurement error or the priorities everybody
-does argue about. The baseline here uses log scaling, for a stated reason. The
-point is not that log is right; it is that the choice is load-bearing and
-belongs in the discussion.
+Every modelling choice in this table outweighs all of the measurement error
+underneath it. Two of them change *who is on the list*, not merely how sure we
+are:
+
+- **Transactional hub** — employed-stock talent gives India, Mexico, **United
+  Kingdom**; education-pipeline talent gives India, Mexico, **South Africa**.
+- **Judgment centre** — employed-stock talent gives Germany, Switzerland,
+  **Singapore**; education-pipeline talent gives Germany, Switzerland, **India**.
+
+Neither construction is wrong. One counts people already doing the work, the
+other counts the pipeline that might one day do it, and they disagree about the
+third name on the shortlist. That decision gets made in a single line of code,
+usually without discussion, and it matters more than every confidence interval
+in the panel put together.
 
 The governance result is worth stating on its own. Six of the nine adjacent
 pairs in the governance ranking are separated by 0.7 to 3.4 points, while the
@@ -63,11 +69,10 @@ invents a precision the source explicitly disclaims.
 
 ## Poland is never shortlisted, and that is a result about the model
 
-Poland is the canonical European GBS location. It appears in the top three in
-0.1% of transactional weightings and 0.4% of judgment ones — effectively never,
-under any weighting, for either archetype. On this panel that is arithmetically
-correct: Poland is mid-cost, mid-scale, mid-governance, and nothing on the panel
-rewards what it is actually bought for.
+Poland is the canonical European GBS location. It reaches the top three in 0.5%
+of transactional weightings and 3.8% of judgment ones. On this panel that is
+arithmetically correct: Poland is mid-cost, mid-scale, mid-governance, and
+nothing on the panel rewards what it is actually bought for.
 
 What Poland is bought for is nearshore proximity to European headquarters,
 overlapping working hours, EU legal and data jurisdiction, and language
@@ -80,8 +85,8 @@ neither can any commercial location index built on the same four things.
 
 | pillar | source | what it is |
 |---|---|---|
-| Cost | [ILOSTAT](https://ilostat.ilo.org/topics/wages/), `DF_EAR_EMTA_SEX_OCU_CUR_NB` via SDMX | Blended monthly wage basket across ISCO-08 major groups 2, 3 and 4, in USD. PPP pulled alongside it. |
-| Talent | [UNESCO UIS](https://databrowser.uis.unesco.org/) | Tertiary enrolment × share of graduates in Business, Administration and Law. A scale proxy, not a graduate count. |
+| Cost | [ILOSTAT](https://ilostat.ilo.org/topics/wages/) `DF_EAR_EMTA_SEX_OCU_CUR_NB` | Blended monthly wage basket across ISCO-08 major groups 2, 3 and 4, USD, carried forward to a common year at each market's own measured wage drift. |
+| Talent | ILOSTAT `DF_EMP_2EMP_SEX_OCU_NB` | Employed stock in the same three ISCO groups, blended with the same staffing weights, so cost and talent describe one workforce. |
 | Risk | [World Bank WGI](https://www.worldbank.org/en/publication/worldwide-governance-indicators) | Mean of five governance dimensions, each carrying the bounds of its own 90% confidence interval. |
 | Capability | [gbs-agentic-shift](https://github.com/morichtereur/gbs-agentic-shift) | What the market demonstrably staffs, from 2,110 classified live GBS postings. |
 
@@ -93,19 +98,47 @@ reuses the classifier from the sibling study by import rather than
 reimplementation, and a test asserts that both land on the same 2,110 postings,
 so the two readouts cannot quietly drift apart.
 
+## Everything that is resampled
+
+The Monte Carlo varies four things at once, so a market's frequency is its
+survival rate across all of them together:
+
+- **Priorities** — 10,000 weightings drawn from a Dirichlet centred on the
+  declared weights, so every draw is one somebody could argue for.
+- **Governance** — each WGI dimension drawn inside its published 90% interval.
+  The dimensions are drawn as perfectly correlated by default: no correlation
+  matrix ships with WGI, and drawing them independently averages five errors
+  down to a fifth of one and makes the composite look firmer than any dimension
+  in it. The conservative end is the default; both are reported.
+- **Staffing blend** — the ISCO mix behind the wage basket, applied identically
+  to the talent basket so the model cannot buy a transactional wage bill for a
+  judgment-heavy labour pool.
+- **Capability sampling error** — the postings shares are sample proportions,
+  from as few as 88 postings in Switzerland, and are redrawn from the binomial
+  that produced them. Resampling everyone else's published error while treating
+  this project's own measurement as exact would be the easier and less honest
+  choice.
+
 ## What this cannot tell you
 
 - **No city resolution.** ILOSTAT earnings are national. Kraków and Warsaw are
-  one number here, and the intra-country spread that a real site selection turns
-  on is invisible.
-- **Uneven vintages.** Germany's wage observation is 2022, Singapore's 2021,
-  South Africa's 2020, against 2025 for the other seven. Each market's own
-  measured wage drift is computed and reported, but the baseline does not
-  age-adjust — the lag is shown per market instead of papered over.
+  one number here, and the intra-country spread a real site selection turns on
+  is invisible.
+- **One imputed number, flagged.** Wage observations are three to six years old
+  in Germany, Singapore and South Africa, and are carried forward at each
+  market's own measured drift. South Africa's series is too short to measure a
+  drift, so it uses the panel median with a wider band — the single place a
+  number is filled in rather than measured, and it is marked as such wherever it
+  appears.
+- **Modelled employment.** The talent pillar is an ILO modelled series, which
+  buys complete coverage and a common reference year at the cost of being an
+  estimate whose own error is not published per country. It also counts the
+  national stock of professionals, technicians and clerks, not the
+  finance-specific slice, which ILOSTAT does not resolve.
 - **No proximity, timezone, language, tax or incentive pillar.** See Poland.
 - **The demand-side sample is censored.** The postings snapshot was fetched with
   a per-country page cap, so posting *counts* say nothing about market size.
-  Every demand-side metric is therefore a ratio within a country's own sample.
+  Every demand-side metric is a ratio within a country's own sample.
 - **Point-in-time.** One snapshot cannot show a trend.
 - **Ten markets because ten markets have postings data.** The market set is
   inherited from the sibling study, not chosen as a shortlist.
@@ -121,8 +154,9 @@ make test
 Every API pull is cached under `data/cache`, so a rerun is reproducible and does
 not depend on three public services being up simultaneously. Full numbers in
 [RESULTS.md](RESULTS.md); every declared judgement — weights, archetypes, the
-wage blend, the transform — is in [`src/config.py`](src/config.py) in one place,
-so a reader can disagree with a specific number instead of with the conclusion.
+staffing blend, the transform, the talent construction, the vintage handling —
+is in [`src/config.py`](src/config.py) in one place, so a reader can disagree
+with a specific number instead of with the conclusion.
 
 ## A note on the ILOSTAT bulk endpoints
 

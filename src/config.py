@@ -51,6 +51,9 @@ ISO3_TO_ISO2 = {m["iso3"]: k for k, m in MARKETS.items()}
 # The blend below is a declared staffing assumption, not a measurement, which
 # is exactly why it is resampled in the Monte Carlo rather than fixed.
 ILO_DATAFLOW = "DF_EAR_EMTA_SEX_OCU_CUR_NB"
+# Employed stock by the same ISCO groups. ILO modelled estimates, so coverage
+# is complete and the reference year is common across markets.
+ILO_EMP_DATAFLOW = "DF_EMP_2EMP_SEX_OCU_NB"
 ISCO_GROUPS = ("OCU_ISCO08_2", "OCU_ISCO08_3", "OCU_ISCO08_4")
 WAGE_BLEND = {"OCU_ISCO08_2": 0.30, "OCU_ISCO08_3": 0.45, "OCU_ISCO08_4": 0.25}
 # How far the blend is allowed to move when resampled: +/- this much on each
@@ -84,10 +87,21 @@ WGI_DIMENSIONS = {
 WGI_IN_COMPOSITE = ("PV", "GE", "RL", "RQ", "CC")
 
 # --- Talent ---------------------------------------------------------------
-# UIS has no published count of business graduates. It has total tertiary
-# enrolment and the share of graduates coming out of Business, Administration
-# and Law. Their product is a scale proxy, not a graduate count, and is named
-# that way throughout.
+# Two constructions of the same pillar, because they answer different
+# questions and disagree about the answer.
+#
+# "employment" is the default: the employed stock in ISCO-08 groups 2, 3 and 4,
+# blended with the same staffing weights as the wage basket. It measures people
+# already doing this work, in the same occupational terms the cost pillar uses.
+#
+# "education" is the pipeline instead of the stock — tertiary enrolment times
+# the share of graduates in Business, Administration and Law. UIS publishes no
+# absolute graduate count, so this is a scale proxy and never a headcount.
+#
+# The two are not interchangeable and the ratio between the largest and
+# smallest market differs by a factor of five between them, so which one is
+# used is a declared choice and the alternative is reported.
+TALENT_SOURCE = "employment"
 UIS_ENROLMENT = "25053"
 UIS_BUSINESS_SHARE = "FOSGP.5T8.F400"
 
@@ -109,6 +123,22 @@ ARCHETYPES = {
         "capability_metric": "judgment_share",
     },
 }
+
+# --- Vintage --------------------------------------------------------------
+# Earnings observations are three to six years old in three of the ten markets.
+# Comparing 2020 South African wages against 2025 Swiss ones understates the
+# first, so observations are carried forward to the reference year at each
+# market's own measured wage drift rather than at an assumed inflation rate.
+#
+# The adjustment is uncertain, and treated that way: drift is drawn around the
+# measured rate rather than applied as a point correction, using the spread of
+# measured rates across the panel as the scale. South Africa has too short a
+# series to measure a rate at all, so it draws around the panel median with a
+# wider spread — the one place a number is filled in rather than measured, and
+# it is flagged in the output every time it happens.
+AGE_ADJUST = True
+DRIFT_SIGMA = 0.021
+DRIFT_SIGMA_UNMEASURED_MULTIPLE = 1.5
 
 # --- Monte Carlo ----------------------------------------------------------
 DRAWS = 10_000

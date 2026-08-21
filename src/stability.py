@@ -8,9 +8,12 @@ come from a Dirichlet centred on the declared weights, so every draw is a
 weighting somebody could argue for in the same room.
 
 *The inputs are estimates.* The WGI governance scores ship with the bounds of
-their own 90% confidence interval, and the wage basket rests on a declared
-staffing blend. Both are resampled from what their publisher says they are
-worth, rather than treated as exact.
+their own 90% confidence interval. The wage and talent baskets rest on a
+declared staffing blend, and the same blend is applied to both so cost and
+talent keep describing the same workforce. The capability shares are estimates
+from finite postings samples — 88 of them in Switzerland — and carry a binomial
+standard error like anyone else's number. All three are resampled rather than
+treated as exact.
 
 A market that holds a top-three place across all of that is a finding. One
 that holds it only in a corner of the space is a preference wearing a number.
@@ -23,7 +26,7 @@ from dataclasses import dataclass
 import numpy as np
 
 from src import config as C
-from src.panel import Market
+from src.panel import Market, age, median_drift
 from src.score import PILLARS, normalise, rank, raw_pillars, score
 
 # WGI confidence intervals are published at 90%, so the half-width is 1.645
@@ -83,6 +86,7 @@ def run(
     """
     rng = np.random.default_rng(seed)
     markets = [k for k, m in panel.items() if m.complete]
+    fallback_drift = median_drift(panel)
     declared = C.ARCHETYPES[archetype]["weights"]
     alpha = np.array([C.WEIGHT_CONCENTRATION * declared[p] for p in PILLARS])
 
@@ -108,6 +112,8 @@ def run(
 
         wgi_draw = None
         cost_draw = None
+        talent_draw = None
+        capability_draw = None
         if resample_inputs:
             wgi_draw = {}
             for iso2 in markets:
@@ -139,15 +145,52 @@ def run(
             }
             total = sum(blend.values())
             blend = {g: v / total for g, v in blend.items()}
-            cost_draw = {
-                iso2: sum(
-                    blend[g] * panel[iso2].wage_components_usd[g]
-                    for g in C.ISCO_GROUPS
+            cost_draw = {}
+            for iso2 in markets:
+                m = panel[iso2]
+                basket = sum(
+                    blend[g] * m.wage_components_usd[g] for g in C.ISCO_GROUPS
                 )
-                for iso2 in markets
-            }
+                if C.AGE_ADJUST and m.cost_lag:
+                    # A stale observation is uncertain in proportion to how
+                    # stale it is, so the drift is drawn rather than assumed.
+                    scale = C.DRIFT_SIGMA * (
+                        1.0 if m.drift_measured
+                        else C.DRIFT_SIGMA_UNMEASURED_MULTIPLE
+                    )
+                    centre = m.drift_used if m.drift_used is not None else fallback_drift
+                    basket = age(basket, m.cost_lag, rng.normal(centre, scale))
+                cost_draw[iso2] = basket
+            # Same blend on the talent basket. Drawing a separate one would
+            # let the model buy a transactional wage bill for a judgment-heavy
+            # labour pool, which is not a workforce anyone could hire.
+            if C.TALENT_SOURCE == "employment":
+                talent_draw = {
+                    iso2: sum(
+                        blend[g] * panel[iso2].employment_components[g]
+                        for g in C.ISCO_GROUPS
+                    )
+                    for iso2 in markets
+                    if panel[iso2].employment_components
+                }
+            # The capability share is a sample proportion. Resampling it from
+            # the binomial that produced it is the difference between taking
+            # this project's own measurement error seriously and taking only
+            # everybody else's.
+            capability_draw = {}
+            for iso2 in markets:
+                m = panel[iso2]
+                successes, n = m.capability_counts
+                if n <= 0:
+                    continue
+                metric = C.ARCHETYPES[archetype]["capability_metric"]
+                p_hat = getattr(m, metric)
+                capability_draw[iso2] = float(rng.binomial(n, p_hat)) / n
 
-        raw = raw_pillars(panel, archetype, wgi_draw=wgi_draw, cost_draw=cost_draw)
+        raw = raw_pillars(
+            panel, archetype, wgi_draw=wgi_draw, cost_draw=cost_draw,
+            talent_draw=talent_draw, capability_draw=capability_draw,
+        )
         order = rank(score(normalise(raw, transform=transform), weights))
 
         for position, iso2 in enumerate(order, start=1):

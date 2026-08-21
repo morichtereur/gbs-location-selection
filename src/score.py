@@ -3,7 +3,7 @@
 Two choices here decide more than they look like they do, so both are stated
 rather than defaulted quietly:
 
-*Transform.* Cost spans 24x across this panel and the talent proxy spans 160x.
+*Transform.* Cost spans 24x across this panel and the talent pillar spans 30x.
 Min-max normalising either one on a linear scale collapses eight markets into
 a rounding error against India's education system, which answers a question
 nobody asked — a location decision cares about the order of magnitude of a
@@ -33,11 +33,13 @@ def raw_pillars(
     *,
     wgi_draw: dict[str, dict[str, float]] | None = None,
     cost_draw: dict[str, float] | None = None,
+    talent_draw: dict[str, float] | None = None,
+    capability_draw: dict[str, float] | None = None,
 ) -> dict[str, dict[str, float]]:
     """Pillar values per market, before normalisation.
 
-    `wgi_draw` and `cost_draw` let a Monte Carlo pass in resampled inputs
-    without this module knowing anything about how they were drawn.
+    The `*_draw` arguments let a Monte Carlo pass in resampled inputs without
+    this module knowing anything about how they were drawn.
     """
     metric = C.ARCHETYPES[archetype]["capability_metric"]
     out: dict[str, dict[str, float]] = {}
@@ -52,10 +54,15 @@ def raw_pillars(
         else:
             risk = m.risk_score
         out[iso2] = {
-            "cost": (cost_draw or {}).get(iso2, m.cost_usd),
-            "talent": m.talent_proxy,
+            # A Market built by hand rather than by `panel.build` has no aged
+            # cost; fall back to the observation rather than failing.
+            "cost": (cost_draw or {}).get(
+                iso2,
+                (m.cost_usd_aged or m.cost_usd) if C.AGE_ADJUST else m.cost_usd,
+            ),
+            "talent": (talent_draw or {}).get(iso2, m.talent_proxy),
             "risk": risk,
-            "capability": getattr(m, metric),
+            "capability": (capability_draw or {}).get(iso2, getattr(m, metric)),
         }
     return out
 

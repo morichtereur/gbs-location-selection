@@ -9,7 +9,7 @@ from __future__ import annotations
 import pytest
 
 from src import config as C
-from src.panel import REFERENCE_YEAR, Market, _cagr
+from src.panel import REFERENCE_YEAR, Market, _cagr, age, median_drift
 
 pytestmark = pytest.mark.filterwarnings("ignore")
 
@@ -59,3 +59,43 @@ def test_demand_shares_are_ratios_within_each_market():
         total = d["transactional_share"] + d["judgment_share"] + d["agent_ops_share"]
         assert total == pytest.approx(1.0)
         assert 0.0 <= d["employer_fragmentation"] <= 1.0
+
+
+def test_age_compounds_drift_over_the_lag():
+    assert age(100.0, 0, 0.05) == 100.0
+    assert age(100.0, None, 0.05) == 100.0
+    assert age(100.0, 3, 0.10) == pytest.approx(133.1)
+
+
+def test_median_drift_ignores_markets_without_a_measurable_rate():
+    def m(rate):
+        x = Market(iso2="x", name="X", market_type="delivery")
+        x.wage_cagr = rate
+        return x
+
+    panel = {"a": m(0.02), "b": m(0.04), "c": m(None)}
+    assert median_drift(panel) == pytest.approx(0.03)
+    assert median_drift({"c": m(None)}) == 0.0
+
+
+@needs_postings
+def test_stale_markets_are_aged_and_fresh_ones_are_not():
+    from src.panel import build
+
+    panel = build()
+    for m in panel.values():
+        if m.cost_lag == 0:
+            assert m.cost_usd_aged == pytest.approx(m.cost_usd)
+        elif m.drift_used and m.drift_used > 0:
+            assert m.cost_usd_aged > m.cost_usd
+
+
+@needs_postings
+def test_capability_counts_recover_the_sample():
+    from src.panel import build
+
+    for m in build().values():
+        successes, n = m.capability_counts
+        assert n == m.postings_in_scope
+        assert 0 <= successes <= n
+        assert successes / n == pytest.approx(m.transactional_share, abs=0.005)

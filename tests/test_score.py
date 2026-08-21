@@ -15,6 +15,9 @@ from src.score import PILLARS, normalise, rank, raw_pillars, score
 def make(iso2: str, cost: float, talent: float, risk: float, trans: float) -> Market:
     m = Market(iso2=iso2, name=iso2.upper(), market_type="delivery")
     m.cost_usd = cost
+    m.cost_usd_aged = cost
+    m.drift_used = 0.03
+    m.drift_measured = True
     m.cost_year = 2025
     m.wage_components_usd = {g: cost for g in C.ISCO_GROUPS}
     m.talent_proxy = talent

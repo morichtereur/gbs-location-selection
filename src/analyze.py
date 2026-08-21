@@ -140,33 +140,88 @@ def results_md(panel, results, variants) -> str:
         "",
         "## What actually moves the ranking",
         "",
-        "| archetype | market | weights only | + independent WGI draws | + correlated WGI draws | linear transform |",
-        "|---|---|---:|---:|---:|---:|",
+        "Largest change in any market's top-3 frequency when one thing is varied",
+        "and everything else is held fixed. The first row is every published",
+        "measurement error in the panel, taken together. The rest are choices a",
+        "modeller makes silently.",
+        "",
+        "| varied | transactional hub | judgment centre |",
+        "|---|---:|---:|",
     ]
-    for key, rows in variants.items():
-        for k in rows["order"][:4]:
-            lines.append(
-                f"| {C.ARCHETYPES[key]['label']} | {panel[k].name} | "
-                f"{_pct(rows['weights_only'].frequency[k])} | "
-                f"{_pct(rows['independent'].frequency[k])} | "
-                f"{_pct(rows['perfect'].frequency[k])} | "
-                f"{_pct(rows['linear'].frequency[k])} |"
-            )
+    labels = {
+        "measurement": "All published measurement error",
+        "vintage": "Vintage: age-adjusted or as-observed",
+        "transform": "Normalisation: log or linear",
+        "talent": "Talent pillar: employed stock or education pipeline",
+    }
+    for key, label in labels.items():
+        cells = []
+        for arch in C.ARCHETYPES:
+            name, swing = variants[arch]["swings"][key]
+            cells.append(f"{name} {swing:.1f}pp")
+        lines.append(f"| {label} | {cells[0]} | {cells[1]} |")
+
+    lines += [
+        "",
+        "Two of those choices change the membership of the shortlist, not just the",
+        "confidence in it:",
+        "",
+    ]
+    for arch in C.ARCHETYPES:
+        v = variants[arch]
+        lines.append(
+            f"- **{C.ARCHETYPES[arch]['label']}** — employed-stock talent gives "
+            + ", ".join(panel[k].name for k in v["baseline_top"])
+            + "; education-pipeline talent gives "
+            + ", ".join(panel[k].name for k in v["education_top"])
+            + "."
+        )
     return "\n".join(lines) + "\n"
+
+
+def _swing(base, other, panel):
+    """Largest absolute change in any market's top-3 frequency."""
+    k = max(base.frequency, key=lambda k: abs(base.frequency[k] - other.frequency[k]))
+    return panel[k].name, abs(base.frequency[k] - other.frequency[k]) * 100
 
 
 def main() -> None:
     panel = build()
     results = {a: run(panel, a) for a in C.ARCHETYPES}
+
+    # The education-pipeline talent pillar, run on the same panel. Swapping the
+    # field rather than rebuilding avoids refetching four sources.
+    education = {}
+    for m in panel.values():
+        m.talent_proxy = m.talent_education
+    original_source, C.TALENT_SOURCE = C.TALENT_SOURCE, "education"
+    for a in C.ARCHETYPES:
+        education[a] = run(panel, a)
+    C.TALENT_SOURCE = original_source
+    for m in panel.values():
+        m.talent_proxy = m.talent_employed
+
+    original_age, C.AGE_ADJUST = C.AGE_ADJUST, False
+    as_observed = {a: run(panel, a) for a in C.ARCHETYPES}
+    C.AGE_ADJUST = original_age
+
     variants = {}
     for a in C.ARCHETYPES:
         st = results[a]
+        linear = run(panel, a, transform="linear")
+        weights_only = run(panel, a, resample_inputs=False)
         variants[a] = {
             "order": sorted(st.frequency, key=lambda k: -st.frequency[k]),
-            "weights_only": run(panel, a, resample_inputs=False),
-            "independent": run(panel, a, wgi_correlation="independent"),
-            "perfect": st,
-            "linear": run(panel, a, transform="linear"),
+            "baseline_top": st.baseline_rank[: C.TOP_N],
+            "education_top": sorted(
+                education[a].frequency, key=lambda k: -education[a].frequency[k]
+            )[: C.TOP_N],
+            "swings": {
+                "measurement": _swing(st, weights_only, panel),
+                "vintage": _swing(st, as_observed[a], panel),
+                "transform": _swing(st, linear, panel),
+                "talent": _swing(st, education[a], panel),
+            },
         }
     C.DATA.mkdir(exist_ok=True)
     chart(panel, results, C.DATA / "chart_stability.png")

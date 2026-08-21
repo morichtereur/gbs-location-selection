@@ -105,3 +105,59 @@ def series() -> dict[str, dict[int, float]]:
                     C.WAGE_BLEND[g] * o[(year, g)] for g in C.ISCO_GROUPS
                 )
     return out
+
+
+EMP_ACCEPT = ACCEPT
+
+
+def _emp_url() -> str:
+    key = "+".join(m["iso3"] for m in C.MARKETS.values())
+    return f"{BASE},{C.ILO_EMP_DATAFLOW}/{key}....."
+
+
+def employment() -> dict[str, dict]:
+    """Employed stock by ISCO-08 major group, in persons.
+
+    A better talent pillar than an education-system proxy, for three reasons:
+    it counts people already doing this kind of work rather than people who
+    might one day; it uses the same occupational definition as the wage basket,
+    so cost and talent describe the same workforce; and it is an ILO modelled
+    series, so every market carries the same reference year instead of the
+    three-to-six-year spread the earnings observations have.
+
+    What it gives up: a modelled estimate is not a measurement, and the model's
+    own error is not published per country. It also counts the whole national
+    stock of professionals, technicians and clerks — not the finance-specific
+    slice, which ILOSTAT does not resolve.
+    """
+    body = fetch(_emp_url(), EMP_ACCEPT, suffix=".csv")
+    obs: dict[str, dict[tuple[int, str], float]] = {}
+    for r in csv.DictReader(io.StringIO(body)):
+        if (
+            r["SEX"] != "SEX_T"
+            or r["OCU"] not in C.ISCO_GROUPS
+            or not r["OBS_VALUE"]
+        ):
+            continue
+        iso2 = C.ISO3_TO_ISO2.get(r["REF_AREA"])
+        if not iso2:
+            continue
+        # UNIT_MULT is the power of ten the observation is scaled by; the
+        # series ships in thousands and is normalised to persons here.
+        mult = 10 ** int(r["UNIT_MULT"] or 0)
+        obs.setdefault(iso2, {})[(int(r["TIME_PERIOD"]), r["OCU"])] = (
+            float(r["OBS_VALUE"]) * mult
+        )
+
+    out: dict[str, dict] = {}
+    for iso2, o in obs.items():
+        years = sorted({y for y, _ in o}, reverse=True)
+        for year in years:
+            if all((year, g) in o for g in C.ISCO_GROUPS):
+                out[iso2] = {
+                    "year": year,
+                    "source": "ILOSTAT SDMX / " + C.ILO_EMP_DATAFLOW,
+                    **{g: o[(year, g)] for g in C.ISCO_GROUPS},
+                }
+                break
+    return out
