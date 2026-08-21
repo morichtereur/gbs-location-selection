@@ -12,8 +12,13 @@ from src.panel import REFERENCE_YEAR, build
 from src.score import PILLARS, normalise, rank, raw_pillars, score
 from src.stability import run
 
+# The first version of this chart used the site green against a mid blue. That
+# pair fails the normal-vision separation floor at deltaE 13.7 — readers with
+# ordinary colour vision struggle to tell the two series apart, and no amount
+# of labelling excuses that one. Blue against orange clears every gate.
+TRANSACTIONAL_COLOR = "#3b6ea5"
+JUDGMENT_COLOR = "#c65b2e"
 ROBUST_COLOR = "#146b54"
-CONTINGENT_COLOR = "#3b6ea5"
 NEVER_COLOR = "#b9b9b4"
 
 
@@ -45,9 +50,9 @@ def chart(panel, results, path):
 
     for i, k in zip(y, order):
         ax.barh(i - height / 2, trans.frequency[k] * 100, height=height,
-                color=ROBUST_COLOR, zorder=3)
+                color=TRANSACTIONAL_COLOR, zorder=3)
         ax.barh(i + height / 2, judg.frequency[k] * 100, height=height,
-                color=CONTINGENT_COLOR, zorder=3)
+                color=JUDGMENT_COLOR, zorder=3)
 
     ax.set_yticks(y)
     ax.set_yticklabels(names, fontsize=11)
@@ -74,14 +79,15 @@ def chart(panel, results, path):
              fontsize=16, fontweight="bold", color="#121a17", va="top")
     fig.text(
         0.02, 0.895,
-        "Ten markets scored on cost, talent scale, governance risk and demonstrated capability, then\n"
-        "re-scored under 10,000 defensible weightings with inputs resampled inside their published error.",
+        "Ten markets scored on six pillars — cost, talent, governance, demonstrated capability, hours\n"
+        "shared with headquarters, and how fast the wage gap is closing — then re-scored under 10,000\n"
+        "defensible weightings, with every input resampled inside its published error.",
         fontsize=10.5, color="#555", va="top", linespacing=1.45,
     )
 
     handles = [
-        plt.Rectangle((0, 0), 1, 1, color=ROBUST_COLOR),
-        plt.Rectangle((0, 0), 1, 1, color=CONTINGENT_COLOR),
+        plt.Rectangle((0, 0), 1, 1, color=TRANSACTIONAL_COLOR),
+        plt.Rectangle((0, 0), 1, 1, color=JUDGMENT_COLOR),
     ]
     fig.legend(handles, ["Transactional hub", "Judgment centre of excellence"],
                loc="lower center", ncol=2, frameon=False, fontsize=10.5,

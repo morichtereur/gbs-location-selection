@@ -7,10 +7,11 @@ fills a gap with a regional average is making up the number that decides it.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 from src import config as C
-from src.sources import ilostat, postings, unesco, worldbank
+from src.proximity import overlap_hours
+from src.sources import eurostat, ilostat, postings, unesco, worldbank
 
 # The panel is a point-in-time read. Vintage lag is measured against the year
 # the analysis is run, not against the freshest market, so a uniformly stale
@@ -42,6 +43,13 @@ class Market:
     risk_score: float | None = None
     risk_year: int | None = None
     wgi: dict[str, tuple[float, float, float]] = field(default_factory=dict)
+    timezone_overlap: float | None = None
+    durability: float | None = None
+    # Set only on city rows: which country row they were derived from, and the
+    # regional cost index applied to it.
+    parent: str | None = None
+    region_index: float | None = None
+    region_year: str | None = None
     transactional_share: float | None = None
     judgment_share: float | None = None
     bpo_share: float | None = None
@@ -65,12 +73,16 @@ class Market:
         return round((self.transactional_share or 0.0) * n), n
 
     @property
+    def is_city(self) -> bool:
+        return self.parent is not None
+
+    @property
     def complete(self) -> bool:
         return all(
             v is not None
             for v in (
                 self.cost_usd, self.talent_proxy, self.risk_score,
-                self.transactional_share,
+                self.transactional_share, self.timezone_overlap, self.durability,
             )
         )
 
@@ -78,6 +90,7 @@ class Market:
         names = {
             "cost": self.cost_usd, "talent": self.talent_proxy,
             "risk": self.risk_score, "capability": self.transactional_share,
+            "timezone": self.timezone_overlap, "durability": self.durability,
         }
         return [k for k, v in names.items() if v is None]
 
@@ -187,6 +200,7 @@ def build() -> dict[str, Market]:
             m.employer_fragmentation = d["employer_fragmentation"]
             m.postings_in_scope = d["postings_in_scope"]
 
+        m.timezone_overlap = overlap_hours(iso2)
         panel[iso2] = m
 
     # Point-adjusted cost for the baseline ranking. The Monte Carlo draws its
@@ -200,4 +214,46 @@ def build() -> dict[str, Market]:
         m.cost_usd_aged = (
             age(m.cost_usd, m.cost_lag, m.drift_used) if C.AGE_ADJUST else m.cost_usd
         )
+        # Durability is the inverse of drift: a market whose wages have been
+        # climbing fast is one whose arbitrage is closing. Stored as the
+        # negative rate so that, like every other pillar, higher is better.
+        m.durability = -m.drift_used
     return panel
+
+
+def with_cities(panel: dict[str, Market]) -> dict[str, Market]:
+    """Country rows for markets Eurostat cannot resolve, city rows where it can.
+
+    A city row inherits everything from its country except cost, which is the
+    national wage basket scaled by the region's cost index. That is the honest
+    limit of this layer: only the cost pillar is city-resolved. Governance,
+    talent, capability and timezone are national figures wearing a city's name,
+    and a shortlist built on it should be read that way.
+    """
+    regions = eurostat.load()
+    by_market: dict[str, list[dict]] = {}
+    for record in regions.values():
+        by_market.setdefault(record["market"], []).append(record)
+
+    out: dict[str, Market] = {}
+    for iso2, m in panel.items():
+        if iso2 not in by_market:
+            out[iso2] = m
+            continue
+        for record in by_market[iso2]:
+            city = replace(
+                m,
+                iso2=record["nuts2"],
+                name=record["name"],
+                parent=iso2,
+                region_index=record["index_vs_country"],
+                region_year=record["year"],
+            )
+            city.cost_usd = m.cost_usd * record["index_vs_country"]
+            city.cost_usd_aged = (m.cost_usd_aged or m.cost_usd) * record["index_vs_country"]
+            city.wage_components_usd = {
+                g: v * record["index_vs_country"]
+                for g, v in m.wage_components_usd.items()
+            }
+            out[record["nuts2"]] = city
+    return out

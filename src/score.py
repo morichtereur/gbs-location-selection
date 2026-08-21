@@ -22,7 +22,7 @@ import math
 from src import config as C
 from src.panel import Market
 
-PILLARS = ("cost", "talent", "risk", "capability")
+PILLARS = ("cost", "talent", "risk", "capability", "timezone", "durability")
 LOWER_IS_BETTER = {"cost"}
 LOG_SCALED = {"cost", "talent"}
 
@@ -63,6 +63,8 @@ def raw_pillars(
             "talent": (talent_draw or {}).get(iso2, m.talent_proxy),
             "risk": risk,
             "capability": (capability_draw or {}).get(iso2, getattr(m, metric)),
+            "timezone": m.timezone_overlap,
+            "durability": m.durability,
         }
     return out
 

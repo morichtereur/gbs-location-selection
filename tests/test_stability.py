@@ -22,11 +22,12 @@ def test_wgi_sigma_inverts_the_published_interval():
 def test_declared_weights_are_the_centre_of_the_draws(panel):  # noqa: F811
     rng = np.random.default_rng(C.SEED)
     declared = C.ARCHETYPES["transactional_hub"]["weights"]
-    alpha = np.array([C.WEIGHT_CONCENTRATION * declared[p] for p in
-                      ("cost", "talent", "risk", "capability")])
+    from src.score import PILLARS
+
+    alpha = np.array([C.WEIGHT_CONCENTRATION * declared[p] for p in PILLARS])
     draws = rng.dirichlet(alpha, size=20_000)
     assert draws.sum(axis=1) == pytest.approx(np.ones(20_000))
-    for i, p in enumerate(("cost", "talent", "risk", "capability")):
+    for i, p in enumerate(PILLARS):
         assert draws[:, i].mean() == pytest.approx(declared[p], abs=0.01)
 
 

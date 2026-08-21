@@ -105,6 +105,52 @@ TALENT_SOURCE = "employment"
 UIS_ENROLMENT = "25053"
 UIS_BUSINESS_SHARE = "FOSGP.5T8.F400"
 
+# --- Cities ---------------------------------------------------------------
+# NUTS-2 regions, named for the city a GBS programme would be considering.
+# Only the four markets Eurostat's regional accounts cover — see
+# src/sources/eurostat.py for why the other six cannot be resolved this way.
+REGIONS = {
+    "pl": {
+        "PL91": "Warsaw", "PL21": "Kraków", "PL51": "Wrocław",
+        "PL22": "Katowice", "PL41": "Poznań", "PL63": "Gdańsk",
+        "PL71": "Łódź",
+    },
+    "de": {
+        "DE21": "Munich", "DE71": "Frankfurt", "DEA1": "Düsseldorf",
+        "DE30": "Berlin", "DE60": "Hamburg", "DE11": "Stuttgart",
+    },
+    "nl": {"NL32": "Amsterdam", "NL33": "The Hague / Rotterdam", "NL41": "Eindhoven"},
+    "es": {"ES30": "Madrid", "ES51": "Barcelona", "ES61": "Seville", "ES52": "Valencia"},
+}
+
+# --- Proximity ------------------------------------------------------------
+# The Poland result in the first version of this study was that Poland is never
+# shortlisted, and the honest reading was that the panel could not see what
+# Poland is actually bought for. Overlapping working hours is the largest part
+# of that, and it is computable rather than a matter of data availability, so
+# there was no excuse for leaving it out.
+#
+# Standard-time UTC offsets. Daylight saving is deliberately ignored: it moves
+# most of these markets together, and modelling it would imply a precision that
+# a 9-to-5 working-day abstraction does not have.
+HQ = "ch"
+UTC_OFFSET = {
+    "ch": 1.0, "de": 1.0, "nl": 1.0, "es": 1.0, "pl": 1.0,
+    "gb": 0.0, "za": 2.0, "in": 5.5, "sg": 8.0, "mx": -6.0,
+}
+WORKING_DAY = (9.0, 17.0)
+
+# --- Durability -----------------------------------------------------------
+# A wage gap is not a fact about the future. Poland's measured drift is 8.5% a
+# year against India's 1.7%, which is the difference between an arbitrage that
+# holds and one that closes while the programme is still running. The drift is
+# already measured for the vintage adjustment, so this pillar costs no new data
+# — it just stops the model from treating today's gap as permanent.
+#
+# In USD terms drift mixes real wage growth with currency movement, and this
+# pillar does not separate them. It answers "has this market been getting more
+# expensive to a dollar buyer", which is the question a sponsor asks.
+
 # --- Archetypes -----------------------------------------------------------
 # What kind of centre is being placed changes which market wins, and that is
 # the substantive point rather than a configuration detail. A transactional
@@ -113,13 +159,19 @@ UIS_BUSINESS_SHARE = "FOSGP.5T8.F400"
 ARCHETYPES = {
     "transactional_hub": {
         "label": "Transactional hub",
-        "weights": {"cost": 0.45, "talent": 0.25, "risk": 0.15, "capability": 0.15},
+        "weights": {
+            "cost": 0.35, "talent": 0.20, "risk": 0.10,
+            "capability": 0.15, "timezone": 0.10, "durability": 0.10,
+        },
         # Which end of the postings mix counts as fit for this archetype.
         "capability_metric": "transactional_share",
     },
     "judgment_centre": {
         "label": "Judgment centre of excellence",
-        "weights": {"cost": 0.20, "talent": 0.25, "risk": 0.25, "capability": 0.30},
+        "weights": {
+            "cost": 0.15, "talent": 0.20, "risk": 0.20,
+            "capability": 0.25, "timezone": 0.15, "durability": 0.05,
+        },
         "capability_metric": "judgment_share",
     },
 }

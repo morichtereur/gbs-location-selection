@@ -25,6 +25,8 @@ def make(iso2: str, cost: float, talent: float, risk: float, trans: float) -> Ma
     m.wgi = {d: (risk, risk - 5, risk + 5) for d in C.WGI_DIMENSIONS}
     m.transactional_share = trans
     m.judgment_share = 1.0 - trans
+    m.timezone_overlap = 8.0 - 3.0 * trans
+    m.durability = -0.03
     m.bpo_share = 0.1
     m.employer_fragmentation = 0.5
     m.postings_in_scope = 100
