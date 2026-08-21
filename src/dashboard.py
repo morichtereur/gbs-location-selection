@@ -129,11 +129,29 @@ def build_html() -> str:
     return TEMPLATE.replace("__DATA__", data).replace("__SCORING__", SCORING_JS)
 
 
+def build_artifact() -> str:
+    """The same page, without the document wrapper.
+
+    Artifacts supply their own doctype, head and body, so publishing the full
+    document would nest one inside another. Everything else — styles, markup,
+    script, the three-state theme tokens — is identical to the file version.
+    """
+    html = build_html()
+    head_open = html.index("<title>")
+    head_close = html.index("</head>")
+    body_open = html.index("<body>") + len("<body>")
+    body_close = html.rindex("</body>")
+    return html[head_open:head_close].rstrip() + "\n" + html[body_open:body_close].strip() + "\n"
+
+
 def main() -> None:
     path = C.ROOT / "dashboard.html"
     path.write_text(build_html())
     size = path.stat().st_size / 1024
     print(f"wrote {path.name} ({size:.0f} kB)")
+    artifact = C.ROOT / "dashboard.artifact.html"
+    artifact.write_text(build_artifact())
+    print(f"wrote {artifact.name} ({artifact.stat().st_size / 1024:.0f} kB)")
 
 
 # The scoring half of the page, kept separate so tests/test_dashboard.py can
