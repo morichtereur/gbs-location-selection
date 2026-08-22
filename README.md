@@ -68,6 +68,13 @@ Four have city-level labour cost, from Eurostat's regional accounts. The rest ca
 | Durability | ILOSTAT, derived — wage drift, split from currency movement |
 | Employer depth | Adzuna, derived — distinct employers hiring |
 
+**Who is already there** is reported per city — Heineken, Huntsman, Euroclear and
+six others in Kraków; Cisco, Booking and ABB among fourteen in Bangalore. The
+postings carry the operator's own name in 85% of cases, so the question a room
+always asks needs no further source. Staffing firms are removed (16% of named
+postings) and one company's several spellings are merged, both by visible lists
+in [`src/operators.py`](src/operators.py). `make operators` prints the full list.
+
 Two further facts are **reported per city and deliberately not scored**:
 **languages** the city's postings ask for (Wrocław 50%, Warsaw 41%, Indian cities
 0–5% — more languages is a strength only if you need them), and cost in **PPP**

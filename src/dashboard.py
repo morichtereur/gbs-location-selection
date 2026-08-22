@@ -17,6 +17,7 @@ import json
 from src import config as C
 from src.panel import Market, build, with_centres
 from src.fonts import face_css
+from src.operators import by_city as operators_by_city, title as operator_title
 from src.score import LOG_SCALED, LOWER_IS_BETTER, PILLARS
 from src.stability import run
 
@@ -124,7 +125,7 @@ LIMITS = [
 ]
 
 
-def _entity(m: Market, archetype: str) -> dict:
+def _entity(m: Market, archetype: str, operators: dict | None = None) -> dict:
     metric = C.ARCHETYPES[archetype]["capability_metric"]
     return {
         "id": m.iso2,
@@ -159,6 +160,9 @@ def _entity(m: Market, archetype: str) -> dict:
         "costPpp": m.cost_ppp_aged or m.cost_ppp,
         "languageShare": m.language_share,
         "languages": list(m.languages or ()),
+        # Who already runs a centre here, recruiters removed. The question a
+        # room always asks, answered without another source.
+        "operators": (operators or {}).get((m.parent, m.name), []),
         # Postings that qualified the city, before the work-family classifier
         # decided any of them. The threshold is applied to this.
         "postingsSeen": m.postings_seen,
@@ -178,6 +182,10 @@ def _entity(m: Market, archetype: str) -> dict:
 
 
 def payload() -> dict:
+    operators = {
+        key: [operator_title(n) for n, _ in ops]
+        for key, ops in operators_by_city().items()
+    }
     countries = build()
     centres = with_centres(countries)
     data = {
@@ -242,7 +250,7 @@ def payload() -> dict:
         # Cities only. A location decision picks a city, not a country, and a
         # ranking that mixes the two compares Kraków against Germany.
         data["views"].setdefault("city", {})[archetype] = [
-            _entity(m, archetype)
+            _entity(m, archetype, operators)
             for m in centres.values()
             if m.complete and m.is_city
         ]
@@ -822,6 +830,7 @@ summary { cursor: pointer; font-size: 13.5px; color: var(--ink-2); }
 table { border-collapse: collapse; width: 100%; margin-top: 12px; font-size: 12.5px; }
 th, td { text-align: right; padding: 5px 8px; border-bottom: 1px solid var(--rule); font-variant-numeric: tabular-nums; }
 th:first-child, td:first-child { text-align: left; font-variant-numeric: normal; }
+td.ops { text-align: left; font-variant-numeric: normal; max-width: 30ch; }
 th { font-family: var(--mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: .07em; color: var(--ink-3); font-weight: 600; }
 caption { caption-side: top; text-align: left; font-size: 12px; color: var(--ink-3); padding-bottom: 8px; }
 
@@ -1308,13 +1317,15 @@ function renderTable(ranked, stab) {
   const t = $("#table");
   const head = ["City", ...DATA.pillars.map((p) => DATA.pillarLabels[p]),
                 "Score", "Top-3", "Processing", "Judgment", "Cost USD", "Cost PPP",
-                "Languages"];
+                "Languages", "Operators already there"];
   t.querySelector("caption").textContent =
     "Normalised pillar scores (0–1, higher is better) under the current weights. "
     + "Processing and judgment are the work mix the city advertises, shrunk toward "
     + "its country's where the sample is thin. Cost is monthly, per head: USD is what "
     + "you pay, PPP what it buys locally. "
-    + "Languages are those the city's postings ask for — reported, not scored.";
+    + "Languages are those the city's postings ask for. Operators are the employers "
+    + "advertising this work there, with staffing firms removed and one company's "
+    + "several spellings merged. Both reported, neither scored.";
   t.innerHTML = t.querySelector("caption").outerHTML +
     "<thead><tr>" + head.map((h) => `<th>${h}</th>`).join("") + "</tr></thead><tbody>" +
     ranked.map((r) =>
@@ -1325,7 +1336,8 @@ function renderTable(ranked, stab) {
       + `<td>${r.row.mixTransactional != null ? Math.round((1 - r.row.mixTransactional) * 100) + "%" : "—"}</td>`
       + `<td>${Math.round(r.row.cost).toLocaleString()}</td>`
       + `<td>${r.row.costPpp ? Math.round(r.row.costPpp).toLocaleString() : "—"}</td>`
-      + `<td>${(r.row.languages || []).join(", ") || "—"}</td></tr>`
+      + `<td>${(r.row.languages || []).join(", ") || "—"}</td>`
+      + `<td class="ops">${(r.row.operators || []).join(", ") || "—"}</td></tr>`
     ).join("") + "</tbody>";
 }
 
