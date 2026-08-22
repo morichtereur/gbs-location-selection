@@ -101,7 +101,7 @@ conclusion, that the model could not see Poland, was wrong.
 | Capability | Adzuna, classified by `src/delivery.py` | What the market demonstrably staffs, from 537 live postings that are GBS or GCC work. |
 | Overlap | computed | Hours of the market's working day that fall inside the headquarters' working day. Deterministic — no source to be stale. |
 | Durability | ILOSTAT, derived | How slowly the wage gap has been closing in dollars. A cost advantage is not a fact about the future. |
-| Employer depth | Adzuna, derived | Distinct employers advertising this work. Comparable only because the fetch applied identical effort to every market and the page cap did not bind. |
+| Employer depth | Adzuna, derived | Distinct employers advertising this work. Comparable only because the fetch applies identical effort everywhere *and* runs past the point where every market exhausts — see below. |
 
 The capability pillar is the one that is not available off the shelf. Every
 commercial location index measures talent *supply*. This measures what the
@@ -234,6 +234,30 @@ the currency has made labour *more* expensive in dollars than local wages did.
 The pillar still scores the dollar figure, because that is what a sponsor pays.
 The split is reported so nobody mistakes a currency movement for wage restraint.
 
+## The page cap was biasing a pillar
+
+The employer-depth pillar rests on the fetch applying equal effort to every
+market. The first version asserted the page cap did not bind, and that was
+wrong. Probing each market for the page at which it stops returning results:
+
+| exhausts after | markets |
+|---|---|
+| ~1 page | Switzerland, Netherlands |
+| ~4 pages | Brazil, Mexico |
+| ~8 pages | Spain, Singapore |
+| ~12 pages | Poland, South Africa |
+| ~20 pages | Germany |
+| **still producing at 40** | **United Kingdom, India** |
+
+A 14-page cap therefore truncated the largest markets and not the smallest, so
+depth was understated for exactly the markets that have the most of it. Running
+to 42 pages moved India from 62 employers to 70 and the United Kingdom from 32
+to 39, and left Switzerland and the Netherlands untouched.
+
+Two conditions keep this pillar honest and both have to hold: identical search
+terms everywhere, and a cap high enough that no market is still producing when
+it is reached.
+
 ## Everything that is resampled
 
 The Monte Carlo varies four things at once, so a market's frequency is its
@@ -319,6 +343,11 @@ survival rate across all of them together:
 - **One snapshot so far.** `make trend` records each fetch under its own date
   and compares them; with a single snapshot it says so and stops rather than
   implying direction.
+- **Thin markets are thin, not under-fetched.** Switzerland contributes five
+  decided postings and the Netherlands nine, and probing the page depth at which
+  each market stops returning results shows why: both exhaust after a single
+  page. Deepening the fetch from 14 pages to 42 left them at exactly five and
+  nine. That is scarcity in the source, and no amount of fetching fixes it.
 
 ## Run it
 

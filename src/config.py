@@ -300,12 +300,19 @@ WORKING_DAY = (9.0, 17.0)
 # where sixty-two employers compete for the profile is a different proposition
 # from one with five — faster to hire into, harder to retain in.
 #
-# This is only a fair comparison because the fetch applied the same effort to
-# every market: the same search terms and the same page cap. The cap did not
-# bind anywhere — India returned 2,060 postings against Switzerland's 90, well
-# inside the ceiling — so the difference is supply rather than where the fetch
-# stopped. `make fetch` must stay uniform for this pillar to keep meaning what
-# it says.
+# This is only a fair comparison if the fetch applies the same effort to every
+# market *and* runs deep enough that every market exhausts. The first version
+# claimed the cap did not bind and that was wrong: probing the page depth at
+# which each market stops returning results showed Switzerland and the
+# Netherlands exhausting after one page, while the United Kingdom and India
+# were still returning full pages at page 40. A 14-page fetch therefore
+# truncated the largest markets and not the smallest, understating depth for
+# exactly the markets that have the most of it.
+#
+# The fetch now runs to 42 pages, past the point where every market runs dry, so
+# the counts are supply rather than where the fetch stopped. Two conditions keep
+# this pillar honest and both must hold: identical search terms everywhere, and
+# a page cap high enough that no market is still producing when it is reached.
 
 ARCHETYPES = {
     "transactional_hub": {

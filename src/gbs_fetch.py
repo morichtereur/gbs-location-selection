@@ -34,7 +34,12 @@ from src import config as C
 API = "https://api.adzuna.com/v1/api/jobs/{country}/search/{page}"
 JOOBLE_API = "https://jooble.org/api/{key}"
 RESULTS_PER_PAGE = 50
-MAX_PAGES = int(os.getenv("GBSLOC_MAX_PAGES", "5"))
+# Deep enough that every market exhausts. Probed per market: Switzerland and
+# the Netherlands run dry after one page, Spain and Singapore around eight,
+# Germany around twenty, and the United Kingdom and India were still returning
+# full pages at forty. A cap that binds on the largest markets and not the
+# smallest silently understates the employer-depth pillar for the biggest ones.
+MAX_PAGES = int(os.getenv("GBSLOC_MAX_PAGES", "42"))
 REQUEST_INTERVAL = 0.4
 
 # Terms aimed at the delivery model rather than the process. "Finance
