@@ -122,6 +122,9 @@ LIMITS = [
     "Capability comes from few postings, as low as five per city. The stability column already accounts for this; the ranking below the top few is not meaningful.",
     "The GBS/GCC classifier was audited five times over a hundred postings; two of the last twenty were clearly wrong. That error rate is modelled in the stability column, not just noted.",
     "One snapshot. A city hiring quietly during the fetch is under-represented; absence is weak evidence, not a verdict.",
+    # The first question any GBS room asks is where Manila is. Better that the
+    # exhibit answers it than that the audience finds the hole.
+    "Six established locations are absent because the postings feed does not reach them: Manila, Kuala Lumpur, Bucharest, Prague, Budapest and Lisbon. The ranking is therefore within the cities shown, not against every credible alternative.",
 ]
 
 
