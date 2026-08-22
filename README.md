@@ -108,39 +108,55 @@ reuses the classifier from the sibling study by import rather than
 reimplementation, and a test asserts that both land on the same 2,110 postings,
 so the two readouts cannot quietly drift apart.
 
-## Cities: Wrocław yes, Pune no
+## Real GBS centres, not regions
 
-A site selection does not choose Poland. It chooses Wrocław, or Katowice, or
-Warsaw — and on this evidence those are not the same decision at all.
+An earlier version of this study ranked NUTS-2 regions, which put Munich,
+Hamburg and Amsterdam on a shared-services shortlist. Nobody places a delivery
+centre in Munich. The candidate set is now evidenced from the same postings
+snapshot the capability pillar uses: **a location qualifies only where GBS and
+finance-operations roles are actually advertised, by four or more employers.**
 
-| market | internal spread | cheapest | dearest |
-|---|---:|---|---|
-| **Poland** | **2.69×** | Katowice 0.67× | Warsaw 1.81× |
-| Spain | 1.61× | Seville 0.77× | Madrid 1.23× |
-| Netherlands | 1.45× | Eindhoven 0.89× | Amsterdam 1.29× |
-| Germany | 1.23× | Düsseldorf 1.04× | Munich 1.29× |
+The employer threshold does the real work. Volume alone admits
+Rheda-Wiedenbrück, where seventeen postings come from two employers, and
+Oberkochen, where five come from one. Those are a single company's office, not
+a labour market a programme could hire into. `make centres` prints the full list
+and exactly what the thresholds exclude.
 
-Poland's national figure hides a 2.7-fold internal range. Warsaw costs more per
-employee than the Spanish national average and nearly as much as the German one,
-while Katowice sits a third below the Polish average. Any ranking that treats
-"Poland" as one row is answering a question nobody asked — and the error it
-makes is larger than the gap between several of the countries it is comparing.
+That leaves **26 centres** — including Kraków, Wrocław, Gdańsk, Bangalore, Pune,
+Hyderabad, Mexico City and Monterrey. It also declines to invent any: the feeds
+for the United Kingdom and South Africa carry no location string at all, so
+neither can be resolved below national level, and Singapore is a city already.
 
-Germany, by contrast, is nearly flat at 1.23×, so the national figure is a fair
-summary there. **Country-level resolution is not uniformly wrong; it is wrong by
-a different amount in every country**, which is worse, because it is invisible.
+### The tool can name Pune. It cannot tell Pune from Bangalore.
 
-This layer covers four markets. Eurostat's regional accounts do not include
-Switzerland, no longer include the UK, and never included India, Mexico, South
-Africa or Singapore. **Pune cannot be placed beside Wrocław on comparable public
-evidence, and this repository does not pretend otherwise.** Singapore is the one
-market where the question does not arise — it is a city already.
+Only 15 of the 26 centres have city-level labour cost, because Eurostat's
+regional accounts reach Poland, Germany, the Netherlands and Spain and nothing
+else. For the other 11, every pillar except capability is the national figure —
+so the ranking between Pune and Bangalore rests entirely on a transactional
+share estimated from eleven postings against twenty-four.
 
-Two further limits on the city view: only the *cost* pillar is city-resolved, so
-governance, talent, capability and overlap are national figures wearing a city's
-name; and because Poland contributes seven candidates against Singapore's one, a
-top-three share in city view is partly an artefact of how many cities each
-country brings.
+That is sampling noise wearing the clothes of a finding, so it is not allowed to
+act like one. Each centre's capability share is shrunk toward its country's in
+proportion to how thin the evidence is, and the Monte Carlo redraws it from the
+binomial that produced it. What survives is the honest answer: **nothing in the
+centre view is robust.** Pune leads the transactional ranking at 86%, and the
+four Indian centres behind it are not separable from it on this evidence.
+
+| country | centres | internal spread, as share of the full score range | city-level cost |
+|---|---:|---:|---|
+| Poland | 6 | **18%** transactional · **30%** judgment | measured |
+| Spain | 3 | 9% · 19% | measured |
+| Netherlands | 2 | 8% · 5% | measured |
+| Germany | 4 | 6% · 7% | measured |
+| India | 5 | 6% · 16% | inherited |
+| Mexico | 4 | 4% · 11% | inherited |
+| Switzerland | 2 | 6% · 13% | inherited |
+
+Where cost is measured, choosing between a country's centres is a real decision —
+in Poland it moves up to 30% of the entire range, because Warsaw costs 1.81× the
+national average while Łódź sits at 0.73×. Where cost is only inherited, the
+spread is what shrinkage could not remove, and the order inside that country
+should be read as undetermined.
 
 ## Everything that is resampled
 
@@ -165,7 +181,13 @@ survival rate across all of them together:
 
 ## What this cannot tell you
 
-- **City resolution reaches four of ten markets**, cost only. See above.
+- **City-level cost reaches 15 of 26 centres**, and cost is the only pillar it
+  resolves. Governance, talent, overlap and durability are national figures
+  wearing a centre's name.
+- **Centres are a point-in-time read of one posting snapshot.** A hub that
+  happened to be hiring quietly during the fetch window is under-represented,
+  and Katowice — a real Polish GBS location — appears with three postings and is
+  excluded by the thresholds. Absence here is weak evidence, not a verdict.
 - **One imputed number, flagged.** Wage observations are three to six years old
   in Germany, Singapore and South Africa, and are carried forward at each
   market's own measured drift. South Africa's series is too short to measure a
@@ -195,6 +217,7 @@ survival rate across all of them together:
 make install
 make run        # rebuilds data/chart_stability.png and RESULTS.md
 make dashboard  # rebuilds dashboard.html
+make centres    # lists the evidenced GBS centres and what the thresholds exclude
 make test
 ```
 

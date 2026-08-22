@@ -52,11 +52,16 @@ def _url(dataset: str, extra: str) -> str:
 
 
 def _all_geos() -> list[str]:
-    out: list[str] = []
-    for iso2, regions in C.REGIONS.items():
-        out.append(iso2.upper())
-        out.extend(regions)
-    return out
+    """Every NUTS-2 code an evidenced centre maps to, plus its country.
+
+    Driven by `CENTRE_NUTS` rather than a separate region list, so a centre can
+    never be scored against a region this module did not fetch.
+    """
+    out: set[str] = set()
+    for nuts in C.CENTRE_NUTS.values():
+        out.add(nuts)
+        out.add(nuts[:2])
+    return sorted(out)
 
 
 def _series(payload: dict) -> dict[tuple[str, str], float]:
@@ -103,18 +108,16 @@ def load() -> dict[str, dict]:
         return None
 
     out: dict[str, dict] = {}
-    for iso2, regions in C.REGIONS.items():
-        national = rate(iso2.upper())
+    for name, geo in C.CENTRE_NUTS.items():
+        national = rate(geo[:2])
         if not national:
             continue
         base_year, base_rate = national
-        for geo, name in regions.items():
-            got = rate(geo)
-            if not got:
-                continue
+        got = rate(geo)
+        if got:
             year, value = got
             out[geo] = {
-                "market": iso2,
+                "market": geo[:2].lower(),
                 "name": name,
                 "nuts2": geo,
                 "year": year,

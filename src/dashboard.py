@@ -15,7 +15,7 @@ from __future__ import annotations
 import json
 
 from src import config as C
-from src.panel import Market, build, with_cities
+from src.panel import Market, build, with_centres
 from src.score import PILLARS
 from src.stability import run
 
@@ -76,18 +76,25 @@ def _entity(m: Market, archetype: str) -> dict:
         "drift": m.drift_used,
         "regionIndex": m.region_index,
         "regionYear": m.region_year,
+        "costResolved": m.cost_resolved,
+        "employers": m.employers,
         "talent": m.talent_proxy,
         "risk": m.risk_score,
         "capability": getattr(m, metric),
         "timezone": m.timezone_overlap,
         "durability": m.durability,
         "postings": m.postings_in_scope,
+        # The effective binomial behind the capability share: for a centre this
+        # includes the shrinkage prior, so redrawing it cannot put back the
+        # noise the shrinkage removed.
+        "capN": m.capability_counts[1],
+        "capP": getattr(m, metric),
     }
 
 
 def payload() -> dict:
     countries = build()
-    cities = with_cities(countries)
+    centres = with_centres(countries)
     data = {
         "pillars": list(PILLARS),
         "pillarLabels": PILLAR_LABELS,
@@ -113,7 +120,7 @@ def payload() -> dict:
             _entity(m, archetype) for m in countries.values() if m.complete
         ]
         data["views"].setdefault("city", {})[archetype] = [
-            _entity(m, archetype) for m in cities.values() if m.complete
+            _entity(m, archetype) for m in centres.values() if m.complete
         ]
         # The 10,000-draw run at the declared weights, so the page can show what
         # the study concluded next to whatever the reader is now proposing.
@@ -436,7 +443,7 @@ const $ = (s) => document.querySelector(s);
 
 const state = {
   archetype: Object.keys(DATA.archetypes)[0],
-  view: "country",
+  view: "city",
   hq: DATA.hq,
   weights: { ...DATA.archetypes[Object.keys(DATA.archetypes)[0]].weights },
 };
@@ -481,20 +488,53 @@ function mulberry(seed) {
 }
 const CONCENTRATION = 40, DRAWS = 2000;
 
-function stability(scaled, weights) {
+/* Weights are not the only thing that is uncertain, and on the centre view they
+   are not even the important one: centres inside one country share every pillar
+   except capability, so a run that varies only the weights can never reorder
+   them and reports a hard 100%/0% split the study does not support. Each draw
+   therefore also redraws every capability share from its own binomial and
+   re-normalises that pillar, matching src/stability.py.
+
+   The redraw uses a normal approximation to the binomial rather than summing
+   Bernoulli trials — with the shrinkage prior every effective n is at least 35,
+   where the approximation is close, and the exact version would cost seventeen
+   million draws per slider move. */
+function stability(base, weights) {
   const rng = mulberry(20260821);
-  const hits = new Map(scaled.map((it) => [it.row.id, 0]));
+  const hits = new Map(base.map((it) => [it.row.id, 0]));
   const alpha = DATA.pillars.map((p) => Math.max(CONCENTRATION * weights[p], 0.05));
   const topN = DATA.topN;
+  const others = DATA.pillars.filter((p) => p !== "capability");
+  const caps = new Float64Array(base.length);
+
   for (let d = 0; d < DRAWS; d++) {
     const g = alpha.map((a) => gamma(rng, a));
-    const sum = g.reduce((a, b) => a + b, 0);
-    const w = {}; DATA.pillars.forEach((p, i) => (w[p] = g[i] / sum));
-    const ranked = scaled.map((it) => {
-      let s = 0; for (const p of DATA.pillars) s += w[p] * it.s[p];
+    const gsum = g.reduce((a, b) => a + b, 0);
+    const w = {}; DATA.pillars.forEach((p, i) => (w[p] = g[i] / gsum));
+
+    let lo = Infinity, hi = -Infinity;
+    for (let i = 0; i < base.length; i++) {
+      const row = base[i].row;
+      const n = row.capN || 0, pHat = row.capP ?? 0;
+      let draw = pHat;
+      if (n > 0) {
+        const sd = Math.sqrt(Math.max(pHat * (1 - pHat), 0) / n);
+        draw = Math.min(1, Math.max(0, pHat + normal(rng) * sd));
+      }
+      caps[i] = draw;
+      if (draw < lo) lo = draw;
+      if (draw > hi) hi = draw;
+    }
+    const span = hi - lo;
+
+    const ranked = base.map((it, i) => {
+      let s = w.capability * (span === 0 ? 0.5 : (caps[i] - lo) / span);
+      for (const p of others) s += w[p] * it.s[p];
       return { id: it.row.id, s };
     }).sort((a, b) => b.s - a.s);
-    for (let i = 0; i < topN && i < ranked.length; i++) hits.set(ranked[i].id, hits.get(ranked[i].id) + 1);
+    for (let i = 0; i < topN && i < ranked.length; i++) {
+      hits.set(ranked[i].id, hits.get(ranked[i].id) + 1);
+    }
   }
   const out = new Map();
   for (const [k, v] of hits) out.set(k, v / DRAWS);
@@ -551,7 +591,9 @@ function render() {
     el.dataset.id = r.row.id;
 
     const sub = r.row.isCity
-      ? `${r.row.id} · ${(r.row.regionIndex).toFixed(2)}× national`
+      ? (r.row.costResolved
+          ? `${r.row.employers} employers · cost ${(r.row.regionIndex).toFixed(2)}× national`
+          : `${r.row.employers} employers · national cost`)
       : (ref[r.row.id] !== undefined ? `study run: ${(ref[r.row.id] * 100).toFixed(0)}%` : "");
 
     const segs = DATA.pillars.map((p) => {
@@ -608,8 +650,10 @@ function renderTable(ranked, stab) {
 function renderFoot(rows) {
   const stale = rows.filter((r) => r.costLag > 1);
   const imputed = rows.filter((r) => r.driftMeasured === false);
+  const resolved = rows.filter((r) => r.isCity && r.costResolved).length;
+  const unresolved = rows.filter((r) => r.isCity && !r.costResolved).length;
   const cityNote = state.view === "city"
-    ? " In city view only the cost pillar is city-resolved — governance, talent, capability and overlap are national figures wearing a city's name. Candidate counts differ by country (Poland contributes seven cities, Singapore one), so a top-three share is partly an artefact of how many candidates a country brings."
+    ? ` Centres are evidenced from the postings snapshot, not asserted: a location qualifies only where four or more employers advertise GBS roles. ${resolved} carry city-level labour cost; ${unresolved} inherit their country's, so centres within those countries differ only by a capability share measured on a handful of postings — and that share is shrunk toward the national figure in proportion to how thin it is. Where cost is not resolved, treat the order inside a country as undetermined. Candidate counts also differ by country, so a top-three share is partly an artefact of how many centres a country brings.`
     : "";
   $("#foot").innerHTML =
     `Cost is aged to a common year at each market's own measured wage drift; ` +
@@ -634,8 +678,8 @@ function buildControls() {
   });
 
   const view = $("#view");
-  view.innerHTML = `<button type="button" data-v="country" aria-pressed="true">Countries</button>
-    <button type="button" data-v="city" aria-pressed="false">Cities</button>`;
+  view.innerHTML = `<button type="button" data-v="city" aria-pressed="true">GBS centres</button>
+    <button type="button" data-v="country" aria-pressed="false">Countries</button>`;
   view.addEventListener("click", (e) => {
     const b = e.target.closest("button"); if (!b) return;
     state.view = b.dataset.v;
@@ -690,7 +734,7 @@ function noteArchetype() {
 function noteView() {
   $("#view-note").textContent = state.view === "country"
     ? "Ten national markets, every pillar measured at national level."
-    : "Cost resolved to NUTS-2 regions for Poland, Germany, the Netherlands and Spain. The other six markets stay national.";
+    : "Locations where GBS roles are actually advertised by four or more employers. Filled rows carry city-level cost; the rest inherit their country's.";
 }
 
 /* ---- tooltip ---- */

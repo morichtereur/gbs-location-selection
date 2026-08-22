@@ -11,6 +11,7 @@ from dataclasses import dataclass, field, replace
 
 from src import config as C
 from src.proximity import overlap_hours
+from src import centres
 from src.sources import eurostat, ilostat, postings, unesco, worldbank
 
 # The panel is a point-in-time read. Vintage lag is measured against the year
@@ -50,6 +51,9 @@ class Market:
     parent: str | None = None
     region_index: float | None = None
     region_year: str | None = None
+    employers: int | None = None
+    capability_raw: float | None = None
+    capability_shrunk_from: float | None = None
     transactional_share: float | None = None
     judgment_share: float | None = None
     bpo_share: float | None = None
@@ -70,11 +74,22 @@ class Market:
         project's own measurement as exact while resampling everyone else's.
         """
         n = self.postings_in_scope or 0
+        if self.is_city:
+            # The shrunk share carries the weight of both samples, so the
+            # binomial that generated it has the combined size. Redrawing at
+            # the centre's own n would put back exactly the noise the
+            # shrinkage removed.
+            n = n + C.CAPABILITY_PRIOR_STRENGTH
         return round((self.transactional_share or 0.0) * n), n
 
     @property
     def is_city(self) -> bool:
         return self.parent is not None
+
+    @property
+    def cost_resolved(self) -> bool:
+        """Whether cost is city-level or inherited from the country."""
+        return self.region_index is not None
 
     @property
     def complete(self) -> bool:
@@ -221,39 +236,70 @@ def build() -> dict[str, Market]:
     return panel
 
 
-def with_cities(panel: dict[str, Market]) -> dict[str, Market]:
-    """Country rows for markets Eurostat cannot resolve, city rows where it can.
+def with_centres(panel: dict[str, Market]) -> dict[str, Market]:
+    """Replace a country row with its evidenced GBS centres, where there are any.
 
-    A city row inherits everything from its country except cost, which is the
-    national wage basket scaled by the region's cost index. That is the honest
-    limit of this layer: only the cost pillar is city-resolved. Governance,
-    talent, capability and timezone are national figures wearing a city's name,
-    and a shortlist built on it should be read that way.
+    A centre row differs from its country on two pillars, not one:
+
+    *Cost*, where Eurostat resolves the region — the national wage basket scaled
+    by the region's cost index. Centres outside that coverage keep the national
+    figure and are marked as unresolved.
+
+    *Capability*, always — each centre carries its own transactional and judgment
+    mix from the postings advertised there, rather than its country's average.
+    These are small samples, down to five postings, so the shares are noisy; the
+    Monte Carlo redraws them from their own binomial rather than pretending
+    otherwise.
+
+    Governance, talent, overlap and durability remain national. A centre row is
+    a country row with two pillars sharpened, and should be read that way.
     """
+    kept, _ = centres.survey()
     regions = eurostat.load()
-    by_market: dict[str, list[dict]] = {}
-    for record in regions.values():
-        by_market.setdefault(record["market"], []).append(record)
+    index_by_nuts = {r["nuts2"]: r for r in regions.values()}
+
+    by_market: dict[str, list] = {}
+    for centre in kept:
+        by_market.setdefault(centre.market, []).append(centre)
 
     out: dict[str, Market] = {}
     for iso2, m in panel.items():
         if iso2 not in by_market:
+            # No evidenced centre — either the feed carries no location for this
+            # market, or it is a city already. Stays national, and says so.
             out[iso2] = m
             continue
-        for record in by_market[iso2]:
-            city = replace(
+        for centre in by_market[iso2]:
+            row = replace(
                 m,
-                iso2=record["nuts2"],
-                name=record["name"],
+                iso2=f"{iso2}:{centre.name}",
+                name=centre.name,
                 parent=iso2,
-                region_index=record["index_vs_country"],
-                region_year=record["year"],
             )
-            city.cost_usd = m.cost_usd * record["index_vs_country"]
-            city.cost_usd_aged = (m.cost_usd_aged or m.cost_usd) * record["index_vs_country"]
-            city.wage_components_usd = {
-                g: v * record["index_vs_country"]
-                for g, v in m.wage_components_usd.items()
-            }
-            out[record["nuts2"]] = city
+            region = index_by_nuts.get(centre.nuts2) if centre.nuts2 else None
+            if region:
+                factor = region["index_vs_country"]
+                row.region_index = factor
+                row.region_year = region["year"]
+                row.cost_usd = m.cost_usd * factor
+                row.cost_usd_aged = (m.cost_usd_aged or m.cost_usd) * factor
+                row.wage_components_usd = {
+                    g: v * factor for g, v in m.wage_components_usd.items()
+                }
+            # Shrink toward the country, in proportion to how thin the
+            # centre's own evidence is. See CAPABILITY_PRIOR_STRENGTH.
+            k = C.CAPABILITY_PRIOR_STRENGTH
+            n = centre.postings
+            row.transactional_share = (
+                n * centre.transactional_share + k * m.transactional_share
+            ) / (n + k)
+            row.judgment_share = (
+                n * centre.judgment_share + k * m.judgment_share
+            ) / (n + k)
+            row.capability_raw = centre.transactional_share
+            row.capability_shrunk_from = m.transactional_share
+            row.bpo_share = centre.bpo_share
+            row.postings_in_scope = centre.postings
+            row.employers = centre.employers
+            out[row.iso2] = row
     return out

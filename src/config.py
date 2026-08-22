@@ -105,22 +105,74 @@ TALENT_SOURCE = "employment"
 UIS_ENROLMENT = "25053"
 UIS_BUSINESS_SHARE = "FOSGP.5T8.F400"
 
-# --- Cities ---------------------------------------------------------------
-# NUTS-2 regions, named for the city a GBS programme would be considering.
-# Only the four markets Eurostat's regional accounts cover — see
-# src/sources/eurostat.py for why the other six cannot be resolved this way.
-REGIONS = {
-    "pl": {
-        "PL91": "Warsaw", "PL21": "Kraków", "PL51": "Wrocław",
-        "PL22": "Katowice", "PL41": "Poznań", "PL63": "Gdańsk",
-        "PL71": "Łódź",
-    },
-    "de": {
-        "DE21": "Munich", "DE71": "Frankfurt", "DEA1": "Düsseldorf",
-        "DE30": "Berlin", "DE60": "Hamburg", "DE11": "Stuttgart",
-    },
-    "nl": {"NL32": "Amsterdam", "NL33": "The Hague / Rotterdam", "NL41": "Eindhoven"},
-    "es": {"ES30": "Madrid", "ES51": "Barcelona", "ES61": "Seville", "ES52": "Valencia"},
+# --- GBS centres ----------------------------------------------------------
+# An earlier version of this study ranked NUTS-2 regions, which put Munich,
+# Hamburg and Amsterdam on a shared-services shortlist. Nobody places a
+# delivery centre in Munich. The candidate set is now evidenced rather than
+# administrative: a location qualifies as a GBS centre if GBS and
+# finance-operations roles are actually advertised there, by more than one
+# employer.
+#
+# Both thresholds matter, and the second does the real work. Posting volume
+# alone admits Rheda-Wiedenbrück, where 17 postings come from two employers,
+# and Oberkochen, where five come from one. Those are a single company's
+# office, not a labour market a programme could hire into. Requiring several
+# distinct employers separates a hub from a headquarters.
+#
+# The thresholds are arbitrary in the way every threshold is. They are stated
+# here, and `make centres` prints exactly which locations they exclude.
+MIN_CENTRE_POSTINGS = 5
+MIN_CENTRE_EMPLOYERS = 4
+
+# Centres inside one country share every pillar except capability, and often
+# cost. So the ranking between Pune and Bangalore rests entirely on a share
+# estimated from eleven postings against twenty-four — a difference that is
+# sampling noise wearing the clothes of a finding.
+#
+# Each centre's capability share is therefore shrunk toward its country's,
+# weighted by how much evidence the centre actually has:
+#
+#     shrunk = (n * centre + k * national) / (n + k)
+#
+# k is the number of postings' worth of belief given to the national figure
+# before a centre's own data outweighs it. At k = 30 a centre with eleven
+# postings is about a quarter its own and three quarters its country's, which
+# is the right posture toward eleven postings. The qualitative conclusion —
+# that centres within one country are not separable on this evidence — holds
+# across any k from roughly 10 to 100; only the arithmetic moves.
+CAPABILITY_PRIOR_STRENGTH = 30
+
+# Location strings arrive in the posting's own language, and one city can
+# appear several ways. Mapped to a single English name so the counts combine.
+CITY_ALIASES = {
+    "warszawa": "Warsaw",
+    "kraków": "Kraków",
+    "wrocław": "Wrocław",
+    "łódź": "Łódź",
+    "gdańsk": "Gdańsk",
+    "poznań": "Poznań",
+    "münchen": "Munich",
+    "frankfurt am main": "Frankfurt",
+    "köln": "Cologne",
+    "zürich": "Zurich",
+    "genf": "Geneva",
+    "kanton genf": "Geneva",
+    "kanton zug": "Zug",
+    "ciudad de méxico": "Mexico City",
+    "méxico city": "Mexico City",
+    "bengaluru": "Bangalore",
+}
+
+# Evidenced centres that Eurostat can also resolve on cost. A centre absent
+# from this map keeps its country's national cost, and the dashboard says so
+# rather than implying a precision it does not have.
+CENTRE_NUTS = {
+    "Warsaw": "PL91", "Kraków": "PL21", "Wrocław": "PL51", "Łódź": "PL71",
+    "Gdańsk": "PL63", "Poznań": "PL41", "Katowice": "PL22",
+    "Berlin": "DE30", "Hamburg": "DE60", "Munich": "DE21",
+    "Frankfurt": "DE71", "Düsseldorf": "DEA1", "Stuttgart": "DE11",
+    "Amsterdam": "NL32", "Eindhoven": "NL41",
+    "Madrid": "ES30", "Barcelona": "ES51", "Valencia": "ES52", "Seville": "ES61",
 }
 
 # --- Proximity ------------------------------------------------------------

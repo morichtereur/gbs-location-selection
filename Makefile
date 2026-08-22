@@ -1,4 +1,4 @@
-.PHONY: install run dashboard test clean
+.PHONY: install run dashboard centres test clean
 
 install:
 	python3 -m venv .venv && .venv/bin/pip install -q -r requirements.txt
@@ -8,6 +8,9 @@ run:
 
 dashboard:
 	.venv/bin/python -m src.dashboard
+
+centres:
+	.venv/bin/python -m src.centres
 
 test:
 	.venv/bin/python -m pytest tests -q
