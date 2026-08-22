@@ -106,6 +106,13 @@ WAGE_BLEND_JITTER = 0.10
 # cannot tell them apart.
 CURRENCIES = ("CUR_TYPE_USD", "CUR_TYPE_PPP", "CUR_TYPE_LCU")
 
+# Which cost a reader is asking about. USD is what the sponsor pays. PPP is what
+# the same wage buys locally, which is a different question with a different
+# answer: an Indian wage of $336 is worth $1,478 in local purchasing power, so a
+# market that looks cheap to a buyer may not look cheap to the person being
+# hired — and that is what a centre has to retain against.
+COST_BASIS = "usd"   # "usd" or "ppp"
+
 # --- Risk -----------------------------------------------------------------
 # WGI publishes a 0-100 score and the bounds of its own 90% confidence
 # interval. Most scorecards take the point estimate and drop the interval,

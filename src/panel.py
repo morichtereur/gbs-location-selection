@@ -34,6 +34,7 @@ class Market:
     fx_drift: float | None = None
     depth: float | None = None
     cost_usd_aged: float | None = None
+    cost_ppp_aged: float | None = None
     drift_used: float | None = None
     drift_measured: bool = False
     talent_proxy: float | None = None
@@ -56,6 +57,8 @@ class Market:
     region_year: str | None = None
     employers: int | None = None
     postings_seen: int | None = None
+    language_share: float | None = None
+    languages: tuple = ()
     capability_raw: float | None = None
     capability_shrunk_from: float | None = None
     transactional_share: float | None = None
@@ -235,6 +238,8 @@ def build() -> dict[str, Market]:
             m.transactional_share = d["transactional_share"]
             m.judgment_share = d["judgment_share"]
             m.gcc_share = d["gcc_share"]
+            m.language_share = d["language_share"]
+            m.languages = tuple(d["languages"])
             m.contaminant_measured = iso2 in contaminants
             m.contaminant_transactional = contaminants.get(iso2, fallback_contaminant)
             m.ambiguous_share = d["ambiguous_share"]
@@ -256,6 +261,10 @@ def build() -> dict[str, Market]:
         m.cost_usd_aged = (
             age(m.cost_usd, m.cost_lag, m.drift_used) if C.AGE_ADJUST else m.cost_usd
         )
+        if m.cost_ppp is not None:
+            m.cost_ppp_aged = (
+                age(m.cost_ppp, m.cost_lag, m.drift_used) if C.AGE_ADJUST else m.cost_ppp
+            )
         # Durability is the inverse of drift: a market whose wages have been
         # climbing fast is one whose arbitrage is closing. Stored as the
         # negative rate so that, like every other pillar, higher is better.
@@ -326,6 +335,8 @@ def with_centres(panel: dict[str, Market]) -> dict[str, Market]:
             row.capability_raw = centre.transactional_share
             row.capability_shrunk_from = m.transactional_share
             row.gcc_share = centre.gcc_share
+            row.language_share = centre.language_share
+            row.languages = centre.languages
             row.postings_in_scope = centre.decided
             row.postings_seen = centre.postings
             row.employers = centre.employers

@@ -31,6 +31,13 @@ LOWER_IS_BETTER = {"cost"}
 LOG_SCALED = {"cost", "talent", "depth"}
 
 
+def _cost_of(m) -> float:
+    """The cost figure the current basis asks for, aged if aging is on."""
+    if C.COST_BASIS == "ppp" and m.cost_ppp is not None:
+        return (m.cost_ppp_aged or m.cost_ppp) if C.AGE_ADJUST else m.cost_ppp
+    return (m.cost_usd_aged or m.cost_usd) if C.AGE_ADJUST else m.cost_usd
+
+
 def raw_pillars(
     panel: dict[str, Market],
     archetype: str,
@@ -60,10 +67,7 @@ def raw_pillars(
         out[iso2] = {
             # A Market built by hand rather than by `panel.build` has no aged
             # cost; fall back to the observation rather than failing.
-            "cost": (cost_draw or {}).get(
-                iso2,
-                (m.cost_usd_aged or m.cost_usd) if C.AGE_ADJUST else m.cost_usd,
-            ),
+            "cost": (cost_draw or {}).get(iso2, _cost_of(m)),
             "talent": (talent_draw or {}).get(iso2, m.talent_proxy),
             "risk": risk,
             "capability": (capability_draw or {}).get(iso2, getattr(m, metric)),

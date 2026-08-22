@@ -53,6 +53,13 @@ Four have city-level labour cost, from Eurostat's regional accounts. The rest ca
 | Durability | ILOSTAT, derived — wage drift, split from currency movement |
 | Employer depth | Adzuna, derived — distinct employers hiring |
 
+Two further facts are **reported per city and deliberately not scored**:
+**languages** the city's postings ask for (Wrocław 50%, Warsaw 41%, Indian cities
+0–5% — more languages is a strength only if you need them), and cost in **PPP**
+alongside USD (an Indian wage of $336 buys $1,478 locally). PPP answers what a
+wage is worth to the person earning it rather than what it costs you, and it does
+not reorder anything, because the cheapest market is cheapest on both bases.
+
 Every declared judgement — weights, archetypes, thresholds, the staffing blend — sits in [`src/config.py`](src/config.py), so a reader can disagree with a number rather than with the conclusion.
 
 ---
@@ -63,6 +70,10 @@ Every declared judgement — weights, archetypes, thresholds, the staffing blend
 - **The Philippines, Romania, Czechia, Hungary, Portugal and Malaysia are missing.** Five of seven pillars are ready for all six; no permitted postings feed exists. Adzuna has no endpoint, EURES forbids automated extraction, Jooble blocks it at the edge.
 - **India has no city-level cost** in any reachable source, so its five cities separate on capability alone.
 - **The capability classifier is imperfect** — two clear failures in the last audited twenty, across five audits and a hundred postings. That error is modelled in the resampling, not just noted; doing so reversed which market is robust as a judgment location.
+- **No infrastructure or flight connectivity.** Flight data is reachable —
+  OpenFlights covers 9 of the 11 cities — but its routes file has not been
+  updated since 2017, which is staler than anything else in the panel. Left out
+  rather than caveated harder than the six-year-old wage figures.
 - **One snapshot.** `make trend` compares snapshots and says so until a second exists.
 
 ---

@@ -124,6 +124,9 @@ def _entity(m: Market, archetype: str) -> dict:
         "timezone": m.timezone_overlap,
         "durability": m.durability,
         "postings": m.postings_in_scope,
+        "costPpp": m.cost_ppp_aged or m.cost_ppp,
+        "languageShare": m.language_share,
+        "languages": list(m.languages or ()),
         # Postings that qualified the city, before the work-family classifier
         # decided any of them. The threshold is applied to this.
         "postingsSeen": m.postings_seen,
@@ -571,13 +574,55 @@ select {
 .method ol, .method ul { margin: 0; padding-left: 18px; display: grid; gap: 7px; }
 .method li { color: var(--ink-2); }
 
+.page-actions { display: flex; align-items: center; gap: 12px; margin-top: 18px; }
+.page-actions button {
+  font: inherit; font-size: 12.5px; padding: 5px 11px; cursor: pointer;
+  background: var(--panel); color: var(--ink); border: 1px solid var(--rule-strong);
+}
+.page-actions button:hover { border-color: var(--accent); color: var(--accent); }
+.page-actions button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* One-pager: the finding, the exhibit, and where the numbers came from. The
+   controls are the instrument and do not belong in a document; the appendices
+   would push it past a page. */
 @media print {
-  .rail, .table-actions, .hint { display: none; }
-  .layout { grid-template-columns: minmax(0,1fr); }
-  details { break-inside: avoid; }
-  details > summary { display: none; }
-  details > * { display: revert; }
-  body { background: #fff; }
+  @page { size: A4 portrait; margin: 14mm 12mm; }
+  .rail, .table-actions, .page-actions, .legend, details, footer { display: none !important; }
+  .layout { grid-template-columns: minmax(0,1fr); gap: 0; }
+  .wrap { max-width: none; padding: 0; }
+  body { background: #fff; color: #000; font-size: 9pt; }
+  header { margin-bottom: 9px; padding-bottom: 8px; }
+  h1 { font-size: 17pt; margin-bottom: 6px; max-width: none; }
+  .standfirst { font-size: 9.5pt; max-width: none; }
+  .eyebrow { margin-bottom: 5px; }
+  .exhibit-head { padding-top: 6px; margin-bottom: 2px; }
+  .exhibit-head h2 { font-size: 11pt; }
+  .belief { font-size: 9.5pt; margin-top: 2px; }
+  .col-head { margin-top: 8px; }
+  .row { padding: 2px 0; break-inside: avoid; }
+  .who .nm { font-size: 9.5pt; }
+  /* On screen the detail line wraps to two or three lines; eleven cities of
+     that is most of a page. In print it gets one line and clips. */
+  .who .sub {
+    font-size: 7pt; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  /* A4 portrait is about 794px, which is inside the mobile breakpoint, so the
+     row grid was collapsing to a stacked single column and the page ran to two.
+     The print layout has to override that explicitly. */
+  .row, .col-head {
+    display: grid !important;
+    grid-template-columns: 18px minmax(140px, 200px) minmax(0,1fr) 40px 62px !important;
+    gap: 9px !important;
+  }
+  .row .bar-cell, .row .stab, .row .evidence { grid-column: auto !important; }
+  .col-head { display: grid !important; }
+  .bar { height: 11px; }
+  .rank, .evidence, .stab { font-size: 8pt; }
+  .exhibit-source { margin-top: 8px; padding-top: 6px; }
+  .bar.lead { background: #146b54 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .bar.rest { background: #b6b9ae !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .mix { display: none; }
+  .exhibit-source { font-size: 8pt; }
 }
 
 details { margin-top: 26px; border-top: 1px solid var(--rule-strong); padding-top: 14px; }
@@ -660,6 +705,11 @@ footer p { max-width: 78ch; }
     <div class="legend" id="legend"></div>
 
     <p class="exhibit-source" id="exhibit-source"></p>
+
+    <div class="page-actions">
+      <button type="button" id="one-pager">Print one-pager</button>
+      <span class="hint">Headline, exhibit and sources on a single page.</span>
+    </div>
 
     <details>
       <summary>Table view — every number behind the ranking</summary>
@@ -972,7 +1022,14 @@ function render() {
     const costNote = r.row.costResolved
       ? `cost ${(r.row.regionIndex).toFixed(2)}× national`
       : "country cost";
-    const sub = `${where} · ${r.row.employers} employers · ${costNote}`;
+    // Languages and local purchasing power are facts a reader asks for and
+    // neither is scored: more languages helps only if you need them, and PPP
+    // does not reorder anything because the cheapest market is cheapest on
+    // both bases. Shown, not weighted.
+    const langs = (r.row.languages || []).length
+      ? ` · ${r.row.languages.slice(0, 3).join(", ")}`
+      : "";
+    const sub = `${where} · ${r.row.employers} employers · ${costNote}${langs}`;
 
     // Length carries the score, which is the comparative fact. Composition
     // moves to a thin strip beneath: still there, no longer shouting. Eleven
@@ -1030,15 +1087,21 @@ function render() {
 
 function renderTable(ranked, stab) {
   const t = $("#table");
-  const head = ["Market", ...DATA.pillars.map((p) => DATA.pillarLabels[p]), "Score", "Top-3"];
+  const head = ["City", ...DATA.pillars.map((p) => DATA.pillarLabels[p]),
+                "Score", "Top-3", "Cost USD", "Cost PPP", "Languages"];
   t.querySelector("caption").textContent =
-    "Normalised pillar scores (0–1, higher is better) under the current weights.";
+    "Normalised pillar scores (0–1, higher is better) under the current weights. "
+    + "Cost is monthly, per head: USD is what you pay, PPP what it buys locally. "
+    + "Languages are those the city's postings ask for — reported, not scored.";
   t.innerHTML = t.querySelector("caption").outerHTML +
     "<thead><tr>" + head.map((h) => `<th>${h}</th>`).join("") + "</tr></thead><tbody>" +
     ranked.map((r) =>
       `<tr><td>${r.row.name}</td>` +
       DATA.pillars.map((p) => `<td>${r.scaled[p].toFixed(2)}</td>`).join("") +
-      `<td>${r.score.toFixed(3)}</td><td>${((stab.get(r.row.id) ?? 0) * 100).toFixed(0)}%</td></tr>`
+      `<td>${r.score.toFixed(3)}</td><td>${((stab.get(r.row.id) ?? 0) * 100).toFixed(0)}%</td>`
+      + `<td>${Math.round(r.row.cost).toLocaleString()}</td>`
+      + `<td>${r.row.costPpp ? Math.round(r.row.costPpp).toLocaleString() : "—"}</td>`
+      + `<td>${(r.row.languages || []).join(", ") || "—"}</td></tr>`
     ).join("") + "</tbody>";
 }
 
@@ -1117,6 +1180,7 @@ function buildControls() {
   $("#sep-n").textContent = Math.round(DATA.separableAt * 100) + "%";
 
   $("#copy").addEventListener("click", copyTable);
+  $("#one-pager").addEventListener("click", () => window.print());
 
   syncSliders();
 }

@@ -17,6 +17,7 @@ underneath it has been replaced.
 from __future__ import annotations
 
 import importlib.util
+import re
 import sys
 from dataclasses import dataclass
 from functools import lru_cache
@@ -29,6 +30,26 @@ from src import workfamily
 from src.gbs_fetch import DB_PATH
 
 
+# Languages a posting asks for. A Central European centre hires by language
+# before it hires by process, and the list is what the market advertises rather
+# than what a country's population speaks.
+LANGUAGES = {
+    "German": r"\bgerman\b|\bdeutsch\b|niemieck",
+    "French": r"\bfrench\b|fran[cç]ais|francusk",
+    "Dutch": r"\bdutch\b|nederlands|niderlandzk",
+    "Italian": r"\bitalian\b|w[łl]osk",
+    "Spanish": r"\bspanish\b|hiszpa[nń]sk",
+    "Portuguese": r"\bportuguese\b|portugalsk",
+    "Nordic": r"\bswedish\b|\bnorwegian\b|\bdanish\b|\bfinnish\b",
+    "Czech/Slovak": r"\bczech\b|\bslovak\b",
+}
+_LANG_RX = {k: re.compile(v, re.I) for k, v in LANGUAGES.items()}
+
+
+def languages_in(text: str) -> set[str]:
+    return {name for name, rx in _LANG_RX.items() if rx.search(text or "")}
+
+
 @dataclass
 class Posting:
     country: str
@@ -36,6 +57,7 @@ class Posting:
     company: str
     model: str      # 'gcc' or 'gbs'
     family: str     # 'transactional', 'judgment', 'agent_ops' or 'ambiguous'
+    languages: frozenset = frozenset()
 
 
 def _taxonomy():
@@ -101,6 +123,7 @@ def load() -> tuple[Posting, ...]:
                 company=(company or "").strip().lower(),
                 model=model,
                 family=family,
+                languages=frozenset(languages_in(text)),
             )
         )
     return tuple(out)
@@ -126,6 +149,12 @@ def shares(postings) -> dict:
         "agent_ops_share": sum(p.family == "agent_ops" for p in decided) / n,
         "gcc_share": sum(p.model == "gcc" for p in decided) / n,
         "employers": len({p.company for p in decided}),
+        # Share of postings naming a working language, and which ones. Not
+        # scored: more languages is a strength only if you need them, and an
+        # English-only Indian centre is not worse for having none.
+        "language_share": sum(1 for p in postings if p.languages) / len(postings),
+        "languages": sorted(set().union(*[p.languages for p in postings])
+                            if postings else set()),
     }
 
 

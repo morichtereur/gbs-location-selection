@@ -51,6 +51,8 @@ class Centre:
     transactional_share: float
     judgment_share: float
     gcc_share: float
+    language_share: float
+    languages: tuple
     nuts2: str | None
 
     @property
@@ -115,6 +117,8 @@ def survey() -> tuple[list[Centre], list[Centre]]:
             transactional_share=stats["transactional_share"],
             judgment_share=stats["judgment_share"],
             gcc_share=stats["gcc_share"],
+            language_share=stats["language_share"],
+            languages=tuple(stats["languages"]),
             nuts2=C.CENTRE_NUTS.get(city),
         )
         target = (

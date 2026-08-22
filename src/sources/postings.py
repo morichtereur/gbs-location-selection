@@ -38,6 +38,8 @@ def load_market_shares() -> dict[str, dict]:
             "judgment_share": stats["judgment_share"],
             "agent_ops_share": stats["agent_ops_share"],
             "gcc_share": stats["gcc_share"],
+            "language_share": stats["language_share"],
+            "languages": stats["languages"],
             "employers": stats["employers"],
             "year": 2026,
             "source": "Adzuna GBS/GCC sample, classified by src/delivery.py",
