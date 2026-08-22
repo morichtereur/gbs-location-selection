@@ -160,3 +160,41 @@ def test_capability_is_shrunk_toward_the_country():
             assert abs(m.transactional_share - national) < abs(
                 m.transactional_share - m.capability_raw
             ) or m.capability_raw == pytest.approx(national, abs=0.02)
+
+
+@needs_postings
+def test_every_baseline_carries_a_wage_the_exhibit_can_subtract():
+    """Exhibit 3 subtracts the baseline's wage from each city's.
+
+    A baseline market whose wage failed to load would render the whole exhibit
+    as NaN rather than as an error, so the payload must not offer one. This
+    also catches a market being added to BASELINE_MARKETS before ILOSTAT
+    covers it.
+    """
+    data = payload()
+    offered = {b["key"] for b in data["baselines"]}
+    assert offered == set(C.BASELINE_MARKETS), (
+        f"baselines offered {offered}, config declares {set(C.BASELINE_MARKETS)}"
+    )
+    for b in data["baselines"]:
+        assert b["monthly"] and b["monthly"] > 0, b
+        assert b["label"], b
+    assert data["baselineDefault"] in offered
+    assert data["fteDefault"] > 0
+
+
+@needs_postings
+def test_the_default_baseline_is_dearer_than_every_city_it_is_compared_with():
+    """Not a law of the tool, but true of Switzerland, and the headline rests on it.
+
+    A negative delta renders as "above baseline" and is handled, but if the
+    default ever produced one the one-pager would open on a mixed exhibit
+    without anyone deciding that it should.
+    """
+    data = payload()
+    base = next(b for b in data["baselines"] if b["key"] == data["baselineDefault"])
+    for rows in data["views"]["city"].values():
+        for row in rows:
+            if row["cost"] is None:
+                continue
+            assert row["cost"] < base["monthly"], (row["name"], row["cost"])

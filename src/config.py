@@ -269,6 +269,16 @@ CENTRE_NUTS = {
 # Cities rather than countries: a headquarters is in a city, and the United
 # States alone spans five hours. Grouped by region for the selector.
 HQ = "zurich"
+# Where the work sits today. Restricted to markets ILOSTAT gives us a wage for,
+# because a baseline without a measured wage would make the delta a guess. These
+# are the plausible retained locations; the offshore markets are not offered as a
+# starting point, though a Singapore baseline can still put Warsaw above it.
+BASELINE_MARKETS = ("ch", "nl", "de", "gb", "es", "sg")
+BASELINE_DEFAULT = "ch"
+# A centre is not staffed one-for-one on day one. Kept visible and adjustable
+# rather than buried, because it moves the answer more than the wage gap does.
+FTE_DEFAULT = 100
+
 HQ_LOCATIONS = {
     "Americas": {
         "san-francisco": ("San Francisco", -8.0),

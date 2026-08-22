@@ -124,6 +124,7 @@ LIMITS = [
     "One snapshot. A city hiring quietly during the fetch is under-represented; absence is weak evidence, not a verdict.",
     # The first question any GBS room asks is where Manila is. Better that the
     # exhibit answers it than that the audience finds the hole.
+    "Exhibit 3 is a wage line, not a business case. It excludes facilities, technology, management overhead, transition and severance, and holds headcount one-for-one. Read it as the upper bound on one component of the saving.",
     "Six established locations are absent because the postings feed does not reach them: Manila, Kuala Lumpur, Bucharest, Prague, Budapest and Lisbon. The ranking is therefore within the cities shown, not against every credible alternative.",
 ]
 
@@ -190,6 +191,15 @@ def payload() -> dict:
         for key, ops in operators_by_city().items()
     }
     countries = build()
+    baselines = [
+        {
+            "key": k,
+            "label": C.MARKETS[k]["name"],
+            "monthly": countries[k].cost_usd_aged or countries[k].cost_usd,
+        }
+        for k in C.BASELINE_MARKETS
+        if k in countries and (countries[k].cost_usd_aged or countries[k].cost_usd)
+    ]
     centres = with_centres(countries)
     data = {
         "pillars": list(PILLARS),
@@ -240,6 +250,9 @@ def payload() -> dict:
         "modelClassificationError": C.MODEL_CLASSIFICATION_ERROR,
         "sources": SOURCES,
         "limits": LIMITS,
+        "baselines": baselines,
+        "baselineDefault": C.BASELINE_DEFAULT,
+        "fteDefault": C.FTE_DEFAULT,
         "asOf": ASOF,
         "evidenceFloor": C.EVIDENCE_FLOOR,
         "separableAt": C.SEPARABLE_AT,
@@ -547,6 +560,36 @@ select {
 .strip-title {
   margin: 0 0 12px; font-size: 14px; font-weight: 600; letter-spacing: -.01em;
 }
+/* The ranking answers "where"; this answers "what it is worth", which is the
+   question that follows it in every room. One hue for a saving, the warn tone
+   for a city above the baseline — a magnitude chart that can go negative. */
+.case-row {
+  display: grid; grid-template-columns: 8.5rem 1fr 7.5rem;
+  align-items: center; gap: 10px; padding: 3px 0;
+}
+.case-row .cn { font-size: 12.5px; color: var(--ink-2); }
+.case-track { position: relative; height: 15px; }
+.case-bar { position: absolute; top: 0; bottom: 0; background: var(--accent); border-radius: 0 3px 3px 0; }
+.case-bar.over { background: var(--warn); border-radius: 3px 0 0 3px; }
+.case-zero { position: absolute; top: -3px; bottom: -3px; width: 1px; background: var(--rule-strong); }
+.case-val {
+  font-family: var(--mono); font-size: 11.5px; text-align: right;
+  font-variant-numeric: tabular-nums; color: var(--ink);
+}
+.case-val .per { display: block; font-size: 10px; color: var(--ink-3); }
+.case-caveat {
+  margin: 10px 0 0; font-size: 11.5px; line-height: 1.5; color: var(--ink-3); max-width: 70ch;
+}
+.fld {
+  display: block; font-size: 11px; letter-spacing: .04em; text-transform: uppercase;
+  color: var(--ink-3); margin: 9px 0 3px;
+}
+.card .fld:first-of-type { margin-top: 0; }
+#fte {
+  width: 100%; font: inherit; font-family: var(--mono); font-size: 12.5px;
+  padding: 5px 7px; color: var(--ink);
+  background: var(--panel-2); border: 1px solid var(--rule-strong); border-radius: 4px;
+}
 .tz { position: relative; height: 122px; }
 /* A vertical rule at the headquarters rather than a shaded window: the window
    covered almost the whole axis and shaded nothing meaningful. */
@@ -696,6 +739,28 @@ select {
 @media print {
   @page { size: A4 portrait; margin: 14mm 12mm; }
   .rail, .table-actions, .page-actions, .legend, details, footer, .strip-wrap { display: none !important; }
+  /* Exhibit 2 explains a pillar; Exhibit 3 answers the question that follows the
+     ranking, so it earns the page while the timezone strip does not. */
+  .case-wrap { display: block !important; break-inside: avoid; margin-top: 2px; padding-top: 3px; }
+  .case-wrap .exhibit-label { margin-bottom: 2px; }
+  .case-wrap .strip-title { margin-bottom: 5px; }
+  /* On screen the per-role figure sits under the total; in print that doubles
+     every row and costs the page. Inline, it costs a column's width instead. */
+  .case-row { padding: 0; grid-template-columns: 6.6rem 1fr 10.4rem; gap: 8px; }
+  .case-val .per { display: inline; }
+  .case-val .per::before { content: "\00a0\00b7\00a0"; }
+  .case-row .cn { font-size: 8.5pt; }
+  .case-track { height: 9px; }
+  .case-row { line-height: 1.15; }
+  .case-val { font-size: 7.5pt; }
+  .case-val .per { font-size: 6.5pt; }
+  .case-caveat { font-size: 6.7pt; line-height: 1.35; margin-top: 4px; max-width: none; }
+  /* Print drops the long forms: the column header clipped to "REWEIGHTIN", and
+     the caveat's last clause repeats the source note beneath it. */
+  .screen-only { display: none !important; }
+  .col-head { margin-bottom: 2px; }
+  .case-bar { background: #146b54 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .case-bar.over { background: #b0374a !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .layout { grid-template-columns: minmax(0,1fr); gap: 0; }
   .wrap { max-width: none; padding: 0; }
   body { background: #fff; color: #000; font-size: 9pt; }
@@ -722,7 +787,9 @@ select {
      The print layout has to override that explicitly. */
   .row, .col-head {
     display: grid !important;
-    grid-template-columns: 18px minmax(140px, 200px) minmax(0,1fr) 40px 62px !important;
+    /* 62px clipped "CONTINGENT" against the page edge; the bar column absorbs
+       the difference without losing any comparison. */
+    grid-template-columns: 18px minmax(140px, 200px) minmax(0,1fr) 40px 78px !important;
     gap: 9px !important;
   }
   .row .bar-cell, .row .stab, .row .evidence { grid-column: auto !important; }
@@ -825,7 +892,9 @@ select {
   background: var(--accent); opacity: .5;
 }
 
-.exhibit-source { font-size: 8pt; }
+/* Four lines of source note is what decided the second page. At this size it is
+   three, and still comfortably legible in print. */
+.exhibit-source { font-size: 6.3pt; line-height: 1.3; margin-top: 4px; padding-top: 3px; }
 }
 
 details { margin-top: 26px; border-top: 1px solid var(--rule-strong); padding-top: 14px; }
@@ -899,6 +968,15 @@ footer p { max-width: 78ch; }
     </div>
 
     <div class="card">
+      <h2>What moves</h2>
+      <label class="fld" for="baseline">From</label>
+      <select id="baseline" aria-label="Location the work leaves"></select>
+      <label class="fld" for="fte">Roles</label>
+      <input id="fte" type="number" min="1" max="5000" step="10" aria-label="Roles moved">
+      <p class="slider-note">Sets the wage gap in Exhibit 3. Wage line only.</p>
+    </div>
+
+    <div class="card">
       <h2>Sources</h2>
       <dl class="sources" id="sources"></dl>
     </div>
@@ -913,7 +991,7 @@ footer p { max-width: 78ch; }
     <div class="belief" id="belief"></div>
     <div class="col-head">
       <span class="ch-band">band</span><span></span><span></span>
-      <span class="ch-num">postings</span><span class="ch-num">top-3 across reweightings</span>
+      <span class="ch-num">postings</span><span class="ch-num">top-3<span class="screen-only"> across reweightings</span></span>
     </div>
     <div class="rows" id="rows"></div>
     <div class="legend" id="legend"></div>
@@ -922,6 +1000,13 @@ footer p { max-width: 78ch; }
       <p class="exhibit-label">Exhibit 2</p>
       <h3 class="strip-title" id="strip-title"></h3>
       <div id="tzstrip"></div>
+    </div>
+
+    <div class="strip-wrap case-wrap">
+      <p class="exhibit-label">Exhibit 3</p>
+      <h3 class="strip-title" id="case-title"></h3>
+      <div id="case"></div>
+      <p class="case-caveat" id="case-caveat"></p>
     </div>
 
     <p class="exhibit-source" id="exhibit-source"></p>
@@ -977,6 +1062,8 @@ const state = {
   view: "city",
   hq: DATA.hq,
   weights: { ...DATA.archetypes[Object.keys(DATA.archetypes)[0]].weights },
+  baseline: DATA.baselineDefault,
+  fte: DATA.fteDefault,
 };
 
 const isDark = () => {
@@ -1312,6 +1399,7 @@ function render() {
 
   renderStrip(ranked, band);
   renderTable(ranked, stab);
+  renderCase(ranked);
   renderSource(rows);
   renderFoot(rows);
 }
@@ -1400,6 +1488,63 @@ function renderStrip(ranked, band) {
     + `<div class="hq" style="left:${pos(hq).toFixed(2)}%">${hqLabel()}</div></div>`;
 }
 
+function baselineRow() {
+  return DATA.baselines.find((b) => b.key === state.baseline) || DATA.baselines[0];
+}
+
+function money(usd) {
+  const a = Math.abs(usd);
+  if (a >= 1e6) return `${usd < 0 ? "\u2212" : ""}$${(a / 1e6).toFixed(a >= 1e7 ? 0 : 1)}m`;
+  // A per-role figure of 9,417 read as "$9k" loses the part a reader is checking.
+  if (a >= 1e3) return `${usd < 0 ? "\u2212" : ""}$${(a / 1e3).toFixed(a >= 1e4 ? 0 : 1)}k`;
+  return `${usd < 0 ? "\u2212" : ""}$${Math.round(a)}`;
+}
+
+/* Exhibit 3 — the wage gap, annualised. Deliberately not called a saving: it is
+   one line of a run-cost, and the caveat under it carries the rest. */
+function renderCase(ranked) {
+  const base = baselineRow();
+  const fte = state.fte;
+  const items = ranked
+    .filter((r) => r.row.cost != null)
+    .map((r) => {
+      const perFte = (base.monthly - r.row.cost) * 12;
+      return { name: r.row.name, perFte, total: perFte * fte };
+    })
+    .sort((a, b) => b.total - a.total);
+
+  const span = Math.max(...items.map((i) => Math.abs(i.total)), 1);
+  // Zero sits inside the track only when something lands above the baseline.
+  const worst = Math.min(...items.map((i) => i.total), 0);
+  const zero = (Math.abs(worst) / (span + Math.abs(worst))) * 100;
+
+  $("#case-title").innerHTML =
+    `Annual wage gap for <strong>${fte.toLocaleString("en-US")} roles</strong> leaving `
+    + `<strong>${base.label}</strong>`;
+
+  $("#case").innerHTML = items.map((i) => {
+    const w = (Math.abs(i.total) / (span + Math.abs(worst))) * 100;
+    const over = i.total < 0;
+    const bar = over
+      ? `<div class="case-bar over" style="right:${(100 - zero).toFixed(2)}%;width:${w.toFixed(2)}%"></div>`
+      : `<div class="case-bar" style="left:${zero.toFixed(2)}%;width:${w.toFixed(2)}%"></div>`;
+    return `<div class="case-row"><span class="cn">${i.name}</span>`
+      + `<div class="case-track"><div class="case-zero" style="left:${zero.toFixed(2)}%"></div>${bar}</div>`
+      + `<span class="case-val">${money(i.total)}`
+      + `<span class="per">${money(i.perFte)} per role</span></span></div>`;
+  }).join("");
+
+  // Print keeps the bounds that change how the number is read and drops the
+  // elaborations, because the page is decided by three lines here.
+  $("#case-caveat").innerHTML =
+    `Wage line only, at ${base.label}\u2019s blended rate for professional and clerical `
+    + `occupations. It excludes facilities, technology, management overhead, transition and `
+    + `severance, so it is an upper bound on the wage component and not a savings case. `
+    + `Headcount is held one-for-one<span class="screen-only">; a centre that is still ramping `
+    + `needs more heads for the same volume, which moves this number further than the wage gap `
+    + `itself does. Cost is national except for the Polish cities</span>.`;
+}
+
 function hqLabel() {
   for (const places of Object.values(DATA.hqGroups)) {
     const hit = places.find((x) => x.key === state.hq);
@@ -1469,6 +1614,21 @@ function buildControls() {
            + `${x.label} (UTC${sign}${off})</option>`;
     }).join("") + `</optgroup>`).join("");
   hq.addEventListener("change", (e) => { state.hq = e.target.value; render(); });
+
+  const bl = $("#baseline");
+  bl.innerHTML = DATA.baselines.map((b) =>
+    `<option value="${b.key}"${b.key === state.baseline ? " selected" : ""}>${b.label}</option>`).join("");
+  bl.addEventListener("change", (e) => { state.baseline = e.target.value; render(); });
+
+  const fte = $("#fte");
+  fte.value = state.fte;
+  // A blank or nonsense box should leave the exhibit alone rather than blank it.
+  fte.addEventListener("input", (e) => {
+    const n = parseInt(e.target.value, 10);
+    if (!Number.isFinite(n) || n < 1) return;
+    state.fte = Math.min(n, 5000);
+    render();
+  });
 
   writeArchetypeCopy();
   $("#sources").innerHTML = DATA.sources.map((x) => `

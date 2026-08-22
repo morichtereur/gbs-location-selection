@@ -68,6 +68,14 @@ Four have city-level labour cost, from Eurostat's regional accounts. The rest ca
 | Durability | ILOSTAT, derived — wage drift, split from currency movement |
 | Employer depth | Adzuna, derived — distinct employers hiring |
 
+**What the move is worth** is the question that follows the ranking, so the
+dashboard answers it: the annual wage gap between a baseline market and each
+city, for a headcount you set. Zurich to Kraków is about USD 54k per role per
+year; to any of the Indian cities about USD 95k. This is the wage line only —
+it excludes facilities, technology, management overhead, transition and
+severance, and holds headcount one-for-one, which for a ramping centre is
+optimistic. It is an upper bound on one component, not a saving.
+
 **Who is already there** is reported per city — Heineken, Huntsman, Euroclear and
 six others in Kraków; Cisco, Booking and ABB among fourteen in Bangalore. The
 postings carry the operator's own name in 85% of cases, so the question a room
