@@ -54,6 +54,33 @@ PILLAR_LABELS = {
     "durability": "Durability",
     "depth": "Employer depth",
 }
+# A glyph per pillar, stroked in the pillar's own colour: the reader gets the
+# meaning and the colour key in one mark instead of an anonymous square. Drawn
+# inline rather than pulled from an icon set, because the page loads nothing
+# external and a 24-glyph dependency for seven marks is not worth it.
+PILLAR_ICONS = {
+    # Coin.
+    "cost": '<circle cx="8" cy="8" r="6"/><path d="M8 5v6M6.3 6.4h3.4M6.3 9.6h3.4"/>',
+    # Three figures.
+    "talent": '<circle cx="5" cy="6" r="1.8"/><circle cx="11" cy="6" r="1.8"/>'
+              '<path d="M2 13c0-1.9 1.4-3.2 3-3.2s3 1.3 3 3.2M8 13c0-1.9 1.4-3.2 3-3.2s3 1.3 3 3.2"/>',
+    # Shield.
+    "risk": '<path d="M8 2l5 2v4.2c0 3-2.1 5.6-5 6.6-2.9-1-5-3.6-5-6.6V4z"/>',
+    # Checked box.
+    "capability": '<rect x="2.5" y="2.5" width="11" height="11" rx="1"/>'
+                  '<path d="M5.4 8.2l1.9 1.9 3.4-3.9"/>',
+    # Clock.
+    "timezone": '<circle cx="8" cy="8" r="6"/><path d="M8 4.6V8l2.5 1.6"/>',
+    # Hourglass. An arrow would imply a direction, and this pillar is about a
+    # gap holding rather than a number rising.
+    "durability": '<path d="M4 2.5h8M4 13.5h8M4.6 2.5c0 3 2.6 4.2 3.4 5.5'
+                  '.8-1.3 3.4-2.5 3.4-5.5M4.6 13.5c0-3 2.6-4.2 3.4-5.5'
+                  '.8 1.3 3.4 2.5 3.4 5.5"/>',
+    # Three premises on a street: several employers, not one large one.
+    "depth": '<path d="M1.5 13.5h13M3 13.5V7l2.5-1.6V13.5M7 13.5V4.5l2.5-1.7'
+             'V13.5M11 13.5V8l2.5-1.5V13.5"/>',
+}
+
 PILLAR_NOTES = {
     # Phrased as what raising the slider does. "Wage cost per head" describes
     # the pillar; it does not tell a reader what setting it to 30% means.
@@ -153,6 +180,7 @@ def payload() -> dict:
         "pillarLabels": PILLAR_LABELS,
         "pillarNotes": PILLAR_NOTES,
         "colors": PILLAR_COLORS,
+        "icons": PILLAR_ICONS,
         "colorsDark": PILLAR_COLORS_DARK,
         # Derived, never restated. These were hand-written lists and drifted the
         # moment a log-scaled pillar was added: Python scaled depth and the page
@@ -398,6 +426,20 @@ h1 {
   font-family: var(--serif); margin: 0; max-width: 58ch;
   color: var(--ink-2); font-size: 16.5px; line-height: 1.5; text-wrap: pretty;
 }
+/* A title block: the finding on the left, changing as weights move; what the
+   tool is on the right, fixed. The header was a narrow column against half a
+   page of empty space. */
+.title-block {
+  display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  gap: 44px; align-items: start;
+}
+@media (max-width: 900px) { .title-block { grid-template-columns: minmax(0,1fr); gap: 16px; } }
+.deck { border-left: 1px solid var(--rule-strong); padding-left: 20px; }
+.deck p {
+  margin: 0 0 8px; font-size: 13px; line-height: 1.55; color: var(--ink-3);
+  max-width: 52ch;
+}
+.deck p:last-child { margin-bottom: 0; }
 
 .layout { display: grid; grid-template-columns: 310px minmax(0,1fr); gap: 32px; align-items: start; }
 @media (max-width: 940px) { .layout { grid-template-columns: minmax(0,1fr); } }
@@ -434,6 +476,10 @@ h1 {
 .slider-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 3px; }
 .slider-name { display: flex; align-items: center; gap: 7px; font-size: 13.5px; }
 .swatch { width: 10px; height: 10px; flex: none; border-radius: 2px; }
+.ico {
+  width: 15px; height: 15px; flex: none; fill: none;
+  stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round;
+}
 .slider-val { font-family: var(--mono); font-size: 12.5px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
 .slider-note { font-size: 11.5px; color: var(--ink-3); margin: 2px 0 0; line-height: 1.35; }
 .track { position: relative; }
@@ -594,6 +640,9 @@ select {
   header { margin-bottom: 9px; padding-bottom: 8px; }
   h1 { font-size: 17pt; margin-bottom: 6px; max-width: none; }
   .standfirst { font-size: 9.5pt; max-width: none; }
+  .title-block { grid-template-columns: minmax(0,1.2fr) minmax(0,1fr) !important; gap: 18px !important; }
+  .deck { padding-left: 12px; }
+  .deck p { font-size: 7.5pt; margin-bottom: 4px; }
   .eyebrow { margin-bottom: 5px; }
   .exhibit-head { padding-top: 6px; margin-bottom: 2px; }
   .exhibit-head h2 { font-size: 11pt; }
@@ -653,16 +702,26 @@ footer p { max-width: 78ch; }
 <div class="wrap">
 <header>
   <p class="eyebrow"><span id="scope"></span> · <span id="asof"></span></p>
-  <h1 id="headline">Which city, and how sure can you be?</h1>
-  <p class="standfirst" id="takeaway"></p>
+  <div class="title-block">
+    <div>
+      <h1 id="headline">Which city, and how sure can you be?</h1>
+      <p class="standfirst" id="takeaway"></p>
+    </div>
+    <div class="deck">
+      <p>Cities where GBS and GCC roles are genuinely advertised, scored on seven pillars of
+         public data and re-ranked across 2,000 defensible weightings.</p>
+      <p>Set what you are buying. The exhibit shows what survives the change — and groups the
+         cities the evidence cannot separate rather than ranking them.</p>
+    </div>
+  </div>
 </header>
 
 <div class="layout">
   <aside class="rail">
     <div class="card">
       <h2>Centre type</h2>
-      <p class="panel-note">What kind of work is moving? The two are bought on
-        different things, so they start from different weights.</p>
+      <p class="panel-note">Which work moves determines what you are buying,
+        and therefore where each weighting starts.</p>
       <div class="seg" id="archetype" role="group" aria-label="Centre type"></div>
       <p class="blurb" id="archetype-blurb"></p>
     </div>
@@ -670,8 +729,8 @@ footer p { max-width: 78ch; }
     <div class="card">
       <h2>Weights</h2>
       <p class="panel-note">
-        Each number is that pillar's share of the decision. They always total 100%,
-        so raising one lowers the rest.
+        Each figure is that pillar's share of the decision. Shares total 100%, so
+        raising one lowers the rest.
       </p>
       <p class="blurb" id="weights-why"></p>
       <div id="sliders"></div>
@@ -681,11 +740,11 @@ footer p { max-width: 78ch; }
     <div class="card">
       <h2>Headquarters</h2>
       <select id="hq" aria-label="Headquarters location"></select>
-      <p class="slider-note">Sets the hours each city is scored on sharing with you.</p>
+      <p class="slider-note">Sets the working hours each city shares with you.</p>
     </div>
 
     <div class="card">
-      <h2>Where the numbers come from</h2>
+      <h2>Sources</h2>
       <dl class="sources" id="sources"></dl>
     </div>
   </aside>
@@ -694,7 +753,7 @@ footer p { max-width: 78ch; }
     <div class="exhibit-head">
       <p class="exhibit-label">Exhibit 1</p>
       <h2 id="board-title"></h2>
-      <p class="hint">Bar length is the score. The strip beneath it is what the score is made of.</p>
+      <p class="hint">Bar length is the score; the strip beneath it is the composition.</p>
     </div>
     <div class="belief" id="belief"></div>
     <div class="col-head">
@@ -708,11 +767,11 @@ footer p { max-width: 78ch; }
 
     <div class="page-actions">
       <button type="button" id="one-pager">Print one-pager</button>
-      <span class="hint">Headline, exhibit and sources on a single page.</span>
+      <span class="hint">Finding, exhibit and sources on one page.</span>
     </div>
 
     <details>
-      <summary>Table view — every number behind the ranking</summary>
+      <summary>Table — every figure behind the ranking</summary>
       <div class="table-actions">
         <button type="button" id="copy">Copy table</button>
         <span class="copy-status" id="copy-status" role="status"></span>
@@ -721,7 +780,7 @@ footer p { max-width: 78ch; }
     </details>
 
     <details>
-      <summary>Method, and what this cannot tell you</summary>
+      <summary>Method and limitations</summary>
       <div class="method">
         <ul>
           <li>Scores are relative to the cities on screen, not absolute ratings.</li>
@@ -917,6 +976,11 @@ function verdict(f, row) {
   return "never";
 }
 
+function icon(p) {
+  return `<svg class="ico" viewBox="0 0 16 16" aria-hidden="true" `
+       + `style="stroke:${colors()[p]}">${DATA.icons[p]}</svg>`;
+}
+
 /* ---- answer first ----
    A consulting exhibit leads with the finding, not the subject, and the finding
    here changes every time a weight moves. The headline is therefore written
@@ -948,13 +1012,13 @@ function writeHeadline(ranked, stab, band) {
     const names = top.map((r) => r.row.name);
     const last = names.pop();
     $("#takeaway").innerHTML =
-      `<strong>${names.join(", ")} and ${last}</strong> finish together — `
-      + `the draws cannot separate them, so treat the order inside that group as undetermined.`;
+      `<strong>${names.join(", ")} and ${last}</strong> finish level. The draws `
+      + `cannot separate them; treat the order within that group as undetermined.`;
   } else {
     const pct = ((stab.get(lead.row.id) ?? 0) * 100).toFixed(0);
     const where = DATA.marketNames[lead.row.parent] || "";
     $("#takeaway").innerHTML =
-      `<strong>${lead.row.name}</strong> (${where}) leads on its own, holding a top-three `
+      `<strong>${lead.row.name}</strong> (${where}) leads outright, holding a top-three `
       + `place in ${pct}% of 2,000 nearby weightings.`;
   }
 }
@@ -1077,7 +1141,7 @@ function render() {
     });
   }
 
-  $("#legend").innerHTML = `<span class="legend-lede">Composition strip:</span>` + DATA.pillars.map((p) =>
+  $("#legend").innerHTML = `<span class="legend-lede">Composition:</span>` + DATA.pillars.map((p) =>
     `<span><i class="swatch" style="background:${C[p]}"></i>${DATA.pillarLabels[p]}</span>`).join("");
 
   renderTable(ranked, stab);
@@ -1114,14 +1178,15 @@ function renderSource(rows) {
     `Source: ILOSTAT earnings and employment by occupation; World Bank Worldwide Governance ` +
     `Indicators; Eurostat regional accounts; ${rows.length} cities from a GBS/GCC job-posting ` +
     `sample, ${DATA.asOf}. ` +
-    `Note: ${resolved} of ${rows.length} cities have city-level cost, the rest their country's; ` +
-    `${thin} rest on fewer than ${DATA.evidenceFloor} postings and cannot be called robust.`;
+    `Note: ${resolved} of ${rows.length} cities carry city-level cost, the remainder their ` +
+    `country's; ${thin} rest on fewer than ${DATA.evidenceFloor} postings and cannot be called robust.`;
 }
 
 function renderFoot(rows) {
   const resolved = rows.filter((r) => r.costResolved).length;
   $("#foot").innerHTML =
-    `${resolved} of ${rows.length} cities have city-level cost; the rest use their country's. ` +
+    `A city qualifies only where four or more employers advertise this work. ` +
+    `${resolved} of ${rows.length} carry city-level cost. ` +
     `<a href="https://github.com/morichtereur/gbs-location-selection">Method and code</a>.`;
 }
 
@@ -1141,7 +1206,7 @@ function buildControls() {
   $("#sliders").innerHTML = DATA.pillars.map((p) => `
     <div class="slider-row">
       <div class="slider-head">
-        <span class="slider-name"><i class="swatch" style="background:${DATA.colors[p]}"></i>${DATA.pillarLabels[p]}</span>
+        <span class="slider-name">${icon(p)}${DATA.pillarLabels[p]}</span>
         <span class="slider-val" id="val-${p}"></span>
       </div>
       <div class="track"><input type="range" id="w-${p}" min="0" max="60" step="1"
@@ -1219,8 +1284,8 @@ function writeArchetypeCopy() {
   const a = DATA.archetypes[state.archetype];
   $("#archetype-blurb").textContent = a.blurb;
   $("#weights-why").innerHTML =
-    `<strong>Where these start:</strong> ${a.why} They are a starting point, not a `
-    + `recommendation \u2014 move them and watch what survives.`;
+    `<strong>Starting position:</strong> ${a.why} A starting position, not a `
+    + `recommendation \u2014 move it and see what survives.`;
 }
 
 function syncSliders(writeInputs = true) {
@@ -1247,7 +1312,7 @@ function syncSliders(writeInputs = true) {
     ? `<strong>Every weight is zero.</strong> Raise at least one to rank anything.`
     : moved
       ? `<button type="button" id="reset-weights">Reset to ${DATA.archetypes[state.archetype].short}</button>`
-      : `Tick marks show where this centre type starts.`;
+      : `Tick marks show this centre type\u2019s starting position.`;
   const reset = $("#reset-weights");
   if (reset) {
     reset.addEventListener("click", () => {
