@@ -353,11 +353,31 @@ survival rate across all of them together:
 
 ```
 make install
-make fetch      # rebuilds the GBS/GCC sample (needs free Adzuna credentials)
+make fetch      # adds a dated snapshot to the GBS/GCC sample (needs free Adzuna credentials)
 make run        # rebuilds data/chart_stability.png and RESULTS.md
 make dashboard  # rebuilds dashboard.html
 make centres    # lists the evidenced GBS centres and what the thresholds exclude
+make trend      # direction between snapshots
 make test
+```
+
+### Keeping it current
+
+`make refresh` does the whole cycle — new snapshot, rebuilt analysis and
+dashboard, then the trend between snapshots. **Monthly is the right cadence**:
+the postings feed turns over faster than that, and the ILOSTAT, World Bank and
+Eurostat series behind the other pillars update annually, so more often adds
+noise rather than information.
+
+The second snapshot is the one that matters. Until it exists `make trend` says
+so and stops; after it, the tool can answer whether a market is growing, which
+is the question a location decision actually turns on and the one thing no
+commercial index will tell you.
+
+To have it happen without remembering, `crontab -e` and add — adjusting the path:
+
+```
+0 9 1 * * cd ~/Documents/gbs-location-selection && make refresh >> /tmp/gbs-refresh.log 2>&1
 ```
 
 Every API pull is cached under `data/cache`, so a rerun is reproducible and does

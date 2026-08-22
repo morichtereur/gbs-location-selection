@@ -1,4 +1,4 @@
-.PHONY: install fetch fetch-extra run dashboard centres trend test clean
+.PHONY: install fetch fetch-extra refresh run dashboard centres trend test clean
 
 install:
 	python3 -m venv .venv && .venv/bin/pip install -q -r requirements.txt
@@ -8,6 +8,17 @@ fetch:
 
 fetch-extra:
 	.venv/bin/python -m src.gbs_fetch --jooble
+
+refresh:
+	@echo "== fetching a new snapshot =="
+	@$(MAKE) --no-print-directory fetch
+	@echo
+	@echo "== rebuilding analysis and dashboard =="
+	@$(MAKE) --no-print-directory run
+	@$(MAKE) --no-print-directory dashboard
+	@echo
+	@echo "== direction since the last snapshot =="
+	@$(MAKE) --no-print-directory trend
 
 run:
 	.venv/bin/python -m src.analyze
