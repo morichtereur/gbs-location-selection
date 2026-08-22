@@ -32,6 +32,7 @@ import requests
 from src import config as C
 
 API = "https://api.adzuna.com/v1/api/jobs/{country}/search/{page}"
+JOOBLE_API = "https://jooble.org/api/{key}"
 RESULTS_PER_PAGE = 50
 MAX_PAGES = int(os.getenv("GBSLOC_MAX_PAGES", "5"))
 REQUEST_INTERVAL = 0.4
@@ -63,17 +64,24 @@ LOCAL_TERMS = {
 DB_PATH = C.DATA / "gbs_postings.duckdb"
 
 
+def _load_env() -> None:
+    """Pull credentials from the sibling repo's .env if they are not exported."""
+    env = C.POSTINGS_DB.parent.parent / ".env"
+    if not env.exists():
+        return
+    for line in env.read_text().splitlines():
+        if "=" in line and not line.strip().startswith("#"):
+            key, value = line.split("=", 1)
+            os.environ.setdefault(key.strip(), value.strip())
+
+
 def _env() -> tuple[str, str]:
     """Credentials come from the sibling repo's .env or the environment."""
     app_id, app_key = os.getenv("ADZUNA_APP_ID"), os.getenv("ADZUNA_APP_KEY")
     if app_id and app_key:
         return app_id, app_key
+    _load_env()
     env = C.POSTINGS_DB.parent.parent / ".env"
-    if env.exists():
-        for line in env.read_text().splitlines():
-            if "=" in line and not line.strip().startswith("#"):
-                key, value = line.split("=", 1)
-                os.environ.setdefault(key.strip(), value.strip())
     app_id, app_key = os.getenv("ADZUNA_APP_ID"), os.getenv("ADZUNA_APP_KEY")
     if not (app_id and app_key):
         raise RuntimeError(
@@ -96,6 +104,95 @@ def _page(country: str, term: str, page: int, app_id: str, app_key: str) -> list
     if response.status_code != 200:
         return []
     return response.json().get("results", [])
+
+
+def _jooble_page(key: str, country: str, term: str, page: int) -> list[dict]:
+    """One page from Jooble, which serves the markets Adzuna does not.
+
+    Jooble returns no structured location field, so postings from it cannot be
+    resolved to a city — those markets will appear in the country panel and not
+    in the city ranking. That is a real limitation of the source and is better
+    than leaving six GBS markets out of the study entirely.
+    """
+    response = requests.post(
+        JOOBLE_API.format(key=key),
+        json={"keywords": term, "location": country.upper(), "page": str(page)},
+        headers={"Accept": "application/json", "Content-Type": "application/json",
+                 "User-Agent": "gbs-location-selection/1.0"},
+        timeout=45,
+    )
+    if response.status_code != 200:
+        raise RuntimeError(
+            f"Jooble returned HTTP {response.status_code} for {country}. A 403 "
+            "means the key is not valid — register a free one at "
+            "https://jooble.org/api/about and set JOOBLE_API_KEY."
+        )
+    payload = response.json()
+    return payload.get("jobs", payload.get("results", []))
+
+
+def fetch_jooble(only: tuple[str, ...] | None = None) -> int:
+    """Top the sample up with the markets Adzuna cannot serve.
+
+    Skipped silently when no key is set, so `make fetch` keeps working for
+    anyone without one; the markets simply stay out of the panel, which is what
+    the study already reports.
+    """
+    key = os.getenv("JOOBLE_API_KEY") or ""
+    if not key:
+        _load_env()
+        key = os.getenv("JOOBLE_API_KEY") or ""
+    if not key:
+        print("no JOOBLE_API_KEY set — skipping "
+              f"{', '.join(C.UNREACHABLE.values())}")
+        return 0
+
+    con = duckdb.connect(str(DB_PATH))
+    _init(con)
+    stamp = time.strftime("%Y-%m-%dT%H:%M:%S")
+    today = time.strftime("%Y-%m-%d")
+    added = 0
+    for country in C.JOOBLE_MARKETS:
+        if only and country not in only:
+            continue
+        for term in SEARCH_TERMS + LOCAL_TERMS.get(country, []):
+            for page in range(1, MAX_PAGES + 1):
+                try:
+                    results = _jooble_page(key, country, term, page)
+                except RuntimeError as error:
+                    print(f"  {error}")
+                    con.close()
+                    return added
+                if not results:
+                    break
+                for r in results:
+                    ident = "jooble_" + hashlib.sha256(
+                        str(r.get("id") or r.get("link") or r.get("title", "")).encode()
+                    ).hexdigest()[:24]
+                    con.execute(
+                        "INSERT OR IGNORE INTO postings VALUES (?,?,?,?,?,?,?,?,?,?)",
+                        [
+                            ident, country, term, r.get("title") or "",
+                            r.get("company") or "", r.get("snippet") or "",
+                            # Jooble's location is a free-text string rather than
+                            # a structured field, and often just the country.
+                            r.get("location") or "",
+                            r.get("updated") or "", r.get("link") or "", stamp,
+                        ],
+                    )
+                    con.execute(
+                        "INSERT OR IGNORE INTO observations VALUES (?,?,?)",
+                        [ident, today, country],
+                    )
+                    added += 1
+                time.sleep(REQUEST_INTERVAL)
+        held = con.execute(
+            "SELECT count(*) FROM main.postings WHERE country = ?", [country]
+        ).fetchone()[0]
+        print(f"  {country}: {held} unique postings held")
+    con.close()
+    print(f"{added} results seen from Jooble")
+    return added
 
 
 def _init(con: duckdb.DuckDBPyConnection) -> None:
@@ -221,4 +318,13 @@ def fetch(only: tuple[str, ...] | None = None) -> int:
 if __name__ == "__main__":
     import sys
 
-    fetch(tuple(sys.argv[1:]) or None)
+    args = [a for a in sys.argv[1:] if not a.startswith("-")]
+    flags = {a for a in sys.argv[1:] if a.startswith("-")}
+    markets = tuple(args) or None
+    if "--jooble" not in flags:
+        fetch(markets)
+    # Jooble serves the six markets Adzuna has no endpoint for. It is attempted
+    # on every run and skips itself with a message when no key is set, so the
+    # study works with or without one.
+    if "--adzuna" not in flags:
+        fetch_jooble(markets)

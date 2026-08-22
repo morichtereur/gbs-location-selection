@@ -284,14 +284,28 @@ survival rate across all of them together:
   a per-country page cap, so posting *counts* say nothing about market size.
   Every demand-side metric is a ratio within a country's own sample.
 - **Point-in-time.** One snapshot cannot show a trend.
-- **Six GBS markets are missing and cannot be added yet.** Romania, Czechia,
-  Hungary, Portugal, the Philippines and Malaysia all have ILOSTAT cost and
-  talent, World Bank governance, and the two derived pillars — five of seven are
-  ready. Only the postings feed is missing: Adzuna returns 404 for each of them
-  with valid credentials, and the Jooble key that covered Central Europe in the
-  sibling study now returns 403 everywhere. A working key adds all six at once.
-  The Philippines in particular is a serious omission from a study about this
-  decision.
+- **Six GBS markets are missing and the adapter for them is already written.**
+  Romania, Czechia, Hungary, Portugal, the Philippines and Malaysia all have
+  ILOSTAT cost and talent, World Bank governance, and the two derived pillars —
+  five of seven pillars are ready. Only the postings feed is missing, and five
+  sources were tested for it:
+
+  | source | outcome |
+  |---|---|
+  | Adzuna | no endpoint for any of the six; returns 404 with valid credentials |
+  | **EURES** | covers all six, and its **terms prohibit automated extraction for re-publication** — ruled out on terms, not on technique |
+  | Arbeitnow | free and open, but German and UK applicant-tracking feeds only, and no keyword search |
+  | Careerjet | legacy public API closed to new callers; v4 needs a commercial partnership |
+  | OECD regional | 51 countries, none of the ones that would help: no regional rows at all for Brazil, India or Singapore |
+  | **Jooble** | covers all six, free key, **adapter written and waiting** |
+
+  `make fetch` already attempts Jooble on every run and skips it with a message
+  when no key is set. Register free at
+  [jooble.org/api/about](https://jooble.org/api/about), export
+  `JOOBLE_API_KEY`, and the six markets join the panel — at country level only,
+  because Jooble returns no structured location and its postings cannot be
+  resolved to a city. The Philippines in particular is a serious omission from a
+  study about this decision.
 - **Attrition is absent**, and it is probably the most important factor in a
   real GBS location decision. There is no free public source, and this
   repository would rather name the hole than fill it with a number nobody

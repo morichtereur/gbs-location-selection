@@ -54,6 +54,25 @@ UNREACHABLE = {
     "pt": "Portugal", "ph": "Philippines", "my": "Malaysia",
 }
 
+# Sources audited for these markets and rejected, so the next person does not
+# repeat the search:
+#
+#   EURES        the EU's own portal covers every one of them, and its terms of
+#                use prohibit automated extraction for re-publication. Ruled out
+#                on terms, not on technique.
+#   Arbeitnow    free and open, but it carries German and UK applicant-tracking
+#                feeds only, has no keyword search, and asks not to be paginated
+#                heavily.
+#   Careerjet    the legacy public API is closed to new callers; v4 requires a
+#                commercial partnership.
+#   OECD         regional income covers 51 countries and none of the ones that
+#                would help here — Brazil, India and Singapore have no regional
+#                rows at all and South Africa effectively none.
+#
+# Jooble covers all six and is free. It is the supported route, and the adapter
+# below is written and waiting on a key.
+JOOBLE_MARKETS = tuple(UNREACHABLE)
+
 ISO3_TO_ISO2 = {m["iso3"]: k for k, m in MARKETS.items()}
 
 # --- Cost -----------------------------------------------------------------

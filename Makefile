@@ -1,10 +1,13 @@
-.PHONY: install fetch run dashboard centres trend test clean
+.PHONY: install fetch fetch-extra run dashboard centres trend test clean
 
 install:
 	python3 -m venv .venv && .venv/bin/pip install -q -r requirements.txt
 
 fetch:
 	.venv/bin/python -m src.gbs_fetch
+
+fetch-extra:
+	.venv/bin/python -m src.gbs_fetch --jooble
 
 run:
 	.venv/bin/python -m src.analyze
