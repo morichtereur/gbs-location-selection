@@ -16,6 +16,7 @@ import json
 
 from src import config as C
 from src.panel import Market, build, with_centres
+from src.fonts import face_css
 from src.score import LOG_SCALED, LOWER_IS_BETTER, PILLARS
 from src.stability import run
 
@@ -178,7 +179,11 @@ def payload() -> dict:
 
 def build_html() -> str:
     data = json.dumps(payload(), separators=(",", ":"))
-    return TEMPLATE.replace("__DATA__", data).replace("__SCORING__", SCORING_JS)
+    return (
+        TEMPLATE.replace("__FONTS__", face_css())
+        .replace("__DATA__", data)
+        .replace("__SCORING__", SCORING_JS)
+    )
 
 
 def build_artifact() -> str:
@@ -268,8 +273,20 @@ TEMPLATE = r"""<!doctype html>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>GBS Location Selection</title>
 <style>
+__FONTS__
+
+/* Three families, three jobs, taken from the portfolio site so the tool and the
+   work it belongs to read as one thing.
+   Archivo — headings and interface. Tight, and it holds a tabular number.
+   Source Serif — the argument. The standfirst and the weighting readout are
+     prose making a case, and they are set as prose rather than as UI text.
+   IBM Plex Mono — every measured value, label and eyebrow, so a number always
+     looks like a number and never like a sentence. */
 :root {
   color-scheme: light;
+  --sans: Archivo, "Helvetica Neue", Arial, sans-serif;
+  --serif: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
   --bg: #e9eae4;
   --panel: #f4f4f0;
   --panel-2: #fbfbf8;
@@ -310,34 +327,42 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--ink);
-  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-family: var(--sans);
   font-size: 15px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
 }
-.mono { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace; }
+.mono { font-family: var(--mono); }
 .wrap { max-width: 1240px; margin: 0 auto; padding: 32px 24px 72px; }
 
 header { border-bottom: 1px solid var(--rule-strong); padding-bottom: 20px; margin-bottom: 28px; }
 .eyebrow {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--mono);
   font-size: 11px; letter-spacing: .14em; text-transform: uppercase;
   color: var(--ink-3); margin: 0 0 10px;
 }
-h1 { font-size: clamp(26px, 3.4vw, 38px); line-height: 1.1; margin: 0 0 12px; letter-spacing: -.02em; font-weight: 700; }
-.standfirst { margin: 0; max-width: 62ch; color: var(--ink-2); font-size: 16px; }
+h1 {
+  font-family: var(--sans); font-weight: 700;
+  font-size: clamp(30px, 4.2vw, 46px); line-height: 1.04;
+  letter-spacing: -.028em; margin: 0 0 14px; text-wrap: balance;
+}
+.standfirst {
+  font-family: var(--serif); margin: 0; max-width: 60ch;
+  color: var(--ink-2); font-size: 17.5px; line-height: 1.5; text-wrap: pretty;
+}
 
 .layout { display: grid; grid-template-columns: 310px minmax(0,1fr); gap: 32px; align-items: start; }
 @media (max-width: 940px) { .layout { grid-template-columns: minmax(0,1fr); } }
 
 .rail { position: sticky; top: 20px; display: flex; flex-direction: column; gap: 20px; }
 @media (max-width: 940px) { .rail { position: static; } }
-.card { background: var(--panel); border: 1px solid var(--rule); padding: 16px; box-shadow: var(--shadow); }
+.card { background: transparent; border: 0; border-top: 1px solid var(--rule-strong); padding: 14px 0 0; box-shadow: none; }
 .card h2 {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 11px; letter-spacing: .12em; text-transform: uppercase;
-  color: var(--ink-3); margin: 0 0 12px; font-weight: 600;
+  font-family: var(--mono);
+  font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--ink-3); margin: 0 0 12px; font-weight: 500;
 }
+.rail { gap: 22px; }
 
 .seg { display: flex; border: 1px solid var(--rule-strong); }
 .seg button {
@@ -352,7 +377,7 @@ h1 { font-size: clamp(26px, 3.4vw, 38px); line-height: 1.1; margin: 0 0 12px; le
 .slider-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 3px; }
 .slider-name { display: flex; align-items: center; gap: 7px; font-size: 13.5px; }
 .swatch { width: 10px; height: 10px; flex: none; border-radius: 2px; }
-.slider-val { font-family: ui-monospace, Menlo, monospace; font-size: 12.5px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.slider-val { font-family: var(--mono); font-size: 12.5px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
 .slider-note { font-size: 11.5px; color: var(--ink-3); margin: 2px 0 0; line-height: 1.35; }
 input[type=range] { width: 100%; accent-color: var(--accent); margin: 2px 0 0; }
 
@@ -365,13 +390,14 @@ select {
 .reads strong { color: var(--ink); font-weight: 600; }
 
 .belief {
-  border-left: 3px solid var(--accent); padding: 10px 12px; background: var(--panel-2);
-  font-size: 13.5px; line-height: 1.45;
+  font-family: var(--serif); border-left: 2px solid var(--accent);
+  padding: 2px 0 2px 14px; margin-top: 4px;
+  font-size: 15.5px; line-height: 1.5; color: var(--ink-2);
 }
-.belief b { font-weight: 600; }
+.belief b { font-weight: 600; color: var(--ink); }
 
 .board-head { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 6px; }
-.board-head h2 { margin: 0; font-size: 19px; letter-spacing: -.01em; }
+.board-head h2 { margin: 0; font-size: 21px; font-weight: 700; letter-spacing: -.018em; }
 .hint { font-size: 12.5px; color: var(--ink-3); margin: 0; }
 
 .col-head {
@@ -380,30 +406,33 @@ select {
   border-bottom: 1px solid var(--rule-strong);
 }
 .ch-num {
-  text-align: right; font-family: ui-monospace, Menlo, monospace; font-size: 10px;
+  text-align: right; font-family: var(--mono); font-size: 10px;
   text-transform: uppercase; letter-spacing: .07em; color: var(--ink-3);
 }
 @media (max-width: 780px) { .col-head { display: none; } }
 .rows { position: relative; margin-top: 0; }
 .row {
   display: grid; grid-template-columns: 26px minmax(112px, 180px) minmax(0,1fr) 62px 92px;
-  gap: 12px; align-items: center; padding: 7px 0; border-bottom: 1px solid var(--rule);
+  gap: 14px; align-items: center; padding: 11px 0; border-bottom: 1px solid var(--rule);
 }
 @media (max-width: 780px) {
   .row { grid-template-columns: 22px 1fr auto; row-gap: 6px; }
   .row .bar-cell { grid-column: 1 / -1; }
 }
-.evidence { text-align: right; font-family: ui-monospace, Menlo, monospace; font-size: 12px;
+.evidence { text-align: right; font-family: var(--mono); font-size: 12px;
   color: var(--ink-3); font-variant-numeric: tabular-nums; }
 .evidence .thin { color: var(--warn); }
-.rank { font-family: ui-monospace, Menlo, monospace; font-size: 12px; color: var(--ink-3); text-align: right; font-variant-numeric: tabular-nums; }
+.rank { font-family: var(--mono); font-size: 12px; color: var(--ink-3); text-align: right; font-variant-numeric: tabular-nums; }
 .who { min-width: 0; }
-.who .nm { display: block; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.who .sub { display: block; font-size: 11px; color: var(--ink-3); font-family: ui-monospace, Menlo, monospace; }
-.bar { display: flex; height: 20px; width: 100%; background: var(--panel-2); border: 1px solid var(--rule); }
+.who .nm {
+  display: block; font-size: 15.5px; font-weight: 600; letter-spacing: -.008em;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.who .sub { display: block; font-size: 10.5px; color: var(--ink-3); font-family: var(--mono); }
+.bar { display: flex; height: 22px; width: 100%; background: var(--panel-2); border: 1px solid var(--rule); }
 .seg-fill { height: 100%; border-right: 2px solid var(--panel); position: relative; }
 .seg-fill:last-child { border-right: 0; }
-.stab { text-align: right; font-family: ui-monospace, Menlo, monospace; font-size: 12px; font-variant-numeric: tabular-nums; }
+.stab { text-align: right; font-family: var(--mono); font-size: 12px; font-variant-numeric: tabular-nums; }
 .stab .pct { display: block; }
 .stab .tag { display: block; font-size: 10px; letter-spacing: .06em; text-transform: uppercase; }
 .tag.robust { color: var(--accent); }
@@ -414,7 +443,7 @@ select {
 .sources { margin: 0; display: grid; gap: 9px; }
 .sources div { display: grid; gap: 1px; }
 .sources dt {
-  font-family: ui-monospace, Menlo, monospace; font-size: 10px; text-transform: uppercase;
+  font-family: var(--mono); font-size: 10px; text-transform: uppercase;
   letter-spacing: .07em; color: var(--ink-3);
 }
 .sources dd { margin: 0; font-size: 12.5px; line-height: 1.35; }
@@ -435,7 +464,7 @@ select {
 
 .method { font-size: 13.5px; line-height: 1.55; max-width: 78ch; }
 .method h3 {
-  font-family: ui-monospace, Menlo, monospace; font-size: 10.5px; text-transform: uppercase;
+  font-family: var(--mono); font-size: 10.5px; text-transform: uppercase;
   letter-spacing: .09em; color: var(--ink-3); margin: 16px 0 6px; font-weight: 600;
 }
 .method ol, .method ul { margin: 0; padding-left: 18px; display: grid; gap: 7px; }
@@ -455,7 +484,7 @@ summary { cursor: pointer; font-size: 13.5px; color: var(--ink-2); }
 table { border-collapse: collapse; width: 100%; margin-top: 12px; font-size: 12.5px; }
 th, td { text-align: right; padding: 5px 8px; border-bottom: 1px solid var(--rule); font-variant-numeric: tabular-nums; }
 th:first-child, td:first-child { text-align: left; font-variant-numeric: normal; }
-th { font-family: ui-monospace, Menlo, monospace; font-size: 10.5px; text-transform: uppercase; letter-spacing: .07em; color: var(--ink-3); font-weight: 600; }
+th { font-family: var(--mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: .07em; color: var(--ink-3); font-weight: 600; }
 caption { caption-side: top; text-align: left; font-size: 12px; color: var(--ink-3); padding-bottom: 8px; }
 
 footer { margin-top: 40px; border-top: 1px solid var(--rule-strong); padding-top: 16px; font-size: 12.5px; color: var(--ink-3); }
@@ -465,7 +494,7 @@ footer p { max-width: 78ch; }
 .tooltip {
   position: fixed; pointer-events: none; z-index: 9; background: var(--ink); color: var(--bg);
   padding: 7px 9px; font-size: 12px; line-height: 1.4; max-width: 260px; opacity: 0;
-  transition: opacity .1s; font-family: ui-monospace, Menlo, monospace;
+  transition: opacity .1s; font-family: var(--mono);
 }
 .tooltip.on { opacity: 1; }
 
@@ -928,7 +957,15 @@ document.addEventListener("mousemove", (e) => {
   tip.classList.add("on");
 });
 
+/* Series colours are chosen in JavaScript, so they only change when the page
+   re-renders. Watching the media query alone covers the operating system
+   changing theme and misses the other route: a viewer flipping the host's own
+   toggle, which stamps data-theme on the root element. Both are watched, or the
+   bars keep the previous theme's ramp against the new background. */
 matchMedia("(prefers-color-scheme: dark)").addEventListener("change", render);
+new MutationObserver(render).observe(document.documentElement, {
+  attributes: true, attributeFilter: ["data-theme"],
+});
 buildControls();
 render();
 </script>
