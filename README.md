@@ -324,6 +324,40 @@ biases the correction slightly toward the middle; `MODEL_CLASSIFICATION_ERROR`
 in `src/config.py` turns it off for anyone who wants to see the uncorrected
 figures.
 
+## The measure reads a biased subset, and the bands absorb it
+
+The work-family taxonomy decides about two thirds of in-scope postings and
+declines the rest. Shares are computed on what it can read, which is only safe
+if the readable subset resembles the unreadable one. Nothing checked whether it
+did, so `make validate` now does.
+
+It does not. Postings that only the local-language supplement can decide run
+**83% transactional against 61%** for the ones the English taxonomy handles —
+the undecided remainder is largely non-English, and non-English postings are
+more transactional. Brazil leaves 55% of its in-scope postings undecided, the
+Netherlands 47%, Poland 33%.
+
+Bounding it — asking what happens if every undecided posting looked like the
+ones only the supplement could read — moves the Netherlands 18 points and Brazil
+15:
+
+| market | measured | bounded | shift |
+|---|---:|---:|---:|
+| Netherlands | 36% | 54% | **+18pp** |
+| Brazil | 55% | 69% | **+15pp** |
+| South Africa | 54% | 64% | +10pp |
+| Poland | 58% | 66% | +8pp |
+
+**The top band does not change under that bound, for either archetype.** A shift
+large enough to reorder any ranked list leaves the grouping alone, because the
+grouping was already saying those cities are not separable. Banding was built to
+stop the tool overclaiming; it turns out to be what makes the headline survive a
+bias found afterwards.
+
+That is a bound, not a correction. The supplement's mix rests on 23 postings —
+enough to prove the subset is skewed, too thin to build a prior on — so nothing
+is imputed and the measured figures stand as published.
+
 ## Everything that is resampled
 
 The Monte Carlo varies four things at once, so a market's frequency is its

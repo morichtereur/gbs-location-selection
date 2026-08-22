@@ -1,4 +1,4 @@
-.PHONY: install fetch fetch-extra refresh run dashboard centres trend test clean
+.PHONY: install fetch fetch-extra refresh run dashboard centres trend validate test clean
 
 install:
 	python3 -m venv .venv && .venv/bin/pip install -q -r requirements.txt
@@ -31,6 +31,9 @@ centres:
 
 trend:
 	.venv/bin/python -m src.trend
+
+validate:
+	.venv/bin/python -m src.validate
 
 test:
 	.venv/bin/python -m pytest tests -q
