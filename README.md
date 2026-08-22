@@ -138,22 +138,24 @@ else.
 
 The delivery classifier is visible phrase lists, so a reader can disagree with a
 specific entry. Sixty in-scope postings across three audits were adjudicated by
-hand in [`eval/precision_audit.md`](eval/precision_audit.md): **precision is
-roughly 55%**.
+hand across five audits in [`eval/precision_audit.md`](eval/precision_audit.md).
+On the classifier that ships, **two of twenty were clearly wrong** — 60%
+counting every unresolved case as a failure, 86% on the cases that could be
+resolved from a truncated advertisement.
 
-An earlier version of this README claimed 80%, from the first audit. That number
-did not survive re-testing. Widening the classifier to read Portuguese raised
-recall sharply — Brazil went from 7 recognised postings to 52 — and lowered
-precision, and two further audits both landed near 55%. The 80% was a favourable
-draw of twenty as much as it was a better classifier.
+Getting there meant discarding a number first. An early version of this README
+claimed 80% from a single audit; widening the classifier to read Portuguese
+raised recall sharply and dropped precision to the mid-fifties, where two audits
+agreed. Reading those failures produced the two fixes that mattered: a **centre
+named as a counterparty** does not put the role inside it — "join our Shared
+Services team" is the work, "liaises with the internal Shared Service Centers"
+is not — and **retained work has to be caught in the body**, not only the title.
+Definite errors fell from six or seven per twenty to two.
 
-The failures are the useful part, and three rounds of fixes removed whole
-categories of them: a hotel cashier, a municipal shared-services centre
-recruiting a civil servant, an EHS manager whose employer's blurb listed finance
-functions, and Singapore's sovereign wealth fund read as a capability centre
-because "GIC" was in the acronym list. What survives is harder — retained group
-and statutory work, which uses the same vocabulary as service-centre work and is
-precisely the work a GBS exists not to move.
+Earlier rounds removed whole categories: a hotel cashier, a municipal
+shared-services centre recruiting a civil servant, an EHS manager whose
+employer's blurb listed finance functions, and Singapore's sovereign wealth fund
+read as a capability centre because "GIC" was in the acronym list.
 
 **That error is now modelled rather than noted**, and doing so changed a
 conclusion. See below.

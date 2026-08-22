@@ -144,6 +144,32 @@ NON_FINANCE_ROLE = re.compile(
     re.I,
 )
 
+# A posting can name a service centre without the role being inside it. The
+# distinction that matters is not where the term appears but the relationship:
+# "join our Shared Services team" is the work; "liaises with the internal Shared
+# Service Centers" and "review of transactions done by the shared service
+# centre" are roles on the other side of the counter, usually in the retained
+# organisation the centre serves.
+COUNTERPARTY = re.compile(
+    r"(liais\w+|interfac\w+|coordinat\w+|in (close )?(contact|touch) with|"
+    r"work(ing|s)? (closely )?with|point of contact (for|with)|"
+    r"schnittstelle (zu|zwischen)|zusammenarbeit mit|ansprechpartner f[üu]r|"
+    r"review(s|ing)? of|(carried out|done|performed|provided|handled|processed) by|"
+    r"support(ing|ed)? by|outsourced to|transitioned to|migrat\w+ to)"
+    r"[^.]{0,70}?"
+    r"(shared service|global business service|\bgbs\b|\bssc\b|service cent(er|re)|"
+    r"capability cent(er|re))",
+    re.I,
+)
+
+# The same idea in reverse order: the centre acts, the role receives.
+COUNTERPARTY_REVERSED = re.compile(
+    r"(shared service|global business service|\bgbs\b|\bssc\b|service cent(er|re))"
+    r"[^.]{0,40}?"
+    r"(provides|performs|handles|delivers|supports) (you|us|the (business|team|region))",
+    re.I,
+)
+
 # --- gate 3: matches the words without being the work ---------------------
 # Selling to capability centres, or staffing them, is a different labour market
 # that uses exactly the same vocabulary.
@@ -209,6 +235,14 @@ def classify(title: str, description: str, company: str, org_type) -> str:
     if not FINANCE.search(role_text):
         return "out:not_finance"
 
+    # A centre named only as a counterparty does not put the role inside it —
+    # unless the title itself says otherwise, which outranks any body text.
+    title_names_centre = bool(GCC_TERMS.search(title) or GBS_TERMS.search(title))
+    if not title_names_centre and (
+        COUNTERPARTY.search(text) or COUNTERPARTY_REVERSED.search(text)
+    ):
+        return "out:centre_is_counterparty"
+
     is_gcc = bool(GCC_TERMS.search(text))
     is_gbs = bool(GBS_TERMS.search(text))
     if not (is_gcc or is_gbs):
@@ -219,8 +253,12 @@ def classify(title: str, description: str, company: str, org_type) -> str:
         else:
             return "out:not_shared_services"
 
-    # Retained work that merely mentions the centre it reports into.
-    if RETAINED_WORK.search(title) and not GCC_TERMS.search(title) \
+    # Retained work that merely mentions the centre it reports into. Checked in
+    # the title and in the opening of the advertisement, where the role is
+    # described — a tax accountant whose first line is "legal entity reporting
+    # and full tax compliance" is retained work regardless of what the employer
+    # boilerplate says further down.
+    if RETAINED_WORK.search(role_text) and not GCC_TERMS.search(title) \
             and not GBS_TERMS.search(title):
         return "out:retained_work"
 

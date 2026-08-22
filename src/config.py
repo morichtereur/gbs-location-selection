@@ -189,10 +189,13 @@ CAPABILITY_PRIOR_STRENGTH = 30
 # That was a caveat for one revision too long. It is now modelled, using two
 # quantities that were already measured rather than assumed:
 #
-#   precision   audits 2 and 3, the two run against approximately the classifier
-#               that ships — 21 correct of 40. Drawn from a Beta so the
-#               uncertainty in the audit itself propagates, rather than fixing
-#               precision at a point estimate taken from forty postings.
+#   precision   audits 4 and 5, the two run against the classifier that ships —
+#               24 clearly correct of 40. Drawn from a Beta so the uncertainty in
+#               the audit itself propagates rather than being fixed at a point
+#               estimate from forty postings. This is a floor: eight of those
+#               forty could not be resolved from a truncated advertisement and
+#               are counted against precision rather than for it, so the true
+#               rate is higher and the model errs toward wider uncertainty.
 #   contaminant the work-family mix of the broad finance-operations sample,
 #               per market. A posting that is not service-centre work is most
 #               likely ordinary finance work, and that population was measured
@@ -203,7 +206,7 @@ CAPABILITY_PRIOR_STRENGTH = 30
 # [0, 1] when the observed value is extreme and p is drawn low; those draws are
 # clipped, which biases slightly toward the middle. Stated because clipping a
 # deconvolution is exactly the kind of quiet step this study exists to expose.
-AUDIT_CORRECT = 21
+AUDIT_CORRECT = 24
 AUDIT_TOTAL = 40
 MODEL_CLASSIFICATION_ERROR = True
 
