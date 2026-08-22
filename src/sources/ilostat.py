@@ -18,7 +18,13 @@ ACCEPT = {"Accept": "application/vnd.sdmx.data+csv;version=1.0.0"}
 
 
 def _url() -> str:
-    key = "+".join(m["iso3"] for m in C.MARKETS.values())
+    # The extra baselines ride along on the same request: they need the same
+    # three ISCO groups in the same currencies, and a second call would only
+    # add a failure mode. Employment below stays with the scored markets.
+    key = "+".join(
+        [m["iso3"] for m in C.MARKETS.values()]
+        + [m["iso3"] for m in C.BASELINE_EXTRA.values()]
+    )
     # Six dimensions: REF_AREA.FREQ.MEASURE.SEX.OCU.CUR — the trailing dots
     # are wildcards, filtered down after the pull.
     return f"{BASE},{C.ILO_DATAFLOW}/{key}....."

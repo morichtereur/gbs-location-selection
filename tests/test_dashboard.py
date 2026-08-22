@@ -173,8 +173,17 @@ def test_every_baseline_carries_a_wage_the_exhibit_can_subtract():
     """
     data = payload()
     offered = {b["key"] for b in data["baselines"]}
-    assert offered == set(C.BASELINE_MARKETS), (
-        f"baselines offered {offered}, config declares {set(C.BASELINE_MARKETS)}"
+    scored = {b["key"] for b in data["baselines"] if b["scored"]}
+    origins = {b["key"] for b in data["baselines"] if not b["scored"]}
+    assert scored == set(C.BASELINE_MARKETS), (
+        f"scored origins {scored}, config declares {set(C.BASELINE_MARKETS)}"
+    )
+    assert origins <= set(C.BASELINE_EXTRA), (
+        f"unscored origins {origins - set(C.BASELINE_EXTRA)} are in neither list"
+    )
+    # An origin-only market must never reach the ranking; it carries one pillar.
+    assert not (origins & set(data["marketNames"])), (
+        "an origin-only market appears among the scored markets"
     )
     for b in data["baselines"]:
         assert b["monthly"] and b["monthly"] > 0, b

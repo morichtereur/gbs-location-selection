@@ -17,6 +17,7 @@ import json
 from src import config as C
 from src.panel import Market, build, with_centres
 from src.fonts import face_css
+from src.baselines import load as baseline_load
 from src.operators import by_city as operators_by_city, title as operator_title
 from src.score import LOG_SCALED, LOWER_IS_BETTER, PILLARS
 from src.stability import run
@@ -59,6 +60,32 @@ PILLAR_LABELS = {
 # meaning and the colour key in one mark instead of an anonymous square. Drawn
 # inline rather than pulled from an icon set, because the page loads nothing
 # external and a 24-glyph dependency for seven marks is not worth it.
+# Emoji flags fall back to letter pairs on Windows and in headless Chrome's PDF,
+# which is where this has to survive. Drawn instead, at a common 3:2 so eleven of
+# them stack without a ragged edge.
+FLAGS = {
+    "in": '<rect width="21" height="4.67" fill="#ff9933"/>'
+          '<rect y="4.67" width="21" height="4.66" fill="#fff"/>'
+          '<rect y="9.33" width="21" height="4.67" fill="#138808"/>'
+          '<circle cx="10.5" cy="7" r="1.75" fill="none" stroke="#000080" stroke-width=".5"/>'
+          '<path d="M10.5 5.25v3.5M8.75 7h3.5M9.26 5.76l2.48 2.48M11.74 5.76L9.26 8.24" '
+          'stroke="#000080" stroke-width=".28"/>',
+    "pl": '<rect width="21" height="7" fill="#fff"/>'
+          '<rect y="7" width="21" height="7" fill="#dc143c"/>',
+    "br": '<rect width="21" height="14" fill="#009c3b"/>'
+          '<path d="M10.5 1.6L19.4 7l-8.9 5.4L1.6 7z" fill="#ffdf00"/>'
+          '<circle cx="10.5" cy="7" r="3.1" fill="#002776"/>'
+          '<path d="M7.6 5.9a9 9 0 0 1 5.9 1.9" fill="none" stroke="#fff" stroke-width=".62"/>',
+    "za": '<rect width="21" height="14" fill="#002395"/>'
+          '<path d="M0 0h21v5.6H0z" fill="#de3831"/>'
+          '<path d="M0 4.6h21v1H0zM0 8.4h21v1H0z" fill="#fff"/>'
+          '<path d="M0 0l7 7-7 7z" fill="#fff"/>'
+          '<path d="M0 1.9l5.1 5.1L0 12.1z" fill="#000"/>'
+          '<path d="M0 5.1h21v3.8H0z" fill="#007a4d" opacity="0"/>'
+          '<path d="M8.4 5.1H21v3.8H8.4L4.5 7z" fill="#007a4d"/>',
+}
+FLAG_TITLES = {"in": "India", "pl": "Poland", "br": "Brazil", "za": "South Africa"}
+
 PILLAR_ICONS = {
     # Coin.
     "cost": '<circle cx="8" cy="8" r="6"/><path d="M8 5v6M6.3 6.4h3.4M6.3 9.6h3.4"/>',
@@ -192,15 +219,7 @@ def payload() -> dict:
         for key, ops in operators_by_city().items()
     }
     countries = build()
-    baselines = [
-        {
-            "key": k,
-            "label": C.MARKETS[k]["name"],
-            "monthly": countries[k].cost_usd_aged or countries[k].cost_usd,
-        }
-        for k in C.BASELINE_MARKETS
-        if k in countries and (countries[k].cost_usd_aged or countries[k].cost_usd)
-    ]
+    baselines = baseline_load()
     centres = with_centres(countries)
     data = {
         "pillars": list(PILLARS),
@@ -251,6 +270,8 @@ def payload() -> dict:
         "modelClassificationError": C.MODEL_CLASSIFICATION_ERROR,
         "sources": SOURCES,
         "limits": LIMITS,
+        "flags": FLAGS,
+        "flagTitles": FLAG_TITLES,
         "baselines": baselines,
         "baselineDefault": C.BASELINE_DEFAULT,
         "fteDefault": C.FTE_DEFAULT,
@@ -569,6 +590,12 @@ select {
   align-items: center; gap: 10px; padding: 3px 0;
 }
 .case-row .cn { font-size: 12.5px; color: var(--ink-2); }
+.flag {
+  width: 15px; height: 10px; margin-right: 7px; vertical-align: -1px;
+  border: .5px solid rgba(0,0,0,.22); border-radius: 1px; flex: none;
+  -webkit-print-color-adjust: exact; print-color-adjust: exact;
+}
+:root[data-theme="dark"] .flag { border-color: rgba(255,255,255,.28); }
 .case-track { position: relative; height: 15px; }
 .case-bar { position: absolute; top: 0; bottom: 0; background: var(--accent); border-radius: 0 3px 3px 0; }
 .case-bar.over { background: var(--warn); border-radius: 3px 0 0 3px; }
@@ -969,12 +996,13 @@ footer p { max-width: 78ch; }
     </div>
 
     <div class="card">
-      <h2>What moves</h2>
-      <label class="fld" for="baseline">From</label>
-      <select id="baseline" aria-label="Location the work leaves"></select>
-      <label class="fld" for="fte">Roles</label>
+      <h2>Cost comparison</h2>
+      <label class="fld" for="baseline">Origin</label>
+      <select id="baseline" aria-label="Market the work leaves"></select>
+      <label class="fld" for="fte">Roles moved</label>
       <input id="fte" type="number" min="1" max="5000" step="10" aria-label="Roles moved">
-      <p class="slider-note">Sets the wage gap in Exhibit 3. Wage line only.</p>
+      <p class="slider-note">Sets Exhibit 3. Origins are markets ILOSTAT prices;
+        most are not candidates and are never ranked.</p>
     </div>
 
     <div class="card">
@@ -1372,7 +1400,8 @@ function render() {
 
     el.innerHTML =
       `<div class="rank">${opensBand ? b : ""}</div>` +
-      `<div class="who"><span class="nm">${r.row.name}</span><span class="sub">${sub}</span></div>` +
+      `<div class="who"><span class="nm">${flag(r.row.parent)}${r.row.name}</span>`
+      + `<span class="sub">${sub}</span></div>` +
       `<div class="bar-cell">${bar}</div>` +
       `<div class="evidence" title="postings behind the capability pillar">${evidence}</div>` +
       `<div class="stab"><span class="pct">${(f * 100).toFixed(0)}%</span>` +
@@ -1489,6 +1518,13 @@ function renderStrip(ranked, band) {
     + `<div class="hq" style="left:${pos(hq).toFixed(2)}%">${hqLabel()}</div></div>`;
 }
 
+function flag(market) {
+  const d = DATA.flags[market];
+  if (!d) return "";
+  return `<svg class="flag" viewBox="0 0 21 14" role="img" `
+       + `aria-label="${DATA.flagTitles[market] || market}">${d}</svg>`;
+}
+
 function baselineRow() {
   return DATA.baselines.find((b) => b.key === state.baseline) || DATA.baselines[0];
 }
@@ -1510,7 +1546,7 @@ function renderCase(ranked) {
     .filter((r) => r.row.cost != null)
     .map((r) => {
       const perFte = (base.monthly - r.row.cost) * 12;
-      return { name: r.row.name, perFte, total: perFte * fte };
+      return { name: r.row.name, market: r.row.parent, perFte, total: perFte * fte };
     })
     .sort((a, b) => b.total - a.total);
 
@@ -1529,7 +1565,7 @@ function renderCase(ranked) {
     const bar = over
       ? `<div class="case-bar over" style="right:${(100 - zero).toFixed(2)}%;width:${w.toFixed(2)}%"></div>`
       : `<div class="case-bar" style="left:${zero.toFixed(2)}%;width:${w.toFixed(2)}%"></div>`;
-    return `<div class="case-row"><span class="cn">${i.name}</span>`
+    return `<div class="case-row"><span class="cn">${flag(i.market)}${i.name}</span>`
       + `<div class="case-track"><div class="case-zero" style="left:${zero.toFixed(2)}%"></div>${bar}</div>`
       + `<span class="case-val">${money(i.total)}`
       + `<span class="per">${money(i.perFte)} per role</span></span></div>`;
@@ -1632,8 +1668,13 @@ function buildControls() {
   hq.addEventListener("change", (e) => { state.hq = e.target.value; render(); });
 
   const bl = $("#baseline");
-  bl.innerHTML = DATA.baselines.map((b) =>
-    `<option value="${b.key}"${b.key === state.baseline ? " selected" : ""}>${b.label}</option>`).join("");
+  const opt = (b) =>
+    `<option value="${b.key}"${b.key === state.baseline ? " selected" : ""}>${b.label}</option>`;
+  const scored = DATA.baselines.filter((b) => b.scored);
+  const origins = DATA.baselines.filter((b) => !b.scored);
+  bl.innerHTML =
+    `<optgroup label="Also scored in this study">${scored.map(opt).join("")}</optgroup>`
+    + `<optgroup label="Origin only">${origins.map(opt).join("")}</optgroup>`;
   bl.addEventListener("change", (e) => { state.baseline = e.target.value; render(); });
 
   const fte = $("#fte");

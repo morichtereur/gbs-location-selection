@@ -71,7 +71,14 @@ Four have city-level labour cost, from Eurostat's regional accounts. The rest ca
 **What the move is worth** is the question that follows the ranking, so the
 dashboard answers it: the annual wage gap between a baseline market and each
 city, for a headcount you set. Zurich to Kraków is about USD 54k per role per
-year; to any of the Indian cities about USD 95k. One asymmetry decides how far that comparison can be pushed: the baseline is
+year; to any of the Indian cities about USD 95k. Sixteen markets can be the origin (`make baselines`). Ten of them are priced
+by ILOSTAT but never scored — the study needs seven pillars per candidate and
+these carry one — because "we are moving work out of France" was a question the
+tool had been refusing for no better reason than that France is not a
+candidate. ILOSTAT has no earnings in this dataflow for Canada, Australia or
+Japan.
+
+One asymmetry decides how far that comparison can be pushed: the baseline is
 always a national figure, while the Polish cities carry a regional index
 against their own country mean (Warsaw 1.81, Kraków 1.46). Against a UK
 baseline Warsaw therefore reads as *dearer* than the UK, which is a capital
@@ -79,6 +86,14 @@ region measured against a national average rather than a wage fact. This is the 
 it excludes facilities, technology, management overhead, transition and
 severance, and holds headcount one-for-one, which for a ramping centre is
 optimistic. It is an upper bound on one component, not a saving.
+
+**A workbook** (`make excel`) carries the same study for readers who will not
+open a browser: what it does and does not claim, the seven criteria with their
+sources and both starting weightings, the ranking with band and stability, and
+the wage gap priced against all sixteen origins so the comparison can be
+re-based in the sheet. The dashboard cannot hand a file over — its published
+form runs under a policy that blocks downloads a page starts itself — so the
+workbook is built here instead.
 
 **Who is already there** is reported per city — Heineken, Huntsman, Euroclear and
 six others in Kraków; Cisco, Booking and ABB among fourteen in Bangalore. The

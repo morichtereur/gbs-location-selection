@@ -73,7 +73,26 @@ UNREACHABLE = {
 # below is written and waiting on a key.
 JOOBLE_MARKETS = tuple(UNREACHABLE)
 
+# Origins for Exhibit 3 only. These are never scored and never enter the
+# ranking: the study needs seven pillars per market and these carry one. They
+# exist because "we are moving work out of France" is a question the tool was
+# refusing to answer for no better reason than that France is not a candidate.
+# ILOSTAT has no earnings in this dataflow for Canada, Australia or Japan.
+BASELINE_EXTRA = {
+    "us": {"name": "United States", "iso3": "USA"},
+    "fr": {"name": "France", "iso3": "FRA"},
+    "it": {"name": "Italy", "iso3": "ITA"},
+    "ie": {"name": "Ireland", "iso3": "IRL"},
+    "be": {"name": "Belgium", "iso3": "BEL"},
+    "at": {"name": "Austria", "iso3": "AUT"},
+    "se": {"name": "Sweden", "iso3": "SWE"},
+    "dk": {"name": "Denmark", "iso3": "DNK"},
+    "no": {"name": "Norway", "iso3": "NOR"},
+    "fi": {"name": "Finland", "iso3": "FIN"},
+}
+
 ISO3_TO_ISO2 = {m["iso3"]: k for k, m in MARKETS.items()}
+ISO3_TO_ISO2.update({m["iso3"]: k for k, m in BASELINE_EXTRA.items()})
 
 # --- Cost -----------------------------------------------------------------
 # ILOSTAT publishes earnings by ISCO-08 major group and no finer. There is no

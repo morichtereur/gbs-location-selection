@@ -35,6 +35,12 @@ centres:
 operators:
 	.venv/bin/python -m src.operators
 
+excel:
+	$(PY) -m src.excel
+
+baselines:
+	$(PY) -m src.baselines
+
 trend:
 	.venv/bin/python -m src.trend
 
