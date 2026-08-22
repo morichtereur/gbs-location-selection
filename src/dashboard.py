@@ -55,13 +55,13 @@ PILLAR_LABELS = {
     "depth": "Employer depth",
 }
 PILLAR_NOTES = {
-    "cost": "Blended ISCO 2/3/4 wage basket, USD, aged to a common year",
-    "talent": "Employed stock in the same three ISCO groups",
-    "risk": "Mean of five World Bank governance dimensions",
-    "capability": "What the market demonstrably staffs, from live postings",
-    "timezone": "Working hours shared with the headquarters",
-    "durability": "How slowly the wage gap has been closing, in dollars",
-    "depth": "Distinct employers hiring this work in the market",
+    "cost": "Wage cost per head",
+    "talent": "Size of the relevant workforce",
+    "risk": "Governance and operating stability",
+    "capability": "Does the city staff this kind of work",
+    "timezone": "Hours shared with headquarters",
+    "durability": "How slowly the cost gap is closing",
+    "depth": "How many employers hire here",
 }
 
 
@@ -70,28 +70,28 @@ PILLAR_NOTES = {
 ASOF = "August 2026"
 SOURCES = [
     {"pillar": "Cost", "name": "ILOSTAT earnings by occupation",
-     "detail": "ISCO-08 groups 2/3/4, USD, aged to a common year", "vintage": "2020–2025"},
+     "detail": "ISCO-08 2/3/4, USD, aged to a common year", "vintage": "2020–2025"},
     {"pillar": "Talent", "name": "ILOSTAT employment by occupation",
-     "detail": "modelled series, same three ISCO groups", "vintage": "2025"},
+     "detail": "same three ISCO groups", "vintage": "2025"},
     {"pillar": "Governance", "name": "World Bank Worldwide Governance Indicators",
-     "detail": "five dimensions, carried with their 90% intervals", "vintage": "2024"},
+     "detail": "five dimensions with their 90% intervals", "vintage": "2024"},
     {"pillar": "Capability", "name": "Adzuna job postings",
-     "detail": "GBS/GCC roles only, classified in two stages", "vintage": "Aug 2026"},
+     "detail": "GBS/GCC roles only", "vintage": "Aug 2026"},
     {"pillar": "Overlap", "name": "computed",
-     "detail": "working hours shared with the declared headquarters", "vintage": "—"},
+     "detail": "hours shared with headquarters", "vintage": "—"},
     {"pillar": "Durability", "name": "ILOSTAT, derived",
-     "detail": "measured wage drift, split into local wages and currency", "vintage": "2015–2025"},
+     "detail": "wage drift, split from currency", "vintage": "2015–2025"},
     {"pillar": "Employer depth", "name": "Adzuna job postings",
-     "detail": "distinct employers advertising this work, uniform fetch effort", "vintage": "Aug 2026"},
+     "detail": "distinct employers hiring", "vintage": "Aug 2026"},
 ]
 
+# Each line has to change what a reader would do with the tool. Anything that
+# only explains the tool to itself was cut.
 LIMITS = [
-    "Capability rests on 537 postings across ten markets. Switzerland contributes five and the Netherlands nine, so those shares are estimates with very wide intervals.",
-    "The classifier deciding what counts as GBS or GCC work was audited at roughly 80% precision on twenty postings adjudicated by hand. Recall is lower and unmeasured: descriptions are truncated at 500 characters, so every count is a floor.",
-    "City-level labour cost exists only for the Polish centres, from Eurostat's regional accounts. India and every market outside the EU carry their country's figure, so their centres differ from each other on capability alone.",
-    "Wage observations are three to six years old in Germany, Singapore and South Africa, and are carried forward at each market's own measured drift. South Africa's series is too short to measure one and uses the panel median — the single imputed number here.",
-    "Governance scores overlap across several markets. The World Bank's own intervals say Singapore, Switzerland, the Netherlands and Germany are not distinguishable on this measure.",
-    "One posting snapshot cannot show a trend, and a centre hiring quietly during the fetch window is under-represented. Absence is weak evidence, not a verdict.",
+    "Only Polish cities have city-level cost. The rest use their country's, so cities within them differ on capability alone — treat that order as undetermined.",
+    "Capability comes from few postings, as low as five per city. The stability column already accounts for this; the ranking below the top few is not meaningful.",
+    "The GBS/GCC classifier was audited at ~80% precision. Recall is lower — descriptions are truncated, so counts are floors.",
+    "One snapshot. A city hiring quietly during the fetch is under-represented; absence is weak evidence, not a verdict.",
 ]
 
 
@@ -122,6 +122,9 @@ def _entity(m: Market, archetype: str) -> dict:
         "timezone": m.timezone_overlap,
         "durability": m.durability,
         "postings": m.postings_in_scope,
+        # Postings that qualified the city, before the work-family classifier
+        # decided any of them. The threshold is applied to this.
+        "postingsSeen": m.postings_seen,
         # The effective binomial behind the capability share: for a centre this
         # includes the shrinkage prior, so redrawing it cannot put back the
         # noise the shrinkage removed.
@@ -149,6 +152,9 @@ def payload() -> dict:
             for k, v in C.ARCHETYPES.items()
         },
         "offsets": C.UTC_OFFSET,
+        # The headquarters selector needs market names, which city rows no
+        # longer carry. Supplied directly rather than scraped from a view.
+        "marketNames": {k: v["name"] for k, v in C.MARKETS.items()},
         "workingDay": list(C.WORKING_DAY),
         "hq": C.HQ,
         "topN": C.TOP_N,
@@ -162,15 +168,19 @@ def payload() -> dict:
         "reference": {},
     }
     for archetype in C.ARCHETYPES:
-        data["views"].setdefault("country", {})[archetype] = [
-            _entity(m, archetype) for m in countries.values() if m.complete
-        ]
+        # Cities only. A location decision picks a city, not a country, and a
+        # ranking that mixes the two compares Kraków against Germany.
         data["views"].setdefault("city", {})[archetype] = [
-            _entity(m, archetype) for m in centres.values() if m.complete
+            _entity(m, archetype)
+            for m in centres.values()
+            if m.complete and m.is_city
         ]
         # The 10,000-draw run at the declared weights, so the page can show what
         # the study concluded next to whatever the reader is now proposing.
-        stability = run(countries, archetype)
+        stability = run(
+            {k: m for k, m in centres.items() if m.complete and m.is_city},
+            archetype,
+        )
         data["reference"][archetype] = {
             k: round(v, 4) for k, v in stability.frequency.items()
         }
@@ -506,13 +516,11 @@ footer p { max-width: 78ch; }
 <body>
 <div class="wrap">
 <header>
-  <p class="eyebrow"><span id="scope"></span> · six pillars · <span id="asof"></span></p>
-  <h1>The shortlist is a function of your weights.</h1>
+  <p class="eyebrow"><span id="scope"></span> · <span id="asof"></span></p>
+  <h1>Which city, and how sure can you be?</h1>
   <p class="standfirst">
-    A location scorecard is usually presented as measurement when the decisive input was a show
-    of hands. Move a weight here and the ranking reorders; the stability column re-runs 2,000
-    weightings around wherever you just put the sliders, so you can see which part of the answer
-    is in the evidence and which part is in your opinion.
+    Set what you are buying. The ranking reorders, and <em>stability</em> shows how often each city
+    keeps a top-three place across 2,000 nearby weightings.
   </p>
 </header>
 
@@ -521,7 +529,6 @@ footer p { max-width: 78ch; }
     <div class="card">
       <h2>Centre type</h2>
       <div class="seg" id="archetype" role="group" aria-label="Centre type"></div>
-      <p class="slider-note" style="margin-top:9px" id="archetype-note"></p>
     </div>
 
     <div class="card">
@@ -537,12 +544,6 @@ footer p { max-width: 78ch; }
     </div>
 
     <div class="card">
-      <h2>Resolution</h2>
-      <div class="seg" id="view" role="group" aria-label="Resolution"></div>
-      <p class="slider-note" id="view-note"></p>
-    </div>
-
-    <div class="card">
       <h2>Where the numbers come from</h2>
       <dl class="sources" id="sources"></dl>
     </div>
@@ -551,7 +552,7 @@ footer p { max-width: 78ch; }
   <main>
     <div class="board-head">
       <h2 id="board-title"></h2>
-      <p class="hint">Segments show each pillar's contribution to the score. Hover for detail.</p>
+      <p class="hint">Bar segments are pillar contributions. Hover for detail.</p>
     </div>
     <div class="belief" id="belief"></div>
     <div class="col-head">
@@ -573,18 +574,12 @@ footer p { max-width: 78ch; }
     <details>
       <summary>Method, and what this cannot tell you</summary>
       <div class="method">
-        <h3>How a score is built</h3>
-        <ol>
-          <li>Each pillar is normalised across the candidates on screen, so every score is
-              relative to this set and not an absolute rating. Cost and talent are log-scaled
-              because both span orders of magnitude; cost is the only pillar where less is better.</li>
-          <li>Pillars are combined at the weights on the left.</li>
-          <li>The stability column re-runs the ranking 2,000 times, drawing weights around your
-              current position and redrawing every capability share from the binomial that
-              produced it. A candidate is <em>robust</em> only if it holds a top-three place in
-              90% of those runs <em>and</em> rests on at least <span id="floor-n"></span> postings.</li>
-        </ol>
-        <h3>What it cannot tell you</h3>
+        <ul>
+          <li>Scores are relative to the cities on screen, not absolute ratings.</li>
+          <li><strong>Robust</strong> means a top-three place in 90% of 2,000 reweightings
+              <em>and</em> at least <span id="floor-n"></span> postings behind it.</li>
+        </ul>
+        <h3>Limits</h3>
         <ul id="limits"></ul>
       </div>
     </details>
@@ -732,7 +727,7 @@ function belief(weights) {
 let lastPositions = new Map();
 
 function render() {
-  const rows = DATA.views[state.view][state.archetype];
+  const rows = DATA.views.city[state.archetype];
   const items = pillarValues(rows);
   const scaled = normalise(items);
   const ranked = scoreAll(scaled, state.weights);
@@ -742,10 +737,7 @@ function render() {
 
   $("#board-title").textContent =
     `${DATA.archetypes[state.archetype].label} — ${ranked.length} candidates`;
-  const centreCount = rows.filter((r) => r.isCity).length;
-  $("#scope").textContent = state.view === "city"
-    ? `${centreCount} GBS and GCC centres, ${rows.length - centreCount} markets unresolved`
-    : `${rows.length} markets`;
+  $("#scope").textContent = `${rows.length} GBS and GCC cities`;
   $("#belief").innerHTML = belief(state.weights);
 
   const host = $("#rows");
@@ -760,11 +752,13 @@ function render() {
     el.className = "row" + (i < DATA.topN ? " in-top" : "");
     el.dataset.id = r.row.id;
 
-    const sub = r.row.isCity
-      ? (r.row.costResolved
-          ? `${r.row.employers} employers · cost ${(r.row.regionIndex).toFixed(2)}× national`
-          : `${r.row.employers} employers · national cost`)
-      : (ref[r.row.id] !== undefined ? `study run: ${(ref[r.row.id] * 100).toFixed(0)}%` : "");
+    // The country first: a reader should not have to know where Poznań is to
+    // read the ranking.
+    const where = DATA.marketNames[r.row.parent] || "";
+    const costNote = r.row.costResolved
+      ? `cost ${(r.row.regionIndex).toFixed(2)}× national`
+      : "country cost";
+    const sub = `${where} · ${r.row.employers} employers · ${costNote}`;
 
     const segs = DATA.pillars.map((p) => {
       const pct = (r.parts[p] / (r.score || 1)) * 100;
@@ -824,15 +818,10 @@ function renderTable(ranked, stab) {
 }
 
 function renderFoot(rows) {
-  const resolved = rows.filter((r) => r.isCity && r.costResolved).length;
-  const cityNote = state.view === "city" && resolved
-    ? `${resolved} of them carry city-level labour cost; the rest inherit their country's. `
-    : "";
+  const resolved = rows.filter((r) => r.costResolved).length;
   $("#foot").innerHTML =
-    `Candidates qualify as GBS or GCC centres only where four or more employers advertise that ` +
-    `work there. ${cityNote}` +
-    `Method, sources and limitations are set out above; the code and the classifier audit are in the ` +
-    `<a href="https://github.com/morichtereur/gbs-location-selection">repository</a>.`;
+    `${resolved} of ${rows.length} cities have city-level cost; the rest use their country's. ` +
+    `<a href="https://github.com/morichtereur/gbs-location-selection">Method and code</a>.`;
 }
 
 /* ---- controls ---- */
@@ -845,17 +834,7 @@ function buildControls() {
     state.archetype = b.dataset.k;
     state.weights = { ...DATA.archetypes[state.archetype].weights };
     seg.querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", x.dataset.k === state.archetype));
-    syncSliders(); render(); noteArchetype();
-  });
-
-  const view = $("#view");
-  view.innerHTML = `<button type="button" data-v="city" aria-pressed="true">GBS centres</button>
-    <button type="button" data-v="country" aria-pressed="false">Countries</button>`;
-  view.addEventListener("click", (e) => {
-    const b = e.target.closest("button"); if (!b) return;
-    state.view = b.dataset.v;
-    view.querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", x.dataset.v === state.view));
-    noteView(); render();
+    syncSliders(); render();
   });
 
   $("#sliders").innerHTML = DATA.pillars.map((p) => `
@@ -875,10 +854,12 @@ function buildControls() {
   });
 
   const hq = $("#hq");
-  const names = {};
-  for (const list of Object.values(DATA.views.country)) for (const r of list) names[r.id] = r.name;
-  hq.innerHTML = Object.keys(DATA.offsets).map((k) =>
-    `<option value="${k}" ${k === state.hq ? "selected" : ""}>${names[k] || k.toUpperCase()}</option>`).join("");
+  const names = DATA.marketNames;
+  hq.innerHTML = Object.keys(DATA.offsets)
+    .sort((a, b) => (names[a] || a).localeCompare(names[b] || b))
+    .map((k) =>
+      `<option value="${k}" ${k === state.hq ? "selected" : ""}>${names[k] || k.toUpperCase()}</option>`)
+    .join("");
   hq.addEventListener("change", (e) => { state.hq = e.target.value; render(); });
 
   $("#sources").innerHTML = DATA.sources.map((x) => `
@@ -887,12 +868,12 @@ function buildControls() {
       <dd>${x.name}<br><span class="vint">${x.detail} · ${x.vintage}</span></dd>
     </div>`).join("");
   $("#limits").innerHTML = DATA.limits.map((x) => `<li>${x}</li>`).join("");
-  $("#asof").textContent = "data as at " + DATA.asOf;
+  $("#asof").textContent = `${DATA.pillars.length} pillars · ${DATA.asOf}`;
   $("#floor-n").textContent = DATA.evidenceFloor;
 
   $("#copy").addEventListener("click", copyTable);
 
-  syncSliders(); noteArchetype(); noteView();
+  syncSliders();
 }
 
 /* Viewers cannot be handed a file — a download started by the page is blocked
@@ -933,17 +914,8 @@ function syncSliders(writeInputs = true) {
     : `<strong>Every weight is zero.</strong> Raise at least one to rank anything.`;
 }
 
-function noteArchetype() {
-  const w = DATA.archetypes[state.archetype].weights;
-  const top = Object.entries(w).sort((a, b) => b[1] - a[1])[0][0];
-  $("#archetype-note").textContent =
-    `The study's declared weighting leads on ${DATA.pillarLabels[top].toLowerCase()}. Move any slider to depart from it.`;
-}
-function noteView() {
-  $("#view-note").textContent = state.view === "country"
-    ? "Ten national markets, every pillar measured at national level."
-    : "Locations where GBS roles are actually advertised by four or more employers. Filled rows carry city-level cost; the rest inherit their country's.";
-}
+
+
 
 /* ---- tooltip ---- */
 const tip = $("#tip");

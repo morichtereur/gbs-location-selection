@@ -55,6 +55,7 @@ class Market:
     region_index: float | None = None
     region_year: str | None = None
     employers: int | None = None
+    postings_seen: int | None = None
     capability_raw: float | None = None
     capability_shrunk_from: float | None = None
     transactional_share: float | None = None
@@ -305,7 +306,7 @@ def with_centres(panel: dict[str, Market]) -> dict[str, Market]:
             # Shrink toward the country, in proportion to how thin the
             # centre's own evidence is. See CAPABILITY_PRIOR_STRENGTH.
             k = C.CAPABILITY_PRIOR_STRENGTH
-            n = centre.postings
+            n = centre.decided
             row.transactional_share = (
                 n * centre.transactional_share + k * m.transactional_share
             ) / (n + k)
@@ -315,7 +316,8 @@ def with_centres(panel: dict[str, Market]) -> dict[str, Market]:
             row.capability_raw = centre.transactional_share
             row.capability_shrunk_from = m.transactional_share
             row.gcc_share = centre.gcc_share
-            row.postings_in_scope = centre.postings
+            row.postings_in_scope = centre.decided
+            row.postings_seen = centre.postings
             row.employers = centre.employers
             out[row.iso2] = row
     return out

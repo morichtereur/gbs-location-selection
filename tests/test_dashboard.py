@@ -13,7 +13,7 @@ import pytest
 
 from src import config as C
 from src.dashboard import SCORING_JS, payload
-from src.panel import build
+from src.panel import build, with_centres
 from src.score import normalise, rank, raw_pillars, score
 
 node = shutil.which("node")
@@ -24,13 +24,22 @@ needs_postings = pytest.mark.skipif(
 )
 
 
+def _city_panel():
+    """The cities the dashboard actually ranks — country rows are not shown."""
+    return {
+        k: m
+        for k, m in with_centres(build()).items()
+        if m.complete and m.is_city
+    }
+
+
 def _run_js(data: dict, archetype: str, weights: dict[str, float]) -> list[str]:
     """Rank the panel using the page's own JavaScript."""
     script = f"""
 const DATA = {json.dumps(data)};
 const state = {{ hq: DATA.hq }};
 {SCORING_JS}
-const rows = DATA.views.country[{json.dumps(archetype)}];
+const rows = DATA.views.city[{json.dumps(archetype)}];
 const ranked = scoreAll(normalise(pillarValues(rows)), {json.dumps(weights)});
 console.log(JSON.stringify(ranked.map(r => r.row.id)));
 """
@@ -48,7 +57,7 @@ console.log(JSON.stringify(ranked.map(r => r.row.id)));
 def test_javascript_ranking_matches_python(archetype):
     data = payload()
     weights = C.ARCHETYPES[archetype]["weights"]
-    panel = build()
+    panel = _city_panel()
     expected = rank(score(normalise(raw_pillars(panel, archetype)), weights))
     assert _run_js(data, archetype, weights) == expected
 
@@ -58,7 +67,7 @@ def test_javascript_ranking_matches_python(archetype):
 def test_javascript_agrees_under_a_lopsided_weighting():
     """Equal-weight and corner cases are where a normalisation bug hides."""
     data = payload()
-    panel = build()
+    panel = _city_panel()
     for weights in (
         {p: 1 / 6 for p in data["pillars"]},
         {**{p: 0.0 for p in data["pillars"]}, "cost": 1.0},
@@ -71,6 +80,7 @@ def test_javascript_agrees_under_a_lopsided_weighting():
 @needs_postings
 def test_payload_carries_every_pillar_for_every_entity():
     data = payload()
+    assert set(data["views"]) == {"city"}, "cities only"
     for view in data["views"].values():
         for archetype_rows in view.values():
             assert archetype_rows
@@ -82,12 +92,15 @@ def test_payload_carries_every_pillar_for_every_entity():
 @needs_postings
 def test_centre_rows_are_evidenced_and_declare_their_parent():
     data = payload()
-    centres = [r for r in data["views"]["city"]["transactional_hub"] if r["isCity"]]
-    assert centres, "centre view should contain centre rows"
+    centres = data["views"]["city"]["transactional_hub"]
+    assert centres, "the city view should contain cities"
+    assert all(r["isCity"] for r in centres), "no country rows in a city ranking"
     for row in centres:
         assert row["parent"] in C.MARKETS
         assert row["employers"] >= C.MIN_CENTRE_EMPLOYERS
-        assert row["postings"] >= C.MIN_CENTRE_POSTINGS
+        # The threshold qualifies a city on GBS postings seen, not on how many
+        # the work-family classifier could also read.
+        assert row["postingsSeen"] >= C.MIN_CENTRE_POSTINGS
         # Cost is either city-resolved with an index, or inherited and marked.
         assert row["costResolved"] == (row["regionIndex"] is not None)
 
@@ -109,7 +122,7 @@ def test_single_employer_locations_are_excluded():
 @needs_postings
 def test_capability_is_shrunk_toward_the_country():
     """A thin centre sample must not carry its raw share into the score."""
-    from src.panel import build, with_centres
+    from src.panel import build, with_centres, with_centres
 
     countries = build()
     for m in with_centres(countries).values():

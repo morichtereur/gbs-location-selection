@@ -13,10 +13,12 @@ market survives.
 
 ![Rank stability](data/chart_stability.png)
 
-There is also an **[interactive dashboard](dashboard.html)** — move the weights,
-watch the ranking reorder, and watch a live stability meter say how much of your
-new answer would survive somebody else's equally defensible opinion. Build it
-with `make dashboard`.
+There is also an **[interactive dashboard](dashboard.html)** — `make dashboard`.
+It ranks **cities only**: 13 places where GBS or GCC roles are actually
+advertised by four or more employers. A location decision picks a city, and a
+ranking that mixes cities with whole countries compares Kraków against Germany.
+The country panel below is what those cities inherit their non-cost pillars
+from, not a second ranking.
 
 ## Key finding
 
@@ -164,12 +166,21 @@ labour market. `make centres` prints the list and what the thresholds exclude.
 
 ![Where the work is advertised](data/chart_centres.png)
 
-That leaves **nine centres, in two markets**:
+That leaves **13 cities across four markets**:
 
-| market | centres |
+| market | cities |
 |---|---|
-| Poland | Kraków, Wrocław, Warsaw, Poznań, Gdańsk |
-| India | Pune, Bangalore, Hyderabad, Mumbai |
+| Poland | Kraków, Wrocław, Warsaw, Poznań, Gdańsk, Łódź |
+| India | Bangalore, Pune, Hyderabad, Mumbai, Chennai |
+| Brazil | São Paulo |
+| South Africa | Johannesburg |
+
+Qualifying as a city and measuring its work mix are two different questions, and
+they were wrongly answered by one number. A location is a centre if GBS roles
+are advertised there by several employers — that is the delivery classifier's
+job. Whether the *work-family* classifier could also read a given posting says
+nothing about whether the city exists, and coupling the two hid São Paulo,
+Johannesburg, Chennai and Łódź.
 
 Germany, the UK, Singapore, Mexico, the Netherlands, Spain and Switzerland all
 carry in-scope postings but too dispersed for any city to clear the thresholds.

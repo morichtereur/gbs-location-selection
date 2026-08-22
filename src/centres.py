@@ -46,6 +46,7 @@ class Centre:
     market: str
     name: str
     postings: int
+    decided: int
     employers: int
     transactional_share: float
     judgment_share: float
@@ -99,11 +100,18 @@ def survey() -> tuple[list[Centre], list[Centre]]:
         stats = shares(rows)
         if stats["n"] == 0:
             continue
+        # Qualifying as a GBS city and measuring its work mix are two different
+        # questions and were wrongly answered by one number. A location is a
+        # centre if GBS roles are advertised there by several employers — that
+        # is the delivery classifier's job. Whether the *work-family* classifier
+        # could also read a posting is irrelevant to whether the city exists,
+        # and coupling them hid São Paulo, Johannesburg, Chennai and Łódź.
         centre = Centre(
             market=market,
             name=city,
-            postings=stats["n"],
-            employers=stats["employers"],
+            postings=len(rows),
+            decided=stats["n"],
+            employers=len({r.company for r in rows}),
             transactional_share=stats["transactional_share"],
             judgment_share=stats["judgment_share"],
             gcc_share=stats["gcc_share"],
