@@ -297,15 +297,21 @@ survival rate across all of them together:
   | Arbeitnow | free and open, but German and UK applicant-tracking feeds only, and no keyword search |
   | Careerjet | legacy public API closed to new callers; v4 needs a commercial partnership |
   | OECD regional | 51 countries, none of the ones that would help: no regional rows at all for Brazil, India or Singapore |
-  | **Jooble** | covers all six, free key, **adapter written and waiting** |
+  | **Jooble** | covers all six — but **refuses automated requests at the edge** |
 
-  `make fetch` already attempts Jooble on every run and skips it with a message
-  when no key is set. Register free at
-  [jooble.org/api/about](https://jooble.org/api/about), export
-  `JOOBLE_API_KEY`, and the six markets join the panel — at country level only,
-  because Jooble returns no structured location and its postings cannot be
-  resolved to a city. The Philippines in particular is a serious omission from a
-  study about this decision.
+  Jooble was the plan, and a valid key was obtained to test it. Every request
+  returns an HTML 403 from Cloudflare, including a plain GET of the homepage:
+  the block is on the client, not the credential, and the request never reaches
+  the API. Working around bot protection is not something this project will do,
+  so the adapter ships, detects the edge block, says so plainly instead of
+  blaming the key, and the six markets stay out.
+
+  `make fetch` attempts Jooble on every run and skips it with a message when no
+  key is set, so the route is ready if the block ever lifts. Note that even
+  then the gain is a better country panel, not more cities: Jooble returns no
+  structured location field, so its postings cannot be resolved to a city and
+  the ranking is city-only. **The Philippines remains a serious omission from a
+  study about this decision, and there is currently no source that fixes it.**
 - **Attrition is absent**, and it is probably the most important factor in a
   real GBS location decision. There is no free public source, and this
   repository would rather name the hole than fill it with a number nobody

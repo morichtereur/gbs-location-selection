@@ -158,6 +158,16 @@ def payload() -> dict:
             for k, v in C.ARCHETYPES.items()
         },
         "offsets": C.UTC_OFFSET,
+        # Headquarters options are independent of the scored markets: the HQ is
+        # the clock, not a candidate.
+        "hqGroups": {
+            region: [
+                {"key": k, "label": label, "offset": offset}
+                for k, (label, offset) in places.items()
+            ]
+            for region, places in C.HQ_LOCATIONS.items()
+        },
+        "hqOffsets": {k: v[1] for k, v in C.HQ_BY_KEY.items()},
         # The headquarters selector needs market names, which city rows no
         # longer carry. Supplied directly rather than scraped from a view.
         "marketNames": {k: v["name"] for k, v in C.MARKETS.items()},
@@ -235,7 +245,7 @@ SCORING_JS = r"""/* ---- scoring: mirrors src/score.py exactly ---- */
 function overlapHours(id, hq) {
   const market = DATA.offsets[id];
   if (market === undefined) return null;
-  const shift = market - DATA.offsets[hq];
+  const shift = market - (DATA.hqOffsets[hq] ?? DATA.offsets[hq] ?? 0);
   const [s, e] = DATA.workingDay;
   return Math.max(0, Math.min(e, e - shift) - Math.max(s, s - shift));
 }
@@ -557,7 +567,7 @@ footer p { max-width: 78ch; }
     <div class="card">
       <h2>Headquarters</h2>
       <select id="hq" aria-label="Headquarters location"></select>
-      <p class="slider-note">Sets the working-hours overlap each market is scored on.</p>
+      <p class="slider-note">Sets the hours each city is scored on sharing with you.</p>
     </div>
 
     <div class="card">
@@ -918,13 +928,17 @@ function buildControls() {
     });
   });
 
+  // Grouped by region and labelled with the offset, because the whole point of
+  // the control is the time difference it implies.
   const hq = $("#hq");
-  const names = DATA.marketNames;
-  hq.innerHTML = Object.keys(DATA.offsets)
-    .sort((a, b) => (names[a] || a).localeCompare(names[b] || b))
-    .map((k) =>
-      `<option value="${k}" ${k === state.hq ? "selected" : ""}>${names[k] || k.toUpperCase()}</option>`)
-    .join("");
+  hq.innerHTML = Object.entries(DATA.hqGroups).map(([region, places]) =>
+    `<optgroup label="${region}">` + places.map((x) => {
+      const sign = x.offset < 0 ? "\u2212" : "+";
+      const abs = Math.abs(x.offset);
+      const off = Number.isInteger(abs) ? abs : abs.toFixed(1);
+      return `<option value="${x.key}" ${x.key === state.hq ? "selected" : ""}>`
+           + `${x.label} (UTC${sign}${off})</option>`;
+    }).join("") + `</optgroup>`).join("");
   hq.addEventListener("change", (e) => { state.hq = e.target.value; render(); });
 
   $("#sources").innerHTML = DATA.sources.map((x) => `

@@ -224,7 +224,52 @@ CENTRE_NUTS = {
 # Standard-time UTC offsets. Daylight saving is deliberately ignored: it moves
 # most of these markets together, and modelling it would imply a precision that
 # a 9-to-5 working-day abstraction does not have.
-HQ = "ch"
+# The headquarters is not a candidate — it is the clock the candidates are
+# measured against, and it needs nothing from the panel but an offset. Tying
+# the selector to the eleven scored markets left out the United States, which
+# sponsors a large share of GBS work, along with every other place a CFO
+# organisation actually sits.
+#
+# Cities rather than countries: a headquarters is in a city, and the United
+# States alone spans five hours. Grouped by region for the selector.
+HQ = "zurich"
+HQ_LOCATIONS = {
+    "Americas": {
+        "san-francisco": ("San Francisco", -8.0),
+        "chicago": ("Chicago", -6.0),
+        "mexico-city": ("Mexico City", -6.0),
+        "new-york": ("New York", -5.0),
+        "toronto": ("Toronto", -5.0),
+        "sao-paulo": ("São Paulo", -3.0),
+    },
+    "Europe": {
+        "dublin": ("Dublin", 0.0),
+        "london": ("London", 0.0),
+        "amsterdam": ("Amsterdam", 1.0),
+        "frankfurt": ("Frankfurt", 1.0),
+        "madrid": ("Madrid", 1.0),
+        "paris": ("Paris", 1.0),
+        "stockholm": ("Stockholm", 1.0),
+        "warsaw": ("Warsaw", 1.0),
+        "zurich": ("Zurich", 1.0),
+    },
+    "Middle East & Africa": {
+        "johannesburg": ("Johannesburg", 2.0),
+        "dubai": ("Dubai", 4.0),
+    },
+    "Asia-Pacific": {
+        "bengaluru": ("Bengaluru", 5.5),
+        "singapore": ("Singapore", 8.0),
+        "hong-kong": ("Hong Kong", 8.0),
+        "shanghai": ("Shanghai", 8.0),
+        "tokyo": ("Tokyo", 9.0),
+        "sydney": ("Sydney", 10.0),
+    },
+}
+
+# Flattened for lookup: key -> (label, offset).
+HQ_BY_KEY = {k: v for group in HQ_LOCATIONS.values() for k, v in group.items()}
+
 UTC_OFFSET = {
     "ch": 1.0, "de": 1.0, "nl": 1.0, "es": 1.0, "pl": 1.0,
     "gb": 0.0, "za": 2.0, "in": 5.5, "sg": 8.0, "mx": -6.0,

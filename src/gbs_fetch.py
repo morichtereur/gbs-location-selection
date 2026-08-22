@@ -122,10 +122,28 @@ def _jooble_page(key: str, country: str, term: str, page: int) -> list[dict]:
         timeout=45,
     )
     if response.status_code != 200:
+        # Distinguish the two failures, because they need opposite responses and
+        # look identical in a status code. Cloudflare serves an HTML error page
+        # when it blocks a client at the edge — that is bot protection refusing
+        # automated access, and the request never reaches Jooble, so no key will
+        # fix it. A JSON body is Jooble itself answering, and there a 403 really
+        # does mean the credential.
+        body = response.text[:200].lstrip("\ufeff")
+        edge_block = body.lstrip().startswith("<") or "cloudflare" in (
+            response.headers.get("server", "").lower()
+        )
+        if edge_block:
+            raise RuntimeError(
+                f"Jooble is refusing automated requests at the edge "
+                f"(HTTP {response.status_code}, Cloudflare) for {country}. This "
+                "is not a key problem and cannot be worked around — the block is "
+                "the site declining programmatic access. Leave these markets out "
+                "or use a source that permits it."
+            )
         raise RuntimeError(
-            f"Jooble returned HTTP {response.status_code} for {country}. A 403 "
-            "means the key is not valid — register a free one at "
-            "https://jooble.org/api/about and set JOOBLE_API_KEY."
+            f"Jooble returned HTTP {response.status_code} for {country}: "
+            f"{body}. Check JOOBLE_API_KEY; register free at "
+            "https://jooble.org/api/about."
         )
     payload = response.json()
     return payload.get("jobs", payload.get("results", []))
