@@ -148,7 +148,13 @@ def payload() -> dict:
         "lowerIsBetter": sorted(LOWER_IS_BETTER),
         "logScaled": sorted(LOG_SCALED),
         "archetypes": {
-            k: {"label": v["label"], "weights": v["weights"]}
+            k: {
+                "label": v["label"],
+                # A headline states a finding and has to stay short; the full
+                # label is the control's job, not the sentence's.
+                "short": v["label"].replace(" centre of excellence", " centre"),
+                "weights": v["weights"],
+            }
             for k, v in C.ARCHETYPES.items()
         },
         "offsets": C.UTC_OFFSET,
@@ -353,12 +359,12 @@ header { border-bottom: 1px solid var(--rule-strong); padding-bottom: 20px; marg
 }
 h1 {
   font-family: var(--sans); font-weight: 700;
-  font-size: clamp(30px, 4.2vw, 46px); line-height: 1.04;
-  letter-spacing: -.028em; margin: 0 0 14px; text-wrap: balance;
+  font-size: clamp(27px, 3.6vw, 40px); line-height: 1.08;
+  letter-spacing: -.026em; margin: 0 0 12px; text-wrap: balance; max-width: 24ch;
 }
 .standfirst {
-  font-family: var(--serif); margin: 0; max-width: 60ch;
-  color: var(--ink-2); font-size: 17.5px; line-height: 1.5; text-wrap: pretty;
+  font-family: var(--serif); margin: 0; max-width: 58ch;
+  color: var(--ink-2); font-size: 16.5px; line-height: 1.5; text-wrap: pretty;
 }
 
 .layout { display: grid; grid-template-columns: 310px minmax(0,1fr); gap: 32px; align-items: start; }
@@ -406,9 +412,23 @@ select {
 }
 .belief b { font-weight: 600; color: var(--ink); }
 
-.board-head { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 6px; }
-.board-head h2 { margin: 0; font-size: 21px; font-weight: 700; letter-spacing: -.018em; }
-.hint { font-size: 12.5px; color: var(--ink-3); margin: 0; }
+/* Exhibit framing: a label, a title that states the reading rather than naming
+   the chart, and a source line under the body. */
+.exhibit-head { border-top: 2px solid var(--ink); padding-top: 10px; margin-bottom: 4px; }
+.exhibit-label {
+  font-family: var(--mono); font-size: 10px; letter-spacing: .16em;
+  text-transform: uppercase; color: var(--ink-3); margin: 0 0 6px;
+}
+.exhibit-head h2 {
+  margin: 0; font-size: 19.5px; font-weight: 600; letter-spacing: -.014em;
+  line-height: 1.25; text-wrap: balance; max-width: 54ch;
+}
+.hint { font-size: 12px; color: var(--ink-3); margin: 6px 0 0; }
+.exhibit-source {
+  font-family: var(--mono); font-size: 10.5px; line-height: 1.5; color: var(--ink-3);
+  margin: 12px 0 0; padding-top: 9px; border-top: 1px solid var(--rule);
+  max-width: 92ch;
+}
 
 .col-head {
   display: grid; grid-template-columns: 26px minmax(112px, 180px) minmax(0,1fr) 62px 92px;
@@ -517,11 +537,8 @@ footer p { max-width: 78ch; }
 <div class="wrap">
 <header>
   <p class="eyebrow"><span id="scope"></span> · <span id="asof"></span></p>
-  <h1>Which city, and how sure can you be?</h1>
-  <p class="standfirst">
-    Set what you are buying. The ranking reorders, and <em>stability</em> shows how often each city
-    keeps a top-three place across 2,000 nearby weightings.
-  </p>
+  <h1 id="headline">Which city, and how sure can you be?</h1>
+  <p class="standfirst" id="takeaway"></p>
 </header>
 
 <div class="layout">
@@ -550,7 +567,8 @@ footer p { max-width: 78ch; }
   </aside>
 
   <main>
-    <div class="board-head">
+    <div class="exhibit-head">
+      <p class="exhibit-label">Exhibit 1</p>
       <h2 id="board-title"></h2>
       <p class="hint">Bar segments are pillar contributions. Hover for detail.</p>
     </div>
@@ -561,6 +579,8 @@ footer p { max-width: 78ch; }
     </div>
     <div class="rows" id="rows"></div>
     <div class="legend" id="legend"></div>
+
+    <p class="exhibit-source" id="exhibit-source"></p>
 
     <details>
       <summary>Table view — every number behind the ranking</summary>
@@ -708,6 +728,36 @@ function verdict(f, row) {
   return "never";
 }
 
+/* ---- answer first ----
+   A consulting exhibit leads with the finding, not the subject, and the finding
+   here changes every time a weight moves. The headline is therefore written
+   from the current result rather than fixed in the markup: what survives, and
+   what it would take to believe otherwise. */
+function writeHeadline(ranked, stab) {
+  const robust = ranked.filter((r) => verdict(stab.get(r.row.id) ?? 0, r.row) === "robust");
+  const lead = ranked[0];
+  const arch = DATA.archetypes[state.archetype].short.toLowerCase();
+
+  let headline;
+  if (robust.length === 1) {
+    headline = `Only ${robust[0].row.name} survives a change of mind.`;
+  } else if (robust.length > 1) {
+    const names = robust.slice(0, 3).map((r) => r.row.name);
+    headline = `${names.join(", ")} survive a change of mind.`;
+  } else {
+    headline = `No city holds up as a ${arch}.`;
+  }
+  $("#headline").textContent = headline;
+
+  const pct = ((stab.get(lead.row.id) ?? 0) * 100).toFixed(0);
+  const where = DATA.marketNames[lead.row.parent] || "";
+  $("#takeaway").innerHTML = robust.length
+    ? `<strong>${lead.row.name}</strong> (${where}) leads and holds a top-three place in `
+      + `${pct}% of 2,000 nearby weightings.`
+    : `<strong>${lead.row.name}</strong> (${where}) leads on your weighting but holds a `
+      + `top-three place in only ${pct}% of 2,000 nearby ones — the ranking is yours, not the evidence's.`;
+}
+
 /* ---- what your weighting believes ---- */
 function belief(weights) {
   const entries = DATA.pillars.map((p) => [p, weights[p]]).sort((a, b) => b[1] - a[1]);
@@ -735,8 +785,9 @@ function render() {
   const ref = DATA.reference[state.archetype];
   const C = colors();
 
+  writeHeadline(ranked, stab);
   $("#board-title").textContent =
-    `${DATA.archetypes[state.archetype].label} — ${ranked.length} candidates`;
+    `${DATA.archetypes[state.archetype].label}: ${ranked.length} cities ranked on your weighting`;
   $("#scope").textContent = `${rows.length} GBS and GCC cities`;
   $("#belief").innerHTML = belief(state.weights);
 
@@ -800,6 +851,7 @@ function render() {
     `<span><i class="swatch" style="background:${C[p]}"></i>${DATA.pillarLabels[p]}</span>`).join("");
 
   renderTable(ranked, stab);
+  renderSource(rows);
   renderFoot(rows);
 }
 
@@ -815,6 +867,19 @@ function renderTable(ranked, stab) {
       DATA.pillars.map((p) => `<td>${r.scaled[p].toFixed(2)}</td>`).join("") +
       `<td>${r.score.toFixed(3)}</td><td>${((stab.get(r.row.id) ?? 0) * 100).toFixed(0)}%</td></tr>`
     ).join("") + "</tbody>";
+}
+
+/* Every exhibit carries its own source. A reader should not have to open a
+   panel to learn what the numbers are made of. */
+function renderSource(rows) {
+  const resolved = rows.filter((r) => r.costResolved).length;
+  const thin = rows.filter((r) => r.postings != null && r.postings < DATA.evidenceFloor).length;
+  $("#exhibit-source").innerHTML =
+    `Source: ILOSTAT earnings and employment by occupation; World Bank Worldwide Governance ` +
+    `Indicators; Eurostat regional accounts; ${rows.length} cities from a GBS/GCC job-posting ` +
+    `sample, ${DATA.asOf}. ` +
+    `Note: ${resolved} of ${rows.length} cities have city-level cost, the rest their country's; ` +
+    `${thin} rest on fewer than ${DATA.evidenceFloor} postings and cannot be called robust.`;
 }
 
 function renderFoot(rows) {
