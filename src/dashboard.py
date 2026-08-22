@@ -55,13 +55,15 @@ PILLAR_LABELS = {
     "depth": "Employer depth",
 }
 PILLAR_NOTES = {
-    "cost": "Wage cost per head",
-    "talent": "Size of the relevant workforce",
-    "risk": "Governance and operating stability",
-    "capability": "Does the city staff this kind of work",
-    "timezone": "Hours shared with headquarters",
-    "durability": "How slowly the cost gap is closing",
-    "depth": "How many employers hire here",
+    # Phrased as what raising the slider does. "Wage cost per head" describes
+    # the pillar; it does not tell a reader what setting it to 30% means.
+    "cost": "Favours cheaper labour",
+    "talent": "Favours a larger relevant workforce",
+    "risk": "Favours stable, well-governed markets",
+    "capability": "Favours cities already doing this work",
+    "timezone": "Favours cities inside your working day",
+    "durability": "Favours markets whose cost gap is closing slowly",
+    "depth": "Favours markets where more employers hire",
 }
 
 
@@ -414,20 +416,37 @@ h1 {
 .seg button[aria-pressed="true"] { background: var(--accent); color: #fff; }
 .seg button:focus-visible { outline: 2px solid var(--ink); outline-offset: -2px; }
 
+.panel-note {
+  font-size: 11.5px; line-height: 1.4; color: var(--ink-3);
+  margin: -4px 0 14px;
+}
 .slider-row { margin-bottom: 14px; }
 .slider-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 3px; }
 .slider-name { display: flex; align-items: center; gap: 7px; font-size: 13.5px; }
 .swatch { width: 10px; height: 10px; flex: none; border-radius: 2px; }
 .slider-val { font-family: var(--mono); font-size: 12.5px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
 .slider-note { font-size: 11.5px; color: var(--ink-3); margin: 2px 0 0; line-height: 1.35; }
-input[type=range] { width: 100%; accent-color: var(--accent); margin: 2px 0 0; }
+.track { position: relative; }
+input[type=range] { width: 100%; accent-color: var(--accent); margin: 2px 0 0; display: block; }
+/* Where the chosen centre type put this weight, so departure is visible. */
+.preset {
+  position: absolute; top: 1px; width: 1px; height: 13px;
+  background: var(--ink-3); opacity: .55; pointer-events: none;
+}
+.slider-val .was { color: var(--ink-3); font-size: 11px; }
 
 select {
   width: 100%; padding: 6px 8px; font: inherit; font-size: 13px;
   background: var(--panel-2); color: var(--ink); border: 1px solid var(--rule-strong);
 }
 
-.reads { margin: 0; font-size: 13px; color: var(--ink-2); }
+.reads { margin: 0; font-size: 12px; color: var(--ink-3); }
+#reset-weights {
+  font: inherit; font-size: 12px; padding: 4px 10px; cursor: pointer;
+  background: var(--panel-2); color: var(--ink); border: 1px solid var(--rule-strong);
+}
+#reset-weights:hover { border-color: var(--accent); color: var(--accent); }
+#reset-weights:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .reads strong { color: var(--ink); font-weight: 600; }
 
 .belief {
@@ -595,6 +614,10 @@ footer p { max-width: 78ch; }
 
     <div class="card">
       <h2>Weights</h2>
+      <p class="panel-note">
+        Each number is that pillar's share of the decision. They always total 100%,
+        so raising one lowers the rest.
+      </p>
       <div id="sliders"></div>
       <p class="reads" id="weight-sum"></p>
     </div>
@@ -1047,7 +1070,8 @@ function buildControls() {
         <span class="slider-name"><i class="swatch" style="background:${DATA.colors[p]}"></i>${DATA.pillarLabels[p]}</span>
         <span class="slider-val" id="val-${p}"></span>
       </div>
-      <input type="range" id="w-${p}" min="0" max="60" step="1" aria-label="${DATA.pillarLabels[p]} weight">
+      <div class="track"><input type="range" id="w-${p}" min="0" max="60" step="1"
+        aria-label="${DATA.pillarLabels[p]} weight"><i class="preset" id="preset-${p}"></i></div>
       <p class="slider-note">${DATA.pillarNotes[p]}</p>
     </div>`).join("");
   DATA.pillars.forEach((p) => {
@@ -1116,11 +1140,33 @@ function syncSliders(writeInputs = true) {
   DATA.pillars.forEach((p) => {
     if (writeInputs) $(`#w-${p}`).value = Math.round(state.weights[p] * 100);
     const share = total ? state.weights[p] / total : 0;
-    $(`#val-${p}`).textContent = (share * 100).toFixed(0) + "%";
+    const shown = Math.round(share * 100);
+    const preset = DATA.archetypes[state.archetype].weights[p];
+    const presetPct = Math.round(preset * 100);
+    // Only flag a real departure, not a rounding wobble from renormalising.
+    $(`#val-${p}`).innerHTML = Math.abs(shown - presetPct) > 1
+      ? `${shown}% <span class="was">was ${presetPct}%</span>`
+      : `${shown}%`;
+    const mark = $(`#preset-${p}`);
+    if (mark) mark.style.left = `calc(${(preset / 0.60) * 100}% )`;
   });
-  $("#weight-sum").innerHTML = total > 0
-    ? `Weights are normalised to 100%. <strong>Reset</strong> by reselecting a centre type.`
-    : `<strong>Every weight is zero.</strong> Raise at least one to rank anything.`;
+  const moved = DATA.pillars.some((p) => {
+    const share = total ? state.weights[p] / total : 0;
+    const preset = DATA.archetypes[state.archetype].weights[p];
+    return Math.abs(Math.round(share * 100) - Math.round(preset * 100)) > 1;
+  });
+  $("#weight-sum").innerHTML = total <= 0
+    ? `<strong>Every weight is zero.</strong> Raise at least one to rank anything.`
+    : moved
+      ? `<button type="button" id="reset-weights">Reset to ${DATA.archetypes[state.archetype].short}</button>`
+      : `Tick marks show where this centre type starts.`;
+  const reset = $("#reset-weights");
+  if (reset) {
+    reset.addEventListener("click", () => {
+      state.weights = { ...DATA.archetypes[state.archetype].weights };
+      syncSliders(); render();
+    });
+  }
 }
 
 
