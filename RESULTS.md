@@ -1,21 +1,25 @@
 # Results
 
-Ten markets, 10,000 draws per archetype, panel assembled 2026.
+Ten markets scored on six pillars, 10,000 draws per archetype. Panel assembled 2026; capability from the GBS/GCC posting sample. Every figure below is reproduced by `make run`.
 
 ## The panel
 
-| market | wage basket USD/mo | obs. year | lag | talent scale proxy | WGI composite | transactional share | postings |
-|---|---:|---:|---:|---:|---:|---:|---:|
-| India | 336 | 2025 | 1y | 20,051,084 | 52.6 | 61.2% | 103 |
-| South Africa | 711 | 2020 | 6y | 1,587,992 | 51.5 | 53.8% | 26 |
-| Mexico | 743 | 2025 | 1y | 5,044,526 | 43.7 | 85.7% | 14 |
-| Poland | 2,404 | 2025 | 1y | 2,871,214 | 67.1 | 55.7% | 97 |
-| Singapore | 3,503 | 2021 | 5y | 678,114 | 88.1 | 52.0% | 25 |
-| United Kingdom | 3,567 | 2025 | 1y | 5,469,080 | 76.1 | 69.8% | 43 |
-| Spain | 4,069 | 2025 | 1y | 3,056,248 | 67.8 | 72.7% | 11 |
-| Germany | 5,048 | 2022 | 4y | 8,221,650 | 79.3 | 55.3% | 38 |
-| Netherlands | 6,326 | 2025 | 1y | 1,983,881 | 82.7 | 33.3% | 9 |
-| Switzerland | 8,109 | 2025 | 1y | 922,517 | 85.7 | 60.0% | 5 |
+Cost is the blended ISCO-08 2/3/4 wage basket in USD, aged to a common year at each market's own measured drift. Talent is the employed stock in the same three groups. Governance is the mean of five World Bank dimensions. Capability and its sample size come from postings classified as GBS or GCC work — note how small some of them are.
+
+| market | cost USD/mo | obs. year | lag | wage drift | employed stock | governance | transactional | postings |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| India | 336 | 2025 | 1y | 1.7% | 20,051,084 | 52.6 | 61.2% | 103 |
+| South Africa | 711 | 2020 | 6y | 3.2% * | 1,587,992 | 51.5 | 53.8% | 26 |
+| Mexico | 743 | 2025 | 1y | 3.8% | 5,044,526 | 43.7 | 85.7% | 14 |
+| Poland | 2,404 | 2025 | 1y | 8.5% | 2,871,214 | 67.1 | 55.7% | 97 |
+| Singapore | 3,503 | 2021 | 5y | 1.4% | 678,114 | 88.1 | 52.0% | 25 |
+| United Kingdom | 3,567 | 2025 | 1y | 3.6% | 5,469,080 | 76.1 | 69.8% | 43 |
+| Spain | 4,069 | 2025 | 1y | 4.6% | 3,056,248 | 67.8 | 72.7% | 11 |
+| Germany | 5,048 | 2022 | 4y | 3.0% | 8,221,650 | 79.3 | 55.3% | 38 |
+| Netherlands | 6,326 | 2025 | 1y | 3.2% | 1,983,881 | 82.7 | 33.3% | 9 |
+| Switzerland | 8,109 | 2025 | 1y | 2.2% | 922,517 | 85.7 | 60.0% | 5 |
+
+`*` drift not measurable from the available series; the panel median is used, and it is the only imputed number in the panel.
 
 ## Transactional hub
 

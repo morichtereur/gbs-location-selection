@@ -60,6 +60,34 @@ PILLAR_NOTES = {
 }
 
 
+# Shown in the interface, not only in the repository. A reader in a review
+# should be able to see where every pillar comes from without leaving the page.
+ASOF = "August 2026"
+SOURCES = [
+    {"pillar": "Cost", "name": "ILOSTAT earnings by occupation",
+     "detail": "ISCO-08 groups 2/3/4, USD, aged to a common year", "vintage": "2020–2025"},
+    {"pillar": "Talent", "name": "ILOSTAT employment by occupation",
+     "detail": "modelled series, same three ISCO groups", "vintage": "2025"},
+    {"pillar": "Governance", "name": "World Bank Worldwide Governance Indicators",
+     "detail": "five dimensions, carried with their 90% intervals", "vintage": "2024"},
+    {"pillar": "Capability", "name": "Adzuna job postings",
+     "detail": "GBS/GCC roles only, classified in two stages", "vintage": "Aug 2026"},
+    {"pillar": "Overlap", "name": "computed",
+     "detail": "working hours shared with the declared headquarters", "vintage": "—"},
+    {"pillar": "Durability", "name": "ILOSTAT, derived",
+     "detail": "each market's own measured wage drift", "vintage": "2015–2025"},
+]
+
+LIMITS = [
+    "Capability rests on 537 postings across ten markets. Switzerland contributes five and the Netherlands nine, so those shares are estimates with very wide intervals.",
+    "The classifier deciding what counts as GBS or GCC work was audited at roughly 80% precision on twenty postings adjudicated by hand. Recall is lower and unmeasured: descriptions are truncated at 500 characters, so every count is a floor.",
+    "City-level labour cost exists only for the Polish centres, from Eurostat's regional accounts. India and every market outside the EU carry their country's figure, so their centres differ from each other on capability alone.",
+    "Wage observations are three to six years old in Germany, Singapore and South Africa, and are carried forward at each market's own measured drift. South Africa's series is too short to measure one and uses the panel median — the single imputed number here.",
+    "Governance scores overlap across several markets. The World Bank's own intervals say Singapore, Switzerland, the Netherlands and Germany are not distinguishable on this measure.",
+    "One posting snapshot cannot show a trend, and a centre hiring quietly during the fetch window is under-represented. Absence is weak evidence, not a verdict.",
+]
+
+
 def _entity(m: Market, archetype: str) -> dict:
     metric = C.ARCHETYPES[archetype]["capability_metric"]
     return {
@@ -112,6 +140,10 @@ def payload() -> dict:
         "hq": C.HQ,
         "topN": C.TOP_N,
         "robustAt": C.ROBUST_AT,
+        "evidenceFloor": C.EVIDENCE_FLOOR,
+        "sources": SOURCES,
+        "limits": LIMITS,
+        "asOf": ASOF,
         "evidenceFloor": C.EVIDENCE_FLOOR,
         "views": {},
         "reference": {},
@@ -328,12 +360,28 @@ select {
 .board-head h2 { margin: 0; font-size: 19px; letter-spacing: -.01em; }
 .hint { font-size: 12.5px; color: var(--ink-3); margin: 0; }
 
-.rows { position: relative; margin-top: 14px; }
+.col-head {
+  display: grid; grid-template-columns: 26px minmax(112px, 180px) minmax(0,1fr) 62px 92px;
+  gap: 12px; margin-top: 18px; padding-bottom: 5px;
+  border-bottom: 1px solid var(--rule-strong);
+}
+.ch-num {
+  text-align: right; font-family: ui-monospace, Menlo, monospace; font-size: 10px;
+  text-transform: uppercase; letter-spacing: .07em; color: var(--ink-3);
+}
+@media (max-width: 780px) { .col-head { display: none; } }
+.rows { position: relative; margin-top: 0; }
 .row {
-  display: grid; grid-template-columns: 26px minmax(120px, 190px) minmax(0,1fr) 96px;
+  display: grid; grid-template-columns: 26px minmax(112px, 180px) minmax(0,1fr) 62px 92px;
   gap: 12px; align-items: center; padding: 7px 0; border-bottom: 1px solid var(--rule);
 }
-@media (max-width: 700px) { .row { grid-template-columns: 22px 1fr; row-gap: 6px; } .row .bar-cell, .row .stab { grid-column: 1 / -1; } }
+@media (max-width: 780px) {
+  .row { grid-template-columns: 22px 1fr auto; row-gap: 6px; }
+  .row .bar-cell { grid-column: 1 / -1; }
+}
+.evidence { text-align: right; font-family: ui-monospace, Menlo, monospace; font-size: 12px;
+  color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.evidence .thin { color: var(--warn); }
 .rank { font-family: ui-monospace, Menlo, monospace; font-size: 12px; color: var(--ink-3); text-align: right; font-variant-numeric: tabular-nums; }
 .who { min-width: 0; }
 .who .nm { display: block; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -349,8 +397,44 @@ select {
 .tag.never { color: var(--warn); }
 .in-top { box-shadow: inset 3px 0 0 var(--accent); }
 
+.sources { margin: 0; display: grid; gap: 9px; }
+.sources div { display: grid; gap: 1px; }
+.sources dt {
+  font-family: ui-monospace, Menlo, monospace; font-size: 10px; text-transform: uppercase;
+  letter-spacing: .07em; color: var(--ink-3);
+}
+.sources dd { margin: 0; font-size: 12.5px; line-height: 1.35; }
+.sources .vint { color: var(--ink-3); font-size: 11.5px; }
+
 .legend { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 14px; font-size: 12px; color: var(--ink-2); }
 .legend span { display: inline-flex; align-items: center; gap: 6px; }
+
+.table-actions { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
+.table-actions button {
+  font: inherit; font-size: 12.5px; padding: 5px 11px; cursor: pointer;
+  background: var(--panel); color: var(--ink); border: 1px solid var(--rule-strong);
+}
+.table-actions button:hover { border-color: var(--accent); color: var(--accent); }
+.table-actions button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.copy-status { font-size: 12px; color: var(--ink-3); }
+.table-scroll { overflow-x: auto; }
+
+.method { font-size: 13.5px; line-height: 1.55; max-width: 78ch; }
+.method h3 {
+  font-family: ui-monospace, Menlo, monospace; font-size: 10.5px; text-transform: uppercase;
+  letter-spacing: .09em; color: var(--ink-3); margin: 16px 0 6px; font-weight: 600;
+}
+.method ol, .method ul { margin: 0; padding-left: 18px; display: grid; gap: 7px; }
+.method li { color: var(--ink-2); }
+
+@media print {
+  .rail, .table-actions, .hint { display: none; }
+  .layout { grid-template-columns: minmax(0,1fr); }
+  details { break-inside: avoid; }
+  details > summary { display: none; }
+  details > * { display: revert; }
+  body { background: #fff; }
+}
 
 details { margin-top: 26px; border-top: 1px solid var(--rule-strong); padding-top: 14px; }
 summary { cursor: pointer; font-size: 13.5px; color: var(--ink-2); }
@@ -379,13 +463,13 @@ footer p { max-width: 78ch; }
 <body>
 <div class="wrap">
 <header>
-  <p class="eyebrow">GBS Location Selection · ten markets, six pillars</p>
+  <p class="eyebrow"><span id="scope"></span> · six pillars · <span id="asof"></span></p>
   <h1>The shortlist is a function of your weights.</h1>
   <p class="standfirst">
-    Move a weight and watch the ranking reorder. The stability column shows how often each
-    market keeps a top-three place across 2,000 weightings drawn around wherever you have just
-    put the sliders — so you can see which part of your answer is in the data and which part
-    is in your opinion.
+    A location scorecard is usually presented as measurement when the decisive input was a show
+    of hands. Move a weight here and the ranking reorders; the stability column re-runs 2,000
+    weightings around wherever you just put the sliders, so you can see which part of the answer
+    is in the evidence and which part is in your opinion.
   </p>
 </header>
 
@@ -414,20 +498,52 @@ footer p { max-width: 78ch; }
       <div class="seg" id="view" role="group" aria-label="Resolution"></div>
       <p class="slider-note" id="view-note"></p>
     </div>
+
+    <div class="card">
+      <h2>Where the numbers come from</h2>
+      <dl class="sources" id="sources"></dl>
+    </div>
   </aside>
 
   <main>
     <div class="board-head">
       <h2 id="board-title"></h2>
-      <p class="hint">Bar segments are each pillar's contribution to the score. Hover for detail.</p>
+      <p class="hint">Segments show each pillar's contribution to the score. Hover for detail.</p>
     </div>
     <div class="belief" id="belief"></div>
+    <div class="col-head">
+      <span></span><span></span><span></span>
+      <span class="ch-num">postings</span><span class="ch-num">top-3 across reweightings</span>
+    </div>
     <div class="rows" id="rows"></div>
     <div class="legend" id="legend"></div>
 
     <details>
       <summary>Table view — every number behind the ranking</summary>
-      <table id="table"><caption></caption></table>
+      <div class="table-actions">
+        <button type="button" id="copy">Copy table</button>
+        <span class="copy-status" id="copy-status" role="status"></span>
+      </div>
+      <div class="table-scroll"><table id="table"><caption></caption></table></div>
+    </details>
+
+    <details>
+      <summary>Method, and what this cannot tell you</summary>
+      <div class="method">
+        <h3>How a score is built</h3>
+        <ol>
+          <li>Each pillar is normalised across the candidates on screen, so every score is
+              relative to this set and not an absolute rating. Cost and talent are log-scaled
+              because both span orders of magnitude; cost is the only pillar where less is better.</li>
+          <li>Pillars are combined at the weights on the left.</li>
+          <li>The stability column re-runs the ranking 2,000 times, drawing weights around your
+              current position and redrawing every capability share from the binomial that
+              produced it. A candidate is <em>robust</em> only if it holds a top-three place in
+              90% of those runs <em>and</em> rests on at least <span id="floor-n"></span> postings.</li>
+        </ol>
+        <h3>What it cannot tell you</h3>
+        <ul id="limits"></ul>
+      </div>
     </details>
 
     <footer>
@@ -583,6 +699,10 @@ function render() {
 
   $("#board-title").textContent =
     `${DATA.archetypes[state.archetype].label} — ${ranked.length} candidates`;
+  const centreCount = rows.filter((r) => r.isCity).length;
+  $("#scope").textContent = state.view === "city"
+    ? `${centreCount} GBS and GCC centres, ${rows.length - centreCount} markets unresolved`
+    : `${rows.length} markets`;
   $("#belief").innerHTML = belief(state.weights);
 
   const host = $("#rows");
@@ -609,10 +729,16 @@ function render() {
         data-p="${p}" data-name="${r.row.name}"></div>`;
     }).join("");
 
+    const n = r.row.postings;
+    const thin = r.row.isCity && n != null && n < DATA.evidenceFloor;
+    const evidence = n == null ? "—"
+      : `<span class="${thin ? "thin" : ""}">${n}</span>`;
+
     el.innerHTML =
       `<div class="rank">${i + 1}</div>` +
       `<div class="who"><span class="nm">${r.row.name}</span><span class="sub">${sub}</span></div>` +
       `<div class="bar-cell"><div class="bar">${segs}</div></div>` +
+      `<div class="evidence" title="postings behind the capability pillar">${evidence}</div>` +
       `<div class="stab"><span class="pct">${(f * 100).toFixed(0)}%</span>` +
       `<span class="tag ${v}">${v}</span></div>`;
     host.appendChild(el);
@@ -655,20 +781,15 @@ function renderTable(ranked, stab) {
 }
 
 function renderFoot(rows) {
-  const stale = rows.filter((r) => r.costLag > 1);
-  const imputed = rows.filter((r) => r.driftMeasured === false);
   const resolved = rows.filter((r) => r.isCity && r.costResolved).length;
-  const unresolved = rows.filter((r) => r.isCity && !r.costResolved).length;
-  const cityNote = state.view === "city"
-    ? ` Centres are evidenced from the postings snapshot, not asserted: a location qualifies only where four or more employers advertise GBS roles. ${resolved} carry city-level labour cost; ${unresolved} inherit their country's, so centres within those countries differ only by a capability share measured on a handful of postings — and that share is shrunk toward the national figure in proportion to how thin it is. Where cost is not resolved, treat the order inside a country as undetermined. Candidate counts also differ by country, so a top-three share is partly an artefact of how many centres a country brings.`
+  const cityNote = state.view === "city" && resolved
+    ? `${resolved} of them carry city-level labour cost; the rest inherit their country's. `
     : "";
   $("#foot").innerHTML =
-    `Cost is aged to a common year at each market's own measured wage drift; ` +
-    `${stale.length} market${stale.length === 1 ? "" : "s"} in this view carry an observation more than a year old` +
-    (imputed.length ? `, and ${imputed.map((r) => r.name).join(", ")} ${imputed.length === 1 ? "has" : "have"} too short a series to measure a drift and use${imputed.length === 1 ? "s" : ""} the panel median.` : ".") +
-    cityNote +
-    ` Governance scores carry the World Bank's own 90% intervals, which overlap for several markets here. ` +
-    `Full method and limitations in the <a href="https://github.com/morichtereur/gbs-location-selection">repository</a>.`;
+    `Candidates qualify as GBS or GCC centres only where four or more employers advertise that ` +
+    `work there. ${cityNote}` +
+    `Method, sources and limitations are set out above; the code and the classifier audit are in the ` +
+    `<a href="https://github.com/morichtereur/gbs-location-selection">repository</a>.`;
 }
 
 /* ---- controls ---- */
@@ -717,7 +838,44 @@ function buildControls() {
     `<option value="${k}" ${k === state.hq ? "selected" : ""}>${names[k] || k.toUpperCase()}</option>`).join("");
   hq.addEventListener("change", (e) => { state.hq = e.target.value; render(); });
 
+  $("#sources").innerHTML = DATA.sources.map((x) => `
+    <div>
+      <dt>${x.pillar}</dt>
+      <dd>${x.name}<br><span class="vint">${x.detail} · ${x.vintage}</span></dd>
+    </div>`).join("");
+  $("#limits").innerHTML = DATA.limits.map((x) => `<li>${x}</li>`).join("");
+  $("#asof").textContent = "data as at " + DATA.asOf;
+  $("#floor-n").textContent = DATA.evidenceFloor;
+
+  $("#copy").addEventListener("click", copyTable);
+
   syncSliders(); noteArchetype(); noteView();
+}
+
+/* Viewers cannot be handed a file — a download started by the page is blocked
+   in the contexts this is published to — so the table leaves as text on the
+   clipboard, which pastes straight into a document or a spreadsheet. */
+async function copyTable() {
+  const table = $("#table");
+  const rows = [...table.querySelectorAll("tr")].map((tr) =>
+    [...tr.querySelectorAll("th,td")].map((c) => c.textContent.trim()).join("\t")
+  ).join("\n");
+  const status = $("#copy-status");
+  try {
+    await navigator.clipboard.writeText(rows);
+    status.textContent = "Copied — paste into a document or spreadsheet.";
+  } catch {
+    const area = document.createElement("textarea");
+    area.value = rows;
+    document.body.appendChild(area);
+    area.select();
+    const ok = document.execCommand("copy");
+    area.remove();
+    status.textContent = ok
+      ? "Copied — paste into a document or spreadsheet."
+      : "Copying is blocked here. Select the table and press Ctrl-C.";
+  }
+  setTimeout(() => (status.textContent = ""), 4000);
 }
 
 function syncSliders(writeInputs = true) {

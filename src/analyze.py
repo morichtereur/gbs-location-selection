@@ -101,20 +101,32 @@ def results_md(panel, results, variants) -> str:
     lines = [
         "# Results",
         "",
-        f"Ten markets, {results['transactional_hub'].draws:,} draws per archetype, "
-        f"panel assembled {REFERENCE_YEAR}.",
+        f"Ten markets scored on six pillars, {results['transactional_hub'].draws:,} draws per "
+        f"archetype. Panel assembled {REFERENCE_YEAR}; capability from the GBS/GCC posting "
+        "sample. Every figure below is reproduced by `make run`.",
         "",
         "## The panel",
         "",
-        "| market | wage basket USD/mo | obs. year | lag | talent scale proxy | WGI composite | transactional share | postings |",
-        "|---|---:|---:|---:|---:|---:|---:|---:|",
+        "Cost is the blended ISCO-08 2/3/4 wage basket in USD, aged to a common year at each "
+        "market's own measured drift. Talent is the employed stock in the same three groups. "
+        "Governance is the mean of five World Bank dimensions. Capability and its sample size "
+        "come from postings classified as GBS or GCC work — note how small some of them are.",
+        "",
+        "| market | cost USD/mo | obs. year | lag | wage drift | employed stock | governance | transactional | postings |",
+        "|---|---:|---:|---:|---:|---:|---:|---:|---:|",
     ]
     for k, m in sorted(panel.items(), key=lambda kv: kv[1].cost_usd):
+        drift = f"{-m.durability:.1%}" + ("" if m.drift_measured else " *")
         lines.append(
-            f"| {m.name} | {m.cost_usd:,.0f} | {m.cost_year} | {m.cost_lag}y | "
+            f"| {m.name} | {m.cost_usd:,.0f} | {m.cost_year} | {m.cost_lag}y | {drift} | "
             f"{m.talent_proxy:,.0f} | {m.risk_score:.1f} | {m.transactional_share:.1%} | "
             f"{m.postings_in_scope} |"
         )
+    lines.append("")
+    lines.append(
+        "`*` drift not measurable from the available series; the panel median is used, and it "
+        "is the only imputed number in the panel."
+    )
 
     for key, st in results.items():
         arch = C.ARCHETYPES[key]
