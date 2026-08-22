@@ -22,6 +22,21 @@ India and Brazil look like the most durable cost positions in the panel. Local w
 **4. Filtering the sample changes which city leads.**
 Warsaw dominates Poland on a broad finance sample because it is the largest finance job market. On GBS and GCC work alone, **Kraków** leads — because it is the largest shared-services one.
 
+**5. The shift to value work is not visible in hiring yet.**
+Across 378 classified GBS and GCC postings: **62% transactional, 37% judgment,
+and essentially no AI-adjacent roles at all.** Only Mexico shows any, and that is
+one posting. The practitioner argument that GBS is moving from labour arbitrage
+to value creation is a claim about direction; on the hiring side the base is
+still overwhelmingly processing work. A point-in-time sample cannot show a
+trend, so this does not contradict the direction — it establishes where the
+starting point actually is.
+
+The tool is built around the same distinction. Its two centre types *are*
+arbitrage and value work, and the pillar test above says something sharp about
+them: a transactional hub is decided by cost alone, while a judgment centre
+needs five of seven pillars. Cheap labour is sufficient to site arbitrage work
+and nowhere near sufficient to site value work.
+
 ![What the filter changed](data/chart_filter.png)
 
 ---

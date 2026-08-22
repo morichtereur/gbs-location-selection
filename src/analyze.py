@@ -154,6 +154,33 @@ def results_md(panel, results, variants) -> str:
                 f"{lo}–{hi} | {st.verdict(k)} | {need} |"
             )
 
+    from src.population import load as _load_pop, shares as _shares_pop
+
+    _pop = _load_pop()
+    _all = _shares_pop(_pop)
+    lines += [
+        "",
+        "## Arbitrage work against value work",
+        "",
+        f"Across {_all['n']} classified GBS and GCC postings: "
+        f"**{_all['transactional_share']:.0%} transactional**, "
+        f"**{_all['judgment_share']:.0%} judgment**, "
+        f"**{_all['agent_ops_share']:.1%} agent-ops**. The base is still "
+        "processing work, and AI-adjacent roles barely register in hiring. One "
+        "snapshot cannot show a trend; it fixes the starting point.",
+        "",
+        "| market | transactional | judgment | agent-ops | n |",
+        "|---|---:|---:|---:|---:|",
+    ]
+    for iso2 in C.MARKETS:
+        st = _shares_pop([p for p in _pop if p.country == iso2])
+        if st["n"] < 5:
+            continue
+        lines.append(
+            f"| {C.MARKETS[iso2]['name']} | {st['transactional_share']:.0%} | "
+            f"{st['judgment_share']:.0%} | {st['agent_ops_share']:.0%} | {st['n']} |"
+        )
+
     lines += [
         "",
         "## What actually moves the ranking",

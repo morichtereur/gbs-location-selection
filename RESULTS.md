@@ -60,6 +60,24 @@ Baseline top 3: **Germany, India, Netherlands**.
 | Spain | 0.0% | 8.8 | 4–11 | never |  |
 | Mexico | 0.0% | 10.3 | 6–11 | never |  |
 
+## Arbitrage work against value work
+
+Across 378 classified GBS and GCC postings: **62% transactional**, **37% judgment**, **0.3% agent-ops**. The base is still processing work, and AI-adjacent roles barely register in hiring. One snapshot cannot show a trend; it fixes the starting point.
+
+| market | transactional | judgment | agent-ops | n |
+|---|---:|---:|---:|---:|
+| Switzerland | 60% | 40% | 0% | 5 |
+| Germany | 48% | 52% | 0% | 33 |
+| Netherlands | 38% | 62% | 0% | 8 |
+| United Kingdom | 70% | 30% | 0% | 53 |
+| Spain | 89% | 11% | 0% | 9 |
+| Singapore | 62% | 38% | 0% | 16 |
+| Poland | 57% | 43% | 0% | 96 |
+| Mexico | 91% | 4% | 4% | 23 |
+| South Africa | 56% | 44% | 0% | 18 |
+| India | 64% | 36% | 0% | 100 |
+| Brazil | 53% | 47% | 0% | 17 |
+
 ## What actually moves the ranking
 
 Largest change in any market's top-3 frequency when one thing is varied
