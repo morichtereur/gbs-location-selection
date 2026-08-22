@@ -1,36 +1,47 @@
 # Precision audit — delivery-model classifier
 
-Twenty in-scope postings drawn at random (`seed=4242`) from the GBS/GCC sample
+Three audits, sixty postings, each drawn at random from the in-scope population
 and adjudicated by reading the title, employer and the 500 characters Adzuna
-returns. Recorded so a reader can disagree with a specific row.
+returns.
 
-| # | verdict | posting | why |
-|---|---|---|---|
-| 1 | correct | P2P Manager, Wrocław | "creating a new business services center" |
-| 2 | **wrong** | Credit Collection Agent, NL | AR team, no centre evidence anywhere in the text |
-| 3 | correct | BASF, DE | the "Global Business Services" unit, named |
-| 4 | unclear | Senior AP Controller, ZA | AP function lead; the centre reference, if any, is past the truncation |
-| 5 | **wrong** | Financial Analyst, PL | IT cost management, not a service-centre process |
-| 6 | correct | Statutory & GL Accountant, PL | "preferably in a Shared Services environment" |
-| 7 | correct | Tax Services Specialist, PL | Boehringer's EMEA tax service organisation |
-| 8 | **wrong** | Finance & Consolidations Lead, SG | full set of accounts for a corporate division — retained work |
-| 9 | correct | AP Administrator, GB | "our shared service centre in Newcastle upon Tyne" |
-| 10 | correct | Kraft Heinz GBS, Mexico City | GBS named in the title |
-| 11 | correct | Finance SSC AR&TR Supervisor, PL | SSC in the title |
-| 12 | correct | Bertelsmann Center of Expertise, DE | a named centre of expertise |
-| 13 | correct | Księgowość, Katowice | "centrum usług wspólnych" |
-| 14 | correct | Finance Shared Services GL, GB | named in the title |
-| 15 | correct | Shared Services Accountant, GB | named in the title |
-| 16 | correct | Head of Business Process, ZA | process governance across a shared-services org |
-| 17 | correct | Senior GL Accountant, IN | inDrive "Accounting Hub in India", P2P |
-| 18 | correct | Novo Nordisk GBS, Bangalore | GBS named |
-| 19 | correct | Accountant, Łódź | "w strukturach SSC" |
-| 20 | correct | Manager Finance AP/AR, NL | Kruidvat "Finance Shared Service Centre" |
+| audit | classifier state | correct | wrong | unclear | precision |
+|---|---|---:|---:|---:|---:|
+| 1 (`seed=4242`) | English/Spanish/Polish patterns | 16 | 3 | 1 | ~80% |
+| 2 (`seed=90210`) | after Portuguese was added | 11 | 6 | 3 | ~55% |
+| 3 (`seed=31337`) | after public-sector and non-finance-role fixes | 10 | 7 | 3 | ~50% |
 
-**16 correct, 3 wrong, 1 unclear — precision ≈ 80%** (0.84 if the unclear row is
-excluded). Twenty rows is a small audit: the 95% interval runs roughly 56% to
-94%, so this establishes the order of magnitude, not a decimal.
+**Reported precision is roughly 55%**, not the 80% the first audit suggested.
 
-Recall is not measured and is certainly worse. Adzuna truncates descriptions at
-500 characters, so any posting that identifies itself as centre work later in
-the advertisement is invisible to every gate. Counts here are floors.
+That first number did not survive re-testing. It was one sample of twenty, taken
+when the classifier read three languages; widening it to Portuguese raised
+recall — Brazil went from 7 recognised postings to 52 — and lowered precision,
+and re-auditing showed the 80% had been a favourable draw as much as a better
+classifier. Both audits after it land near 55%, which is the number to use.
+
+## What is still wrong, after three rounds of fixes
+
+Fixes did remove whole failure modes: a hotel cashier (audit 1), a municipal
+shared-services centre recruiting a civil servant, and an EHS manager whose
+employer's blurb happened to list finance functions (both audit 2). What
+survives is more stubborn:
+
+- **Retained work with the right vocabulary.** Group controllers, statutory
+  reporting leads and entity accountants read like service-centre postings and
+  are the opposite of one — they are the work a GBS exists not to move.
+- **Recruiter and staffing postings** that mention a client's shared-services
+  environment without the role being in it.
+- **Finance roles with no centre evidence at all**, where the shared-services
+  signal sits past the 500-character truncation or is absent and something else
+  matched.
+
+## What this means for the study
+
+The Monte Carlo resamples the binomial sampling error behind every capability
+share. **It does not model classification error**, and at 55% precision that is
+the larger of the two. The capability pillar should be read as carrying roughly
+a 45% contamination rate on top of the sampling interval already shown, and the
+ordering of cities that differ only on capability — which is every city outside
+Poland — is weaker than the stability column alone implies.
+
+This is the strongest argument in the repository for the study's own central
+claim: a number that looks measured can still be mostly a modelling choice.

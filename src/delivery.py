@@ -113,7 +113,34 @@ WRONG_SETTING = re.compile(
 # not the service centre — the work a GBS is designed *not* to move.
 RETAINED_WORK = re.compile(
     r"\b(group financial reporting|group accountant|statutory reporting|"
-    r"group consolidat|head of finance|finance director|cfo)\b",
+    r"group consolidat|head of finance|finance director|cfo|"
+    r"legal entity reporting|entity accountant|group controller|"
+    r"group finance manager)\b",
+    re.I,
+)
+
+# A municipal shared-services centre is a shared-services centre and is not GBS.
+# "Centrum Usług Wspólnych w Puławach" recruiting for a "stanowisko urzędnicze"
+# is a local authority pooling its own back office, not a corporate service
+# centre a programme could place work into.
+PUBLIC_SECTOR = re.compile(
+    r"(stanowisko urz[ęe]dnicze|nab[óo]r na wolne|urz[ąa]d (miasta|gminy)|"
+    r"\bgmina\b|starostwo|jednostk[ai] bud[żz]etow|"
+    r"ayuntamiento|prefeitura|municipal(idad|ity)|city council|"
+    r"local authority|public administration)",
+    re.I,
+)
+
+# Roles that are not finance, in companies whose blurb lists finance functions.
+# A "Manager EHS & QM" passed every gate because the employer described itself
+# as covering "Finanzwesen, Controlling, Personal" — the gate was reading the
+# company, not the job.
+NON_FINANCE_ROLE = re.compile(
+    r"\b(ehs|hse|quality manage|qm\b|health and safety|arbeitssicherheit|"
+    r"human resources|hr business partner|personalreferent|recruiter|"
+    r"software|developer|devops|data engineer|network|helpdesk|"
+    r"marketing|legal counsel|lawyer|logistics|warehouse|driver|"
+    r"maintenance|technician|nurse|teacher)\b",
     re.I,
 )
 
@@ -137,6 +164,21 @@ def _org_type():
     return module.org_type
 
 
+# Providers the sibling repo's list does not carry. Their work is the same work
+# outsourced, which is a different decision from placing a captive centre, so it
+# is classified as BPO and falls out of scope like the rest.
+EXTRA_PROVIDERS = (
+    "exl service", "exlservice", r"\bexl\b", "hexaware", "mphasis", "virtusa",
+    "ltimindtree", "coforge", "birlasoft", "zensar", "quess", "teleperformance",
+)
+_EXTRA_PROVIDER_RX = re.compile("|".join(EXTRA_PROVIDERS), re.I)
+# A word boundary written in a non-raw string becomes a backspace character and
+# the pattern silently stops matching. It cost an audit round to notice, so the
+# module refuses to load in that state rather than failing quietly.
+assert _EXTRA_PROVIDER_RX.search("EXL"), "provider pattern is not matching EXL"
+assert not _EXTRA_PROVIDER_RX.search("Flexlink"), "provider pattern over-matches"
+
+
 def classify(title: str, description: str, company: str, org_type) -> str:
     """One of 'gcc', 'gbs', 'bpo', or a reason the posting is out of scope."""
     title = title or ""
@@ -145,17 +187,26 @@ def classify(title: str, description: str, company: str, org_type) -> str:
     # The exclusion is checked against the title only. A finance-delivery
     # posting often mentions "sales ledger" or an internal sales team in its
     # description; a sales job says so in its title.
-    if NOT_THE_WORK.search(title):
+    if NOT_THE_WORK.search(title) or NON_FINANCE_ROLE.search(title):
         return "out:not_the_work"
 
+    if PUBLIC_SECTOR.search(text):
+        return "out:public_sector"
+
     kind = org_type(company)
+    if kind == "captive" and _EXTRA_PROVIDER_RX.search(company or ""):
+        kind = "bpo"
     if kind == "advisory":
         return "out:advisory"
 
     if WRONG_SETTING.search(text):
         return "out:wrong_setting"
 
-    if not FINANCE.search(text):
+    # The finance signal has to attach to the role, not to the employer's
+    # description of itself. Title first, then the opening of the advertisement
+    # where the responsibilities sit — not the boilerplate further down.
+    role_text = f"{title} || {(description or '')[:260]}"
+    if not FINANCE.search(role_text):
         return "out:not_finance"
 
     is_gcc = bool(GCC_TERMS.search(text))

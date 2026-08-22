@@ -90,7 +90,7 @@ SOURCES = [
 LIMITS = [
     "Only Polish cities have city-level cost. The rest use their country's, so cities within them differ on capability alone — treat that order as undetermined.",
     "Capability comes from few postings, as low as five per city. The stability column already accounts for this; the ranking below the top few is not meaningful.",
-    "The GBS/GCC classifier was audited at ~80% precision. Recall is lower — descriptions are truncated, so counts are floors.",
+    "The GBS/GCC classifier was audited three times over sixty postings at ~55% precision. The stability column models sampling error, not classification error — so it understates the real uncertainty.",
     "One snapshot. A city hiring quietly during the fetch is under-represented; absence is weak evidence, not a verdict.",
 ]
 

@@ -137,16 +137,29 @@ else.
 ### Precision is measured, not claimed
 
 The delivery classifier is visible phrase lists, so a reader can disagree with a
-specific entry. Twenty in-scope postings drawn at random were adjudicated by
-hand in [`eval/precision_audit.md`](eval/precision_audit.md): **16 correct, 3
-wrong, 1 unclear — precision around 80%**, on an audit small enough that the
-95% interval runs from roughly 56% to 94%.
+specific entry. Sixty in-scope postings across three audits were adjudicated by
+hand in [`eval/precision_audit.md`](eval/precision_audit.md): **precision is
+roughly 55%**.
 
-The three failures are the useful part. An IT cost-management analyst, a
-corporate consolidations lead, and a collections agent with no centre evidence
-all matched. Earlier versions were worse: a hotel cashier cleared every gate
-before a wrong-setting list existed, and Singapore's sovereign wealth fund was
-read as a capability centre because "GIC" was in the acronym list.
+An earlier version of this README claimed 80%, from the first audit. That number
+did not survive re-testing. Widening the classifier to read Portuguese raised
+recall sharply — Brazil went from 7 recognised postings to 52 — and lowered
+precision, and two further audits both landed near 55%. The 80% was a favourable
+draw of twenty as much as it was a better classifier.
+
+The failures are the useful part, and three rounds of fixes removed whole
+categories of them: a hotel cashier, a municipal shared-services centre
+recruiting a civil servant, an EHS manager whose employer's blurb listed finance
+functions, and Singapore's sovereign wealth fund read as a capability centre
+because "GIC" was in the acronym list. What survives is harder — retained group
+and statutory work, which uses the same vocabulary as service-centre work and is
+precisely the work a GBS exists not to move.
+
+**This matters for how the study should be read.** The Monte Carlo resamples the
+sampling error behind every capability share and does not model classification
+error, which at 55% precision is the larger of the two. Cities that differ only
+on capability — every city outside Poland — are separated more weakly than the
+stability column alone suggests.
 
 Recall is not measured and is certainly worse than precision. Adzuna truncates
 every description at 500 characters, so a posting that identifies itself as
