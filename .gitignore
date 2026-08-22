@@ -9,3 +9,4 @@ dashboard.artifact.html
 data/gbs_postings.duckdb
 
 .env
+body.txt
