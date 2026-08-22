@@ -181,6 +181,32 @@ MIN_CENTRE_EMPLOYERS = 4
 # across any k from roughly 10 to 100; only the arithmetic moves.
 CAPABILITY_PRIOR_STRENGTH = 30
 
+# --- Classification error -------------------------------------------------
+# The capability share is measured on postings a classifier selected, and that
+# classifier is about 55% precise (eval/precision_audit.md). Roughly two in five
+# postings behind every share are not GBS or GCC work at all.
+#
+# That was a caveat for one revision too long. It is now modelled, using two
+# quantities that were already measured rather than assumed:
+#
+#   precision   audits 2 and 3, the two run against approximately the classifier
+#               that ships — 21 correct of 40. Drawn from a Beta so the
+#               uncertainty in the audit itself propagates, rather than fixing
+#               precision at a point estimate taken from forty postings.
+#   contaminant the work-family mix of the broad finance-operations sample,
+#               per market. A posting that is not service-centre work is most
+#               likely ordinary finance work, and that population was measured
+#               when this study still ran on it.
+#
+# An observed share is then a mixture, s_obs = p·s_true + (1−p)·s_contaminant,
+# and s_true is recovered per draw. The correction can push a share outside
+# [0, 1] when the observed value is extreme and p is drawn low; those draws are
+# clipped, which biases slightly toward the middle. Stated because clipping a
+# deconvolution is exactly the kind of quiet step this study exists to expose.
+AUDIT_CORRECT = 21
+AUDIT_TOTAL = 40
+MODEL_CLASSIFICATION_ERROR = True
+
 # Location strings arrive in the posting's own language, and one city can
 # appear several ways. Mapped to a single English name so the counts combine.
 CITY_ALIASES = {

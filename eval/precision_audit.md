@@ -43,5 +43,14 @@ a 45% contamination rate on top of the sampling interval already shown, and the
 ordering of cities that differ only on capability — which is every city outside
 Poland — is weaker than the stability column alone implies.
 
-This is the strongest argument in the repository for the study's own central
-claim: a number that looks measured can still be mostly a modelling choice.
+**The study no longer leaves this as a caveat.** `src/stability.py` recovers the
+true share from the contaminated one on every draw, using a precision drawn from
+these audits and a contaminant mix measured from the broad finance sample. Doing
+so reversed the judgment-centre conclusion: Germany fell from 91% to 67% and
+India rose from 78% to 92%, because a posting wrongly admitted in India is
+probably transactional and one wrongly admitted in Poland is probably judgment.
+
+Germany was never robust as a judgment location. It looked robust because a
+known error sat outside the model — which is the strongest argument in this
+repository for its own central claim: a number that looks measured can still be
+mostly a modelling choice.

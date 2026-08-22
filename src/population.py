@@ -127,3 +127,41 @@ def shares(postings) -> dict:
         "gcc_share": sum(p.model == "gcc" for p in decided) / n,
         "employers": len({p.company for p in decided}),
     }
+
+
+@lru_cache(maxsize=1)
+def contaminant_shares() -> dict[str, float]:
+    """Work-family mix of the broad finance-operations sample, per market.
+
+    What a posting that is *not* service-centre work most likely is. The
+    classifier admits roughly two in five such postings, and correcting for that
+    needs an estimate of what the intruders look like — this is it, measured on
+    the population this study originally ran on rather than assumed.
+
+    Markets absent from that older sample fall back to the median across the
+    ones present; Brazil is the only such case and it is flagged in the panel.
+    """
+    import duckdb
+
+    from src.delivery import _org_type
+
+    if not C.POSTINGS_DB.exists():
+        return {}
+    org_type = _org_type()
+    con = duckdb.connect(str(C.POSTINGS_DB), read_only=True)
+    rows = con.execute(
+        """
+        SELECT p.country, p.company, l.label FROM postings p JOIN labels l USING (id)
+        WHERE l.label IN ('transactional', 'judgment', 'agent_ops')
+        """
+    ).fetchall()
+    con.close()
+
+    agg: dict[str, list[str]] = {}
+    for country, company, label in rows:
+        if org_type(company) == "advisory":
+            continue
+        agg.setdefault(country, []).append(label)
+    return {
+        k: v.count("transactional") / len(v) for k, v in agg.items() if v
+    }

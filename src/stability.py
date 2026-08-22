@@ -7,6 +7,13 @@ of point estimates. Both are uncertain, and in different ways:
 come from a Dirichlet centred on the declared weights, so every draw is a
 weighting somebody could argue for in the same room.
 
+*The classifier is wrong two times in five.* The capability shares are measured
+on postings a classifier selected, and it is about 55% precise. An observed
+share is therefore a mixture of real service-centre work and ordinary finance
+work that got through, and each draw recovers the former from the latter using a
+precision drawn from the audit itself. This was a caveat before it was a model,
+which was one revision too long.
+
 *The inputs are estimates.* The WGI governance scores ship with the bounds of
 their own 90% confidence interval. The wage and talent baskets rest on a
 declared staffing blend, and the same blend is applied to both so cost and
@@ -68,6 +75,36 @@ class Stability:
 
 def _wgi_sigma(lo: float, hi: float) -> float:
     return max((hi - lo) / (2 * Z90), 0.0)
+
+
+def _correct_for_precision(observed: float, precision: float, market, metric: str) -> float:
+    """Recover the true share from one contaminated by classification error.
+
+    An observed share is a mixture of the postings the classifier got right and
+    the ones it should not have admitted:
+
+        observed = precision · true + (1 − precision) · contaminant
+
+    so the true share is that relation rearranged. The contaminant is the broad
+    finance sample's mix for this market — what an intruding posting most likely
+    is — measured rather than assumed.
+
+    The result can fall outside [0, 1] when the observed share is extreme and the
+    drawn precision is low, and those draws are clipped. Clipping biases the
+    correction slightly toward the middle, which is worth knowing and is the sort
+    of quiet step this study exists to expose.
+    """
+    if not C.MODEL_CLASSIFICATION_ERROR or precision <= 0.05:
+        return observed
+    contaminant = market.contaminant_transactional
+    if contaminant is None:
+        return observed
+    if metric != "transactional_share":
+        # The mirror share, since the taxonomy's two families partition the
+        # postings it could decide.
+        contaminant = 1.0 - contaminant
+    true = (observed - (1.0 - precision) * contaminant) / precision
+    return min(1.0, max(0.0, true))
 
 
 def run(
@@ -186,14 +223,24 @@ def run(
             # this project's own measurement error seriously and taking only
             # everybody else's.
             capability_draw = {}
+            # One precision per draw, not one per market: the classifier is a
+            # single instrument and its accuracy does not vary by country.
+            precision = (
+                rng.beta(C.AUDIT_CORRECT + 1, C.AUDIT_TOTAL - C.AUDIT_CORRECT + 1)
+                if C.MODEL_CLASSIFICATION_ERROR
+                else 1.0
+            )
+            metric = C.ARCHETYPES[archetype]["capability_metric"]
             for iso2 in markets:
                 m = panel[iso2]
                 successes, n = m.capability_counts
                 if n <= 0:
                     continue
-                metric = C.ARCHETYPES[archetype]["capability_metric"]
                 p_hat = getattr(m, metric)
-                capability_draw[iso2] = float(rng.binomial(n, p_hat)) / n
+                observed = float(rng.binomial(n, p_hat)) / n
+                capability_draw[iso2] = _correct_for_precision(
+                    observed, precision, m, metric
+                )
 
         raw = raw_pillars(
             panel, archetype, wgi_draw=wgi_draw, cost_draw=cost_draw,

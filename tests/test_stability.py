@@ -91,3 +91,46 @@ def test_thin_evidence_cannot_be_robust(panel):  # noqa: F811
     assert st.verdict("solid") == "robust"
     # A candidate with no evidence entry — a country row — is unaffected.
     assert st.verdict("absent") == "never"
+
+
+def test_precision_correction_recovers_a_known_share():
+    """The correction inverts the mixture it claims to invert."""
+    from src.stability import _correct_for_precision
+
+    class M:
+        contaminant_transactional = 0.40
+
+    # Construct an observed share from a known truth, then recover it.
+    precision, true = 0.55, 0.80
+    observed = precision * true + (1 - precision) * M.contaminant_transactional
+    recovered = _correct_for_precision(observed, precision, M(), "transactional_share")
+    assert recovered == pytest.approx(true)
+
+
+def test_precision_correction_uses_the_mirror_contaminant_for_judgment():
+    from src.stability import _correct_for_precision
+
+    class M:
+        contaminant_transactional = 0.70
+
+    precision, true = 0.55, 0.60
+    # For judgment the contaminant is the mirror of the transactional mix.
+    observed = precision * true + (1 - precision) * (1 - M.contaminant_transactional)
+    recovered = _correct_for_precision(observed, precision, M(), "judgment_share")
+    assert recovered == pytest.approx(true)
+
+
+def test_precision_correction_stays_in_range_and_is_inert_when_disabled():
+    from src.stability import _correct_for_precision
+
+    class M:
+        contaminant_transactional = 0.40
+
+    for observed in (0.0, 0.5, 1.0):
+        got = _correct_for_precision(observed, 0.3, M(), "transactional_share")
+        assert 0.0 <= got <= 1.0
+    # A perfect classifier changes nothing.
+    assert _correct_for_precision(0.73, 1.0, M(), "transactional_share") == pytest.approx(0.73)
+    # Neither does an absurdly low drawn precision, which would otherwise
+    # divide by almost zero.
+    assert _correct_for_precision(0.73, 0.01, M(), "transactional_share") == 0.73

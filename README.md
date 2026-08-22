@@ -155,11 +155,8 @@ because "GIC" was in the acronym list. What survives is harder — retained grou
 and statutory work, which uses the same vocabulary as service-centre work and is
 precisely the work a GBS exists not to move.
 
-**This matters for how the study should be read.** The Monte Carlo resamples the
-sampling error behind every capability share and does not model classification
-error, which at 55% precision is the larger of the two. Cities that differ only
-on capability — every city outside Poland — are separated more weakly than the
-stability column alone suggests.
+**That error is now modelled rather than noted**, and doing so changed a
+conclusion. See below.
 
 Recall is not measured and is certainly worse than precision. Adzuna truncates
 every description at 500 characters, so a posting that identifies itself as
@@ -270,6 +267,43 @@ to 39, and left Switzerland and the Netherlands untouched.
 Two conditions keep this pillar honest and both have to hold: identical search
 terms everywhere, and a cap high enough that no market is still producing when
 it is reached.
+
+## Modelling the classifier's error changed the answer
+
+Classification error was a caveat for one revision too long. An observed
+capability share is a mixture of the postings the classifier got right and the
+ones it should never have admitted:
+
+> observed = precision × true + (1 − precision) × contaminant
+
+Both right-hand quantities were already measured: precision from the audits
+(drawn per iteration from a Beta on 21 correct of 40, so the audit's own
+uncertainty propagates), and the contaminant from the broad finance-operations
+sample this study originally ran on — what an intruding posting most likely is,
+per market.
+
+Correcting for it barely moves the transactional ranking and **reverses the
+judgment one**:
+
+| judgment centre | ignoring classifier error | modelling it |
+|---|---:|---:|
+| Germany | **91%** | 67% |
+| India | 78% | **92%** |
+| Netherlands | 41% | 58% |
+
+The direction has a cause. India's broad finance market is 72% transactional, so
+a posting wrongly admitted there is probably processing work — which means the
+observed judgment share for Indian centres was being *diluted downward*. Poland's
+broad market is 43% transactional, so its intruders skew judgment and were
+*inflating* Kraków and Wrocław. The correction pulls each back toward what the
+service-centre postings alone imply.
+
+**Germany was never robust as a judgment location. It looked robust because a
+known error was left out of the model**, and the earlier version of this README
+reported it as a finding. About 4% of draws are clipped at the bounds, which
+biases the correction slightly toward the middle; `MODEL_CLASSIFICATION_ERROR`
+in `src/config.py` turns it off for anyone who wants to see the uncorrected
+figures.
 
 ## Everything that is resampled
 

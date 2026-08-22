@@ -11,7 +11,7 @@ from dataclasses import dataclass, field, replace
 
 from src import config as C
 from src.proximity import overlap_hours
-from src import centres
+from src import centres, population
 from src.sources import eurostat, ilostat, postings, unesco, worldbank
 
 # The panel is a point-in-time read. Vintage lag is measured against the year
@@ -62,6 +62,10 @@ class Market:
     judgment_share: float | None = None
     gcc_share: float | None = None
     ambiguous_share: float | None = None
+    # Transactional share of the broad finance sample for this market: what a
+    # posting the classifier admitted in error most likely is.
+    contaminant_transactional: float | None = None
+    contaminant_measured: bool = False
     employer_fragmentation: float | None = None
     postings_in_scope: int | None = None
 
@@ -167,6 +171,10 @@ def build() -> dict[str, Market]:
     talent = unesco.load()
     risk = worldbank.load()
     demand = postings.load_market_shares()
+    contaminants = population.contaminant_shares()
+    fallback_contaminant = (
+        sorted(contaminants.values())[len(contaminants) // 2] if contaminants else 0.5
+    )
 
     panel: dict[str, Market] = {}
     for iso2, meta in C.MARKETS.items():
@@ -227,6 +235,8 @@ def build() -> dict[str, Market]:
             m.transactional_share = d["transactional_share"]
             m.judgment_share = d["judgment_share"]
             m.gcc_share = d["gcc_share"]
+            m.contaminant_measured = iso2 in contaminants
+            m.contaminant_transactional = contaminants.get(iso2, fallback_contaminant)
             m.ambiguous_share = d["ambiguous_share"]
             m.employer_fragmentation = d["employers"] / d["postings_in_scope"]
             m.depth = float(d["employers"])

@@ -29,17 +29,17 @@ Baseline top 3: **India, Brazil, Mexico**.
 
 | market | top-3 frequency | mean rank | rank range | verdict | what it takes |
 |---|---:|---:|---:|---|---|
-| India | 100.0% | 1.0 | 1–3 | robust |  |
-| Brazil | 71.6% | 3.1 | 1–10 | contingent | cost weight 0.32 vs 0.26 when out |
-| Mexico | 51.5% | 4.0 | 1–11 | contingent | cost weight 0.33 vs 0.27 when out |
-| United Kingdom | 46.0% | 3.6 | 1–8 | contingent | risk weight 0.11 vs 0.07 when out |
-| South Africa | 12.7% | 5.4 | 2–11 | contingent | cost weight 0.35 vs 0.29 when out |
-| Germany | 12.3% | 5.5 | 1–10 | contingent | risk weight 0.13 vs 0.08 when out |
-| Poland | 3.8% | 6.6 | 2–11 | never |  |
-| Spain | 1.9% | 7.1 | 1–11 | never |  |
-| Switzerland | 0.1% | 10.2 | 2–11 | never |  |
-| Singapore | 0.0% | 9.7 | 3–11 | never |  |
-| Netherlands | 0.0% | 9.8 | 4–11 | never |  |
+| India | 99.6% | 1.0 | 1–8 | robust |  |
+| Brazil | 68.0% | 3.2 | 1–11 | contingent | cost weight 0.32 vs 0.27 when out |
+| United Kingdom | 46.4% | 3.7 | 1–9 | contingent | depth weight 0.14 vs 0.11 when out |
+| Mexico | 38.5% | 4.5 | 1–11 | contingent | cost weight 0.34 vs 0.28 when out |
+| Germany | 21.6% | 5.0 | 1–11 | contingent | risk weight 0.12 vs 0.08 when out |
+| South Africa | 21.1% | 5.1 | 1–11 | contingent | cost weight 0.34 vs 0.29 when out |
+| Poland | 4.1% | 6.5 | 1–11 | never |  |
+| Spain | 0.5% | 7.5 | 1–11 | never |  |
+| Singapore | 0.1% | 9.5 | 3–11 | never |  |
+| Switzerland | 0.1% | 9.9 | 2–11 | never |  |
+| Netherlands | 0.0% | 10.1 | 3–11 | never |  |
 
 ## Judgment centre of excellence
 
@@ -48,17 +48,17 @@ Baseline top 3: **Germany, India, Netherlands**.
 
 | market | top-3 frequency | mean rank | rank range | verdict | what it takes |
 |---|---:|---:|---:|---|---|
-| Germany | 91.3% | 2.0 | 1–8 | robust |  |
-| India | 78.1% | 2.3 | 1–10 | contingent | talent weight 0.18 vs 0.14 when out |
-| Netherlands | 40.6% | 4.1 | 1–9 | contingent | capability weight 0.25 vs 0.20 when out |
-| United Kingdom | 37.2% | 4.0 | 1–9 | contingent | risk weight 0.19 vs 0.16 when out |
-| Poland | 32.5% | 4.2 | 1–10 | contingent | depth weight 0.16 vs 0.13 when out |
-| Brazil | 12.9% | 5.9 | 1–10 | contingent | cost weight 0.16 vs 0.12 when out |
-| Switzerland | 4.0% | 8.0 | 1–11 | never |  |
-| South Africa | 2.9% | 6.9 | 1–10 | never |  |
-| Singapore | 0.4% | 8.6 | 1–11 | never |  |
-| Spain | 0.0% | 9.4 | 4–11 | never |  |
-| Mexico | 0.0% | 10.7 | 7–11 | never |  |
+| India | 92.5% | 1.6 | 1–9 | robust |  |
+| Germany | 66.8% | 3.1 | 1–9 | contingent | talent weight 0.18 vs 0.16 when out |
+| Netherlands | 57.7% | 3.4 | 1–11 | contingent | capability weight 0.24 vs 0.19 when out |
+| United Kingdom | 31.1% | 4.2 | 1–9 | contingent | depth weight 0.16 vs 0.13 when out |
+| Poland | 26.7% | 4.5 | 1–11 | contingent | depth weight 0.17 vs 0.13 when out |
+| Brazil | 17.1% | 5.7 | 1–11 | contingent | cost weight 0.16 vs 0.12 when out |
+| South Africa | 4.3% | 6.9 | 1–11 | never |  |
+| Switzerland | 3.1% | 8.5 | 1–11 | never |  |
+| Singapore | 0.8% | 8.8 | 1–11 | never |  |
+| Spain | 0.0% | 8.9 | 4–11 | never |  |
+| Mexico | 0.0% | 10.4 | 6–11 | never |  |
 
 ## What actually moves the ranking
 
@@ -69,13 +69,13 @@ modeller makes silently.
 
 | varied | transactional hub | judgment centre |
 |---|---:|---:|
-| All published measurement error | South Africa 7.1pp | Netherlands 11.6pp |
-| Vintage: age-adjusted or as-observed | South Africa 6.0pp | Germany 1.0pp |
-| Normalisation: log or linear | Mexico 25.0pp | Poland 24.3pp |
-| Talent pillar: employed stock or education pipeline | South Africa 15.6pp | Germany 17.7pp |
+| All published measurement error | Mexico 19.1pp | Germany 32.1pp |
+| Vintage: age-adjusted or as-observed | South Africa 6.2pp | Germany 2.8pp |
+| Normalisation: log or linear | Mexico 22.8pp | Poland 22.3pp |
+| Talent pillar: employed stock or education pipeline | South Africa 18.8pp | Germany 20.9pp |
 
 Two of those choices change the membership of the shortlist, not just the
 confidence in it:
 
 - **Transactional hub** — employed-stock talent gives India, Brazil, Mexico; education-pipeline talent gives India, Brazil, Mexico.
-- **Judgment centre of excellence** — employed-stock talent gives Germany, India, Netherlands; education-pipeline talent gives India, Germany, Netherlands.
+- **Judgment centre of excellence** — employed-stock talent gives Germany, India, Netherlands; education-pipeline talent gives India, Netherlands, Germany.
