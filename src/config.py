@@ -404,3 +404,14 @@ CONTINGENT_AT = 0.10
 # "contingent" however often it survives. Country rows, which rest on the whole
 # market's sample, are unaffected.
 EVIDENCE_FLOOR = 10
+
+# --- Separability ---------------------------------------------------------
+# A ranked list of thirteen cities asserts twelve orderings, and the draws do
+# not support all of them: seven of the fifty-five pairs come out closer than
+# 65/35, which is a coin toss wearing a rank number. Printing 2nd and 3rd for a
+# pair that swaps in half the draws undoes every other honesty mechanism here.
+#
+# Cities are therefore grouped into bands. Two neighbours join the same band
+# when neither outranks the other in at least this share of draws — the tool
+# says "these are not distinguishable" instead of inventing an order.
+SEPARABLE_AT = 0.65

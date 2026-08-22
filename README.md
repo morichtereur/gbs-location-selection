@@ -204,6 +204,23 @@ On GBS and GCC work alone, Kraków leads — because it is the country's largest
 *shared-services* market. Those are different questions with different answers,
 and only the second one is a location decision.
 
+### Cities the evidence cannot separate share a rank
+
+A ranked list of thirteen cities asserts twelve orderings, and the draws support
+far fewer: seven of the fifty-five pairs come out closer than 65/35. Printing
+2nd and 3rd for a pair that swaps in half the runs would undo every other
+honesty mechanism in this repository.
+
+Cities are therefore grouped into **bands**. A city opens a new band only when
+every city above it finishes ahead in at least 65% of draws, compared against
+all members rather than just its neighbour so the grouping stays transitive.
+Cities inside a band have no established order between each other.
+
+For a transactional hub that produces one band containing all five Indian
+cities. The tool says they are indistinguishable rather than inventing a winner
+— which, given India is the only market where no city-level cost exists, is the
+correct answer rather than a hedge.
+
 ### The tool can name Pune. It cannot rank it.
 
 Nothing in the centre view is robust. Centres inside one country share every
@@ -371,6 +388,7 @@ survival rate across all of them together:
   | Careerjet | legacy public API closed to new callers; v4 needs a commercial partnership |
   | OECD regional | 51 countries, none of the ones that would help: no regional rows at all for Brazil, India or Singapore |
   | **Jooble** | covers all six — but **refuses automated requests at the edge** |
+  | Malaysia / Philippines national statistics | DOSM and PSA reachable, but they carry wages, not postings |
 
   Jooble was the plan, and a valid key was obtained to test it. Every request
   returns an HTML 403 from Cloudflare, including a plain GET of the homepage:
@@ -378,6 +396,14 @@ survival rate across all of them together:
   the API. Working around bot protection is not something this project will do,
   so the adapter ships, detects the edge block, says so plainly instead of
   blaming the key, and the six markets stay out.
+
+  National statistics do not close the gap. Malaysia's DOSM and the
+  Philippines' PSA publish earnings, and ILOSTAT already carries both countries
+  — but the tool now ranks cities, and a city needs a postings feed twice over:
+  to be *identified* as a GBS centre at all, and to score capability and
+  employer depth. Cost and talent alone cannot put a city into a city ranking.
+  Manila, Cebu, Kuala Lumpur and Penang stay out for that reason, not for want
+  of looking.
 
   `make fetch` attempts Jooble on every run and skips it with a message when no
   key is set, so the route is ready if the block ever lifts. Note that even

@@ -130,6 +130,13 @@ def _entity(m: Market, archetype: str) -> dict:
         # noise the shrinkage removed.
         "capN": m.capability_counts[1],
         "capP": getattr(m, metric),
+        # What a wrongly admitted posting most likely is, for this market and
+        # this archetype's metric. Needed to undo classification error.
+        "contaminant": (
+            m.contaminant_transactional
+            if metric == "transactional_share"
+            else (1.0 - m.contaminant_transactional)
+        ) if m.contaminant_transactional is not None else None,
     }
 
 
@@ -176,10 +183,18 @@ def payload() -> dict:
         "topN": C.TOP_N,
         "robustAt": C.ROBUST_AT,
         "evidenceFloor": C.EVIDENCE_FLOOR,
+        "separableAt": C.SEPARABLE_AT,
+        "auditCorrect": C.AUDIT_CORRECT,
+        "auditTotal": C.AUDIT_TOTAL,
+        "modelClassificationError": C.MODEL_CLASSIFICATION_ERROR,
         "sources": SOURCES,
         "limits": LIMITS,
         "asOf": ASOF,
         "evidenceFloor": C.EVIDENCE_FLOOR,
+        "separableAt": C.SEPARABLE_AT,
+        "auditCorrect": C.AUDIT_CORRECT,
+        "auditTotal": C.AUDIT_TOTAL,
+        "modelClassificationError": C.MODEL_CLASSIFICATION_ERROR,
         "views": {},
         "reference": {},
     }
@@ -445,6 +460,10 @@ select {
   gap: 12px; margin-top: 18px; padding-bottom: 5px;
   border-bottom: 1px solid var(--rule-strong);
 }
+.ch-band {
+  font-family: var(--mono); font-size: 10px; text-transform: uppercase;
+  letter-spacing: .07em; color: var(--ink-3); text-align: right;
+}
 .ch-num {
   text-align: right; font-family: var(--mono); font-size: 10px;
   text-transform: uppercase; letter-spacing: .07em; color: var(--ink-3);
@@ -479,6 +498,9 @@ select {
 .tag.contingent { color: var(--ink-3); }
 .tag.never { color: var(--warn); }
 .in-top { box-shadow: inset 3px 0 0 var(--accent); }
+/* A band is a group the draws cannot separate; the rule marks where one ends. */
+.row.band-start { border-top: 1px solid var(--rule-strong); }
+.row.band-start:first-child { border-top: 0; }
 
 .sources { margin: 0; display: grid; gap: 9px; }
 .sources div { display: grid; gap: 1px; }
@@ -584,7 +606,7 @@ footer p { max-width: 78ch; }
     </div>
     <div class="belief" id="belief"></div>
     <div class="col-head">
-      <span></span><span></span><span></span>
+      <span class="ch-band">band</span><span></span><span></span>
       <span class="ch-num">postings</span><span class="ch-num">top-3 across reweightings</span>
     </div>
     <div class="rows" id="rows"></div>
@@ -608,6 +630,10 @@ footer p { max-width: 78ch; }
           <li>Scores are relative to the cities on screen, not absolute ratings.</li>
           <li><strong>Robust</strong> means a top-three place in 90% of 2,000 reweightings
               <em>and</em> at least <span id="floor-n"></span> postings behind it.</li>
+          <li><strong>Bands</strong> group cities the draws cannot tell apart. A city opens a new
+              band only when every city above it finishes ahead in at least
+              <span id="sep-n"></span> of runs — so cities sharing a band have no established
+              order between them.</li>
         </ul>
         <h3>Limits</h3>
         <ul id="limits"></ul>
@@ -673,6 +699,24 @@ function mulberry(seed) {
 }
 const CONCENTRATION = 40, DRAWS = 2000;
 
+/* Beta via two Gammas — needed to draw the classifier's precision per
+   iteration, exactly as src/stability.py does. */
+function beta(rng, a, b) {
+  const x = gamma(rng, a), y = gamma(rng, b);
+  return x / (x + y);
+}
+
+/* An observed capability share is a mixture of correctly and wrongly admitted
+   postings; this recovers the former. Mirrors _correct_for_precision in
+   src/stability.py — the dashboard ran without it for one revision and showed a
+   different leader from the study it presents. */
+function correctForPrecision(observed, precision, row) {
+  if (!DATA.modelClassificationError || precision <= 0.05) return observed;
+  if (row.contaminant == null) return observed;
+  const t = (observed - (1 - precision) * row.contaminant) / precision;
+  return Math.min(1, Math.max(0, t));
+}
+
 /* Weights are not the only thing that is uncertain, and on the centre view they
    are not even the important one: centres inside one country share every pillar
    except capability, so a run that varies only the weights can never reorder
@@ -687,6 +731,11 @@ const CONCENTRATION = 40, DRAWS = 2000;
 function stability(base, weights) {
   const rng = mulberry(20260821);
   const hits = new Map(base.map((it) => [it.row.id, 0]));
+  // Who finishes ahead of whom, so the ranking can be grouped into bands the
+  // draws actually support rather than printed as N distinct positions.
+  const ids = base.map((it) => it.row.id);
+  const beats = new Map(ids.map((a) => [a, new Map(ids.map((b) => [b, 0]))]));
+  const meanRank = new Map(ids.map((a) => [a, 0]));
   const alpha = DATA.pillars.map((p) => Math.max(CONCENTRATION * weights[p], 0.05));
   const topN = DATA.topN;
   const others = DATA.pillars.filter((p) => p !== "capability");
@@ -697,6 +746,12 @@ function stability(base, weights) {
     const gsum = g.reduce((a, b) => a + b, 0);
     const w = {}; DATA.pillars.forEach((p, i) => (w[p] = g[i] / gsum));
 
+    // One precision per draw: the classifier is a single instrument and its
+    // accuracy does not vary by city.
+    const precision = DATA.modelClassificationError
+      ? beta(rng, DATA.auditCorrect + 1, DATA.auditTotal - DATA.auditCorrect + 1)
+      : 1;
+
     let lo = Infinity, hi = -Infinity;
     for (let i = 0; i < base.length; i++) {
       const row = base[i].row;
@@ -706,6 +761,7 @@ function stability(base, weights) {
         const sd = Math.sqrt(Math.max(pHat * (1 - pHat), 0) / n);
         draw = Math.min(1, Math.max(0, pHat + normal(rng) * sd));
       }
+      draw = correctForPrecision(draw, precision, row);
       caps[i] = draw;
       if (draw < lo) lo = draw;
       if (draw > hi) hi = draw;
@@ -720,10 +776,33 @@ function stability(base, weights) {
     for (let i = 0; i < topN && i < ranked.length; i++) {
       hits.set(ranked[i].id, hits.get(ranked[i].id) + 1);
     }
+    for (let i = 0; i < ranked.length; i++) {
+      meanRank.set(ranked[i].id, meanRank.get(ranked[i].id) + i + 1);
+      const row = beats.get(ranked[i].id);
+      for (let j = i + 1; j < ranked.length; j++) row.set(ranked[j].id, row.get(ranked[j].id) + 1);
+    }
   }
   const out = new Map();
   for (const [k, v] of hits) out.set(k, v / DRAWS);
-  return out;
+  const order = [...ids].sort((a, b) => meanRank.get(a) - meanRank.get(b));
+  return { frequency: out, band: bandsFrom(order, beats), order };
+}
+
+/* A city opens a new band only when every current member of the band clearly
+   outranks it. Comparing against all members, not just the previous city, keeps
+   the grouping transitive — a chain of close neighbours cannot merge into one
+   band spanning a gap the draws do separate. Mirrors _bands in stability.py. */
+function bandsFrom(order, beats) {
+  const band = new Map();
+  let current = 1, members = [];
+  for (const key of order) {
+    if (members.length && members.every((m) => (beats.get(m).get(key) / DRAWS) >= DATA.separableAt)) {
+      current += 1; members = [];
+    }
+    band.set(key, current);
+    members.push(key);
+  }
+  return band;
 }
 
 /* "Robust" is a claim about evidence, not just arithmetic: Mumbai reached 90% of
@@ -743,13 +822,16 @@ function verdict(f, row) {
    here changes every time a weight moves. The headline is therefore written
    from the current result rather than fixed in the markup: what survives, and
    what it would take to believe otherwise. */
-function writeHeadline(ranked, stab) {
+function writeHeadline(ranked, stab, band) {
   const robust = ranked.filter((r) => verdict(stab.get(r.row.id) ?? 0, r.row) === "robust");
   const lead = ranked[0];
+  const top = ranked.filter((r) => band.get(r.row.id) === 1);
   const arch = DATA.archetypes[state.archetype].short.toLowerCase();
 
   let headline;
-  if (robust.length === 1) {
+  if (top.length > 1) {
+    headline = `${top.length} cities finish level at the top.`;
+  } else if (robust.length === 1) {
     headline = `Only ${robust[0].row.name} survives a change of mind.`;
   } else if (robust.length > 1) {
     const names = robust.slice(0, 3).map((r) => r.row.name);
@@ -759,13 +841,22 @@ function writeHeadline(ranked, stab) {
   }
   $("#headline").textContent = headline;
 
-  const pct = ((stab.get(lead.row.id) ?? 0) * 100).toFixed(0);
-  const where = DATA.marketNames[lead.row.parent] || "";
-  $("#takeaway").innerHTML = robust.length
-    ? `<strong>${lead.row.name}</strong> (${where}) leads and holds a top-three place in `
-      + `${pct}% of 2,000 nearby weightings.`
-    : `<strong>${lead.row.name}</strong> (${where}) leads on your weighting but holds a `
-      + `top-three place in only ${pct}% of 2,000 nearby ones — the ranking is yours, not the evidence's.`;
+  // The leading band, not the leading city: naming one city as first when the
+  // draws cannot separate it from four others is the error this tool argues
+  // against.
+  if (top.length > 1) {
+    const names = top.map((r) => r.row.name);
+    const last = names.pop();
+    $("#takeaway").innerHTML =
+      `<strong>${names.join(", ")} and ${last}</strong> finish together — `
+      + `the draws cannot separate them, so treat the order inside that group as undetermined.`;
+  } else {
+    const pct = ((stab.get(lead.row.id) ?? 0) * 100).toFixed(0);
+    const where = DATA.marketNames[lead.row.parent] || "";
+    $("#takeaway").innerHTML =
+      `<strong>${lead.row.name}</strong> (${where}) leads on its own, holding a top-three `
+      + `place in ${pct}% of 2,000 nearby weightings.`;
+  }
 }
 
 /* ---- what your weighting believes ---- */
@@ -790,12 +881,21 @@ function render() {
   const rows = DATA.views.city[state.archetype];
   const items = pillarValues(rows);
   const scaled = normalise(items);
-  const ranked = scoreAll(scaled, state.weights);
-  const stab = stability(scaled, state.weights);
+  let ranked = scoreAll(scaled, state.weights);
+  const result = stability(scaled, state.weights);
+  const stab = result.frequency;
+  const band = result.band;
   const ref = DATA.reference[state.archetype];
   const C = colors();
 
-  writeHeadline(ranked, stab);
+  // Order by band first: a ranking that prints positions the draws cannot
+  // support is the thing this tool exists to argue against.
+  // Band first; within a band by how often the city survives reweighting,
+  // since the band already says the score order is not established.
+  ranked = ranked.slice().sort((a, b) =>
+    (band.get(a.row.id) - band.get(b.row.id))
+    || ((stab.get(b.row.id) ?? 0) - (stab.get(a.row.id) ?? 0)));
+  writeHeadline(ranked, stab, band);
   $("#board-title").textContent =
     `${DATA.archetypes[state.archetype].label}: ${ranked.length} cities ranked on your weighting`;
   $("#scope").textContent = `${rows.length} GBS and GCC cities`;
@@ -809,8 +909,10 @@ function render() {
   ranked.forEach((r, i) => {
     const f = stab.get(r.row.id) ?? 0;
     const v = verdict(f, r.row);
+    const b = band.get(r.row.id);
+    const opensBand = i === 0 || band.get(ranked[i - 1].row.id) !== b;
     const el = document.createElement("div");
-    el.className = "row" + (i < DATA.topN ? " in-top" : "");
+    el.className = "row" + (b === 1 ? " in-top" : "") + (opensBand ? " band-start" : "");
     el.dataset.id = r.row.id;
 
     // The country first: a reader should not have to know where Poznań is to
@@ -833,7 +935,7 @@ function render() {
       : `<span class="${thin ? "thin" : ""}">${n}</span>`;
 
     el.innerHTML =
-      `<div class="rank">${i + 1}</div>` +
+      `<div class="rank">${opensBand ? b : ""}</div>` +
       `<div class="who"><span class="nm">${r.row.name}</span><span class="sub">${sub}</span></div>` +
       `<div class="bar-cell"><div class="bar">${segs}</div></div>` +
       `<div class="evidence" title="postings behind the capability pillar">${evidence}</div>` +
@@ -949,6 +1051,7 @@ function buildControls() {
   $("#limits").innerHTML = DATA.limits.map((x) => `<li>${x}</li>`).join("");
   $("#asof").textContent = `${DATA.pillars.length} pillars · ${DATA.asOf}`;
   $("#floor-n").textContent = DATA.evidenceFloor;
+  $("#sep-n").textContent = Math.round(DATA.separableAt * 100) + "%";
 
   $("#copy").addEventListener("click", copyTable);
 

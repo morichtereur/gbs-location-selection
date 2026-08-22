@@ -156,6 +156,10 @@ select {
   gap: 12px; margin-top: 18px; padding-bottom: 5px;
   border-bottom: 1px solid var(--rule-strong);
 }
+.ch-band {
+  font-family: var(--mono); font-size: 10px; text-transform: uppercase;
+  letter-spacing: .07em; color: var(--ink-3); text-align: right;
+}
 .ch-num {
   text-align: right; font-family: var(--mono); font-size: 10px;
   text-transform: uppercase; letter-spacing: .07em; color: var(--ink-3);
@@ -190,6 +194,9 @@ select {
 .tag.contingent { color: var(--ink-3); }
 .tag.never { color: var(--warn); }
 .in-top { box-shadow: inset 3px 0 0 var(--accent); }
+/* A band is a group the draws cannot separate; the rule marks where one ends. */
+.row.band-start { border-top: 1px solid var(--rule-strong); }
+.row.band-start:first-child { border-top: 0; }
 
 .sources { margin: 0; display: grid; gap: 9px; }
 .sources div { display: grid; gap: 1px; }
@@ -295,7 +302,7 @@ footer p { max-width: 78ch; }
     </div>
     <div class="belief" id="belief"></div>
     <div class="col-head">
-      <span></span><span></span><span></span>
+      <span class="ch-band">band</span><span></span><span></span>
       <span class="ch-num">postings</span><span class="ch-num">top-3 across reweightings</span>
     </div>
     <div class="rows" id="rows"></div>
@@ -319,6 +326,10 @@ footer p { max-width: 78ch; }
           <li>Scores are relative to the cities on screen, not absolute ratings.</li>
           <li><strong>Robust</strong> means a top-three place in 90% of 2,000 reweightings
               <em>and</em> at least <span id="floor-n"></span> postings behind it.</li>
+          <li><strong>Bands</strong> group cities the draws cannot tell apart. A city opens a new
+              band only when every city above it finishes ahead in at least
+              <span id="sep-n"></span> of runs — so cities sharing a band have no established
+              order between them.</li>
         </ul>
         <h3>Limits</h3>
         <ul id="limits"></ul>
@@ -334,7 +345,7 @@ footer p { max-width: 78ch; }
 <div class="tooltip" id="tip" role="status"></div>
 
 <script>
-const DATA = {"pillars":["cost","talent","risk","capability","timezone","durability","depth"],"pillarLabels":{"cost":"Cost","talent":"Talent","risk":"Governance","capability":"Capability","timezone":"Overlap","durability":"Durability","depth":"Employer depth"},"pillarNotes":{"cost":"Wage cost per head","talent":"Size of the relevant workforce","risk":"Governance and operating stability","capability":"Does the city staff this kind of work","timezone":"Hours shared with headquarters","durability":"How slowly the cost gap is closing","depth":"How many employers hire here"},"colors":{"cost":"#2a78d6","talent":"#eb6834","risk":"#1baf7a","capability":"#eda100","timezone":"#e87ba4","durability":"#008300","depth":"#4a3aa7"},"colorsDark":{"cost":"#3987e5","talent":"#d95926","risk":"#199e70","capability":"#c98500","timezone":"#d55181","durability":"#008300","depth":"#9085e9"},"lowerIsBetter":["cost"],"logScaled":["cost","depth","talent"],"archetypes":{"transactional_hub":{"label":"Transactional hub","short":"Transactional hub","weights":{"cost":0.3,"talent":0.18,"risk":0.09,"capability":0.13,"timezone":0.09,"durability":0.09,"depth":0.12}},"judgment_centre":{"label":"Judgment centre of excellence","short":"Judgment centre","weights":{"cost":0.13,"talent":0.17,"risk":0.17,"capability":0.22,"timezone":0.13,"durability":0.04,"depth":0.14}}},"offsets":{"ch":1.0,"de":1.0,"nl":1.0,"es":1.0,"pl":1.0,"gb":0.0,"za":2.0,"in":5.5,"sg":8.0,"mx":-6.0,"br":-3.0},"hqGroups":{"Americas":[{"key":"san-francisco","label":"San Francisco","offset":-8.0},{"key":"chicago","label":"Chicago","offset":-6.0},{"key":"mexico-city","label":"Mexico City","offset":-6.0},{"key":"new-york","label":"New York","offset":-5.0},{"key":"toronto","label":"Toronto","offset":-5.0},{"key":"sao-paulo","label":"S\u00e3o Paulo","offset":-3.0}],"Europe":[{"key":"dublin","label":"Dublin","offset":0.0},{"key":"london","label":"London","offset":0.0},{"key":"amsterdam","label":"Amsterdam","offset":1.0},{"key":"frankfurt","label":"Frankfurt","offset":1.0},{"key":"madrid","label":"Madrid","offset":1.0},{"key":"paris","label":"Paris","offset":1.0},{"key":"stockholm","label":"Stockholm","offset":1.0},{"key":"warsaw","label":"Warsaw","offset":1.0},{"key":"zurich","label":"Zurich","offset":1.0}],"Middle East & Africa":[{"key":"johannesburg","label":"Johannesburg","offset":2.0},{"key":"dubai","label":"Dubai","offset":4.0}],"Asia-Pacific":[{"key":"bengaluru","label":"Bengaluru","offset":5.5},{"key":"singapore","label":"Singapore","offset":8.0},{"key":"hong-kong","label":"Hong Kong","offset":8.0},{"key":"shanghai","label":"Shanghai","offset":8.0},{"key":"tokyo","label":"Tokyo","offset":9.0},{"key":"sydney","label":"Sydney","offset":10.0}]},"hqOffsets":{"san-francisco":-8.0,"chicago":-6.0,"mexico-city":-6.0,"new-york":-5.0,"toronto":-5.0,"sao-paulo":-3.0,"dublin":0.0,"london":0.0,"amsterdam":1.0,"frankfurt":1.0,"madrid":1.0,"paris":1.0,"stockholm":1.0,"warsaw":1.0,"zurich":1.0,"johannesburg":2.0,"dubai":4.0,"bengaluru":5.5,"singapore":8.0,"hong-kong":8.0,"shanghai":8.0,"tokyo":9.0,"sydney":10.0},"marketNames":{"ch":"Switzerland","de":"Germany","nl":"Netherlands","gb":"United Kingdom","es":"Spain","sg":"Singapore","pl":"Poland","mx":"Mexico","za":"South Africa","in":"India","br":"Brazil"},"workingDay":[9.0,17.0],"hq":"zurich","topN":3,"robustAt":0.9,"evidenceFloor":10,"sources":[{"pillar":"Cost","name":"ILOSTAT earnings by occupation","detail":"ISCO-08 2/3/4, USD, aged to a common year","vintage":"2020\u20132025"},{"pillar":"Talent","name":"ILOSTAT employment by occupation","detail":"same three ISCO groups","vintage":"2025"},{"pillar":"Governance","name":"World Bank Worldwide Governance Indicators","detail":"five dimensions with their 90% intervals","vintage":"2024"},{"pillar":"Capability","name":"Adzuna job postings","detail":"GBS/GCC roles only","vintage":"Aug 2026"},{"pillar":"Overlap","name":"computed","detail":"hours shared with headquarters","vintage":"\u2014"},{"pillar":"Durability","name":"ILOSTAT, derived","detail":"wage drift, split from currency","vintage":"2015\u20132025"},{"pillar":"Employer depth","name":"Adzuna job postings","detail":"distinct employers hiring","vintage":"Aug 2026"}],"limits":["Only Polish cities have city-level cost. The rest use their country's, so cities within them differ on capability alone \u2014 treat that order as undetermined.","Capability comes from few postings, as low as five per city. The stability column already accounts for this; the ranking below the top few is not meaningful.","The GBS/GCC classifier was audited five times over a hundred postings; two of the last twenty were clearly wrong. That error rate is modelled in the stability column, not just noted.","One snapshot. A city hiring quietly during the fetch is under-represented; absence is weak evidence, not a verdict."],"asOf":"August 2026","views":{"city":{"transactional_hub":[{"id":"pl:Krak\u00f3w","name":"Krak\u00f3w","parent":"pl","isCity":true,"marketType":"delivery","cost":3810.8536822329656,"depth":52.0,"driftLcu":0.08295190283081633,"fxDrift":0.0019845396897897327,"costObserved":3512.513298363638,"costYear":2025,"costLag":1,"driftMeasured":true,"drift":0.08493644252060606,"regionIndex":1.4610969480696034,"regionYear":"2023","costResolved":true,"employers":11,"talent":2871213.55,"risk":67.06951662,"capability":0.4507978723404255,"timezone":8.0,"durability":-0.08493644252060606,"postings":17,"postingsSeen":36,"capN":47,"capP":0.4507978723404255},{"id":"pl:Warsaw","name":"Warsaw","parent":"pl","isCity":true,"marketType":"delivery","cost":4722.933486508505,"depth":52.0,"driftLcu":0.08295190283081633,"fxDrift":0.0019845396897897327,"costObserved":4353.189091460353,"costYear":2025,"costLag":1,"driftMeasured":true,"drift":0.08493644252060606,"regionIndex":1.8107920897739298,"regionYear":"2023","costResolved":true,"employers":14,"talent":2871213.55,"risk":67.06951662,"capability":0.640625,"timezone":8.0,"durability":-0.08493644252060606,"postings":14,"postingsSeen":17,"capN":44,"capP":0.640625},{"id":"pl:Wroc\u0142aw","name":"Wroc\u0142aw","parent":"pl","isCity":true,"marketType":"delivery","cost":2964.12073735103,"depth":52.0,"driftLcu":0.08295190283081633,"fxDrift":0.0019845396897897327,"costObserved":2732.0685536791093,"costYear":2025,"costLag":1,"driftMeasured":true,"drift":0.08493644252060606,"regionIndex":1.1364560605527487,"regionYear":"2023","costResolved":true,"employers":9,"talent":2871213.55,"risk":67.06951662,"capability":0.5282738095238095,"timezone":8.0,"durability":-0.08493644252060606,"postings":12,"postingsSeen":16,"capN":42,"capP":0.5282738095238095},{"id":"pl:Pozna\u0144","name":"Pozna\u0144","parent":"pl","isCity":true,"marketType":"delivery","cost":2269.1365005630055,"depth":52.0,"driftLcu":0.08295190283081633,"fxDrift":0.0019845396897897327,"costObserved":2091.492562726695,"costYear":2025,"costLag":1,"driftMeasured":true,"drift":0.08493644252060606,"regionIndex":0.8699962507569369,"regionYear":"2023","costResolved":true,"employers":9,"talent":2871213.55,"risk":67.06951662,"capability":0.6387195121951219,"timezone":8.0,"durability":-0.08493644252060606,"postings":11,"postingsSeen":12,"capN":41,"capP":0.6387195121951219},{"id":"za:Johannesburg","name":"Johannesburg","parent":"za","isCity":true,"marketType":"delivery","cost":854.0784580886193,"depth":13.0,"driftLcu":null,"fxDrift":null,"costObserved":711.0357,"costYear":2020,"costLag":6,"driftMeasured":false,"drift":0.031021512236124482,"regionIndex":null,"regionYear":null,"costResolved":false,"employers":5,"talent":1587991.8,"risk":51.49145317999999,"capability":0.5833333333333334,"timezone":7.0,"durability":-0.031021512236124482,"postings":2,"postingsSeen":5,"capN":32,"capP":0.5833333333333334},{"id":"in:Pune","name":"Pune","parent":"in","isCity":true,"marketType":"delivery","cost":342.0251928466503,"depth":58.0,"driftLcu":0.05232236654622979,"fxDrift":-0.0356178551581936,"costObserved":336.4057,"costYear":2025,"costLag":1,"driftMeasured":true,"drift":0.01670451138803619,"regionIndex":null,"regionYear":null,"costResolved":false,"employers":12,"talent":20051083.85,"risk":52.63878096,"capability":0.644,"timezone":3.5,"durability":-0.01670451138803619,"postings":20,"postingsSeen":22,"capN":50,"capP":0.644},{"id":"in:Bangalore","name":"Bangalore","parent":"in","isCity":true,"marketType":"delivery","cost":342.0251928466503,"depth":58.0,"driftLcu":0.05232236654622979,"fxDrift":-0.0356178551581936,"costObserved":336.4057,"costYear":2025,"costLag":1,"driftMeasured":true,"drift":0.01670451138803619,"regionIndex":null,"regionYear":null,"costResolved":false,"employers":14,"talent":20051083.85,"risk":52.63878096,"capability":0.6044444444444445,"timezone":3.5,"durability":-0.01670451138803619,"postings":15,"postingsSeen":20,"capN":45,"capP":0.6044444444444445},{"id":"in:Mumbai","name":"Mumbai","parent":"in","isCity":true,"marketType":"delivery","cost":342.0251928466503,"depth":58.0,"driftLcu":0.05232236654622979,"fxDrift":-0.0356178551581936,"costObserved":336.4057,"costYear":2025,"costLag":1,"driftMeasured":true,"drift":0.01670451138803619,"regionIndex":null,"regionYear":null,"costResolved":false,"employers":7,"talent":20051083.85,"risk":52.63878096,"capability":0.681081081081081,"timezone":3.5,"durability":-0.01670451138803619,"postings":7,"postingsSeen":14,"capN":37,"capP":0.681081081081081},{"id":"in:Hyderabad","name":"Hyderabad","parent":"in","isCity":true,"marketType":"delivery","cost":342.0251928466503,"depth":58.0,"driftLcu":0.05232236654622979,"fxDrift":-0.0356178551581936,"costObserved":336.4057,"costYear":2025,"costLag":1,"driftMeasured":true,"drift":0.01670451138803619,"regionIndex":null,"regionYear":null,"costResolved":false,"employers":8,"talent":20051083.85,"risk":52.63878096,"capability":0.5771428571428571,"timezone":3.5,"durability":-0.01670451138803619,"postings":5,"postingsSeen":11,"capN":35,"capP":0.5771428571428571},{"id":"in:Chennai","name":"Chennai","parent":"in","isCity":true,"marketType":"delivery","cost":342.0251928466503,"depth":58.0,"driftLcu":0.05232236654622979,"fxDrift":-0.0356178551581936,"costObserved":336.4057,"costYear":2025,"costLag":1,"driftMeasured":true,"drift":0.01670451138803619,"regionIndex":null,"regionYear":null,"costResolved":false,"employers":4,"talent":20051083.85,"risk":52.63878096,"capability":0.6529411764705882,"timezone":3.5,"durability":-0.01670451138803619,"postings":4,"postingsSeen":5,"capN":34,"capP":0.6529411764705882},{"id":"br:S\u00e3o Paulo","name":"S\u00e3o Paulo","parent":"br","isCity":true,"marketType":"delivery","cost":836.4421987610026,"depth":14.0,"driftLcu":0.0687111909443372,"fxDrift":-0.0539956478477881,"costObserved":824.312,"costYear":2025,"costLag":1,"driftMeasured":true,"drift":0.0147155430965491,"regionIndex":null,"regionYear":null,"costResolved":false,"employers":6,"talent":10288351.05,"risk":48.61358474,"capability":0.5275735294117647,"timezone":4.0,"durability":-0.0147155430965491,"postings":2,"postingsSeen":7,"capN":32,"capP":0.5275735294117647}],"judgment_centre":[{"id":"pl:Krak\u00f3w","name":"Krak\u00f3w","parent":"pl","isCity":true,"marketType":"delivery","cost":3810.8536822329656,"depth":52.0,"driftLcu":0.08295190283081633,"fxDrift":0.0019845396897897327,"costObserved":3512.513298363638,"costYear":2025,"costLag":1,"driftMeasured":true,"drift":0.08493644252060606,"regionIndex":1.4610969480696034,"regionYear":"2023","costResolved":true,"employers":11,"talent":2871213.55,"risk":67.06951662,"capability":0.5492021276595744,"timezone":8.0,"durability":-0.08493644252060606,"postings":17,"postingsSeen":36,"capN":47,"capP":0.5492021276595744},{"id":"pl:Warsaw","name":"Warsaw","parent":"pl","isCity":true,"marketType":"delivery","cost":4722.933486508505,"depth":52.0,"driftLcu":0.08295190283081633,"fxDrift":0.0019845396897897327,"costObserved":4353.189091460353,"costYear":2025,"costLag":1,"driftMeasured":true,"drift":0.08493644252060606,"regionIndex":1.8107920897739298,"regionYear":"2023","costResolved":true,"employers":14,"talent":2871213.55,"risk":67.06951662,"capability":0.359375,"timezone":8.0,"durability":-0.08493644252060606,"postings":14,"postingsSeen":17,"capN":44,"capP":0.359375},{"id":"pl:Wroc\u0142aw","name":"Wroc\u0142aw","parent":"pl","isCity":true,"marketType":"delivery","cost":2964.12073735103,"depth":52.0,"driftLcu":0.08295190283081633,"fxDrift":0.0019845396897897327,"costObserved":2732.0685536791093,"costYear":2025,"costLag":1,"driftMeasured":true,"drift":0.08493644252060606,"regionIndex":1.1364560605527487,"regionYear":"2023","costResolved":true,"employers":9,"talent":2871213.55,"risk":67.06951662,"capability":0.47172619047619047,"timezone":8.0,"durability":-0.08493644252060606,"postings":12,"postingsSeen":16,"capN":42,"capP":0.47172619047619047},{"id":"pl:Pozna\u0144","name":"Pozna\u0144","parent":"pl","isCity":true,"marketType":"delivery","cost":2269.1365005630055,"depth":52.0,"driftLcu":0.08295190283081633,"fxDrift":0.0019845396897897327,"costObserved":2091.492562726695,"costYear":2025,"costLag":1,"driftMeasured":true,"drift":0.08493644252060606,"regionIndex":0.8699962507569369,"regionYear":"2023","costResolved":true,"employers":9,"talent":2871213.55,"risk":67.06951662,"capability":0.36128048780487804,"timezone":8.0,"durability":-0.08493644252060606,"postings":11,"postingsSeen":12,"capN":41,"capP":0.36128048780487804},{"id":"za:Johannesburg","name":"Johannesburg","parent":"za","isCity":true,"marketType":"delivery","cost":854.0784580886193,"depth":13.0,"driftLcu":null,"fxDrift":null,"costObserved":711.0357,"costYear":2020,"costLag":6,"driftMeasured":false,"drift":0.031021512236124482,"regionIndex":null,"regionYear":null,"costResolved":false,"employers":5,"talent":1587991.8,"risk":51.49145317999999,"capability":0.41666666666666663,"timezone":7.0,"durability":-0.031021512236124482,"postings":2,"postingsSeen":5,"capN":32,"capP":0.41666666666666663},{"id":"in:Pune","name":"Pune","parent":"in","isCity":true,"marketType":"delivery","cost":342.0251928466503,"depth":58.0,"driftLcu":0.05232236654622979,"fxDrift":-0.0356178551581936,"costObserved":336.4057,"costYear":2025,"costLag":1,"driftMeasured":true,"drift":0.01670451138803619,"regionIndex":null,"regionYear":null,"costResolved":false,"employers":12,"talent":20051083.85,"risk":52.63878096,"capability":0.3559999999999999,"timezone":3.5,"durability":-0.01670451138803619,"postings":20,"postingsSeen":22,"capN":50,"capP":0.3559999999999999},{"id":"in:Bangalore","name":"Bangalore","parent":"in","isCity":true,"marketType":"delivery","cost":342.0251928466503,"depth":58.0,"driftLcu":0.05232236654622979,"fxDrift":-0.0356178551581936,"costObserved":336.4057,"costYear":2025,"costLag":1,"driftMeasured":true,"drift":0.01670451138803619,"regionIndex":null,"regionYear":null,"costResolved":false,"employers":14,"talent":20051083.85,"risk":52.63878096,"capability":0.3955555555555555,"timezone":3.5,"durability":-0.01670451138803619,"postings":15,"postingsSeen":20,"capN":45,"capP":0.3955555555555555},{"id":"in:Mumbai","name":"Mumbai","parent":"in","isCity":true,"marketType":"delivery","cost":342.0251928466503,"depth":58.0,"driftLcu":0.05232236654622979,"fxDrift":-0.0356178551581936,"costObserved":336.4057,"costYear":2025,"costLag":1,"driftMeasured":true,"drift":0.01670451138803619,"regionIndex":null,"regionYear":null,"costResolved":false,"employers":7,"talent":20051083.85,"risk":52.63878096,"capability":0.3189189189189189,"timezone":3.5,"durability":-0.01670451138803619,"postings":7,"postingsSeen":14,"capN":37,"capP":0.3189189189189189},{"id":"in:Hyderabad","name":"Hyderabad","parent":"in","isCity":true,"marketType":"delivery","cost":342.0251928466503,"depth":58.0,"driftLcu":0.05232236654622979,"fxDrift":-0.0356178551581936,"costObserved":336.4057,"costYear":2025,"costLag":1,"driftMeasured":true,"drift":0.01670451138803619,"regionIndex":null,"regionYear":null,"costResolved":false,"employers":8,"talent":20051083.85,"risk":52.63878096,"capability":0.4228571428571428,"timezone":3.5,"durability":-0.01670451138803619,"postings":5,"postingsSeen":11,"capN":35,"capP":0.4228571428571428},{"id":"in:Chennai","name":"Chennai","parent":"in","isCity":true,"marketType":"delivery","cost":342.0251928466503,"depth":58.0,"driftLcu":0.05232236654622979,"fxDrift":-0.0356178551581936,"costObserved":336.4057,"costYear":2025,"costLag":1,"driftMeasured":true,"drift":0.01670451138803619,"regionIndex":null,"regionYear":null,"costResolved":false,"employers":4,"talent":20051083.85,"risk":52.63878096,"capability":0.34705882352941175,"timezone":3.5,"durability":-0.01670451138803619,"postings":4,"postingsSeen":5,"capN":34,"capP":0.34705882352941175},{"id":"br:S\u00e3o Paulo","name":"S\u00e3o Paulo","parent":"br","isCity":true,"marketType":"delivery","cost":836.4421987610026,"depth":14.0,"driftLcu":0.0687111909443372,"fxDrift":-0.0539956478477881,"costObserved":824.312,"costYear":2025,"costLag":1,"driftMeasured":true,"drift":0.0147155430965491,"regionIndex":null,"regionYear":null,"costResolved":false,"employers":6,"talent":10288351.05,"risk":48.61358474,"capability":0.4724264705882353,"timezone":4.0,"durability":-0.0147155430965491,"postings":2,"postingsSeen":7,"capN":32,"capP":0.4724264705882353}]}},"reference":{"transactional_hub":{"pl:Krak\u00f3w":0.0001,"pl:Warsaw":0.003,"pl:Wroc\u0142aw":0.0017,"pl:Pozna\u0144":0.0136,"za:Johannesburg":0.0005,"in:Pune":0.6708,"in:Bangalore":0.4688,"in:Mumbai":0.8088,"in:Hyderabad":0.3403,"in:Chennai":0.6922,"br:S\u00e3o Paulo":0.0002},"judgment_centre":{"pl:Krak\u00f3w":0.395,"pl:Warsaw":0.0341,"pl:Wroc\u0142aw":0.2381,"pl:Pozna\u0144":0.0764,"za:Johannesburg":0.0004,"in:Pune":0.3974,"in:Bangalore":0.573,"in:Mumbai":0.2451,"in:Hyderabad":0.6792,"in:Chennai":0.359,"br:S\u00e3o Paulo":0.0023}}};
+const DATA = {"pillars":["cost","talent","risk","capability","timezone","durability","depth"],"pillarLabels":{"cost":"Cost","talent":"Talent","risk":"Governance","capability":"Capability","timezone":"Overlap","durability":"Durability","depth":"Employer depth"},"pillarNotes":{"cost":"Wage cost per head","talent":"Size of the relevant workforce","risk":"Governance and operating stability","capability":"Does the city staff this kind of work","timezone":"Hours shared with headquarters","durability":"How slowly the cost gap is closing","depth":"How many employers hire here"},"colors":{"cost":"#2a78d6","talent":"#eb6834","risk":"#1baf7a","capability":"#eda100","timezone":"#e87ba4","durability":"#008300","depth":"#4a3aa7"},"colorsDark":{"cost":"#3987e5","talent":"#d95926","risk":"#199e70","capability":"#c98500","timezone":"#d55181","durability":"#008300","depth":"#9085e9"},"lowerIsBetter":["cost"],"logScaled":["cost","depth","talent"],"archetypes":{"transactional_hub":{"label":"Transactional hub","short":"Transactional hub","weights":{"cost":0.3,"talent":0.18,"risk":0.09,"capability":0.13,"timezone":0.09,"durability":0.09,"depth":0.12}},"judgment_centre":{"label":"Judgment centre of excellence","short":"Judgment centre","weights":{"cost":0.13,"talent":0.17,"risk":0.17,"capability":0.22,"timezone":0.13,"durability":0.04,"depth":0.14}}},"offsets":{"ch":1.0,"de":1.0,"nl":1.0,"es":1.0,"pl":1.0,"gb":0.0,"za":2.0,"in":5.5,"sg":8.0,"mx":-6.0,"br":-3.0},"hqGroups":{"Americas":[{"key":"san-francisco","label":"San Francisco","offset":-8.0},{"key":"chicago","label":"Chicago","offset":-6.0},{"key":"mexico-city","label":"Mexico City","offset":-6.0},{"key":"new-york","label":"New York","offset":-5.0},{"key":"toronto","label":"Toronto","offset":-5.0},{"key":"sao-paulo","label":"S\u00e3o Paulo","offset":-3.0}],"Europe":[{"key":"dublin","label":"Dublin","offset":0.0},{"key":"london","label":"London","offset":0.0},{"key":"amsterdam","label":"Amsterdam","offset":1.0},{"key":"frankfurt","label":"Frankfurt","offset":1.0},{"key":"madrid","label":"Madrid","offset":1.0},{"key":"paris","label":"Paris","offset":1.0},{"key":"stockholm","label":"Stockholm","offset":1.0},{"key":"warsaw","label":"Warsaw","offset":1.0},{"key":"zurich","label":"Zurich","offset":1.0}],"Middle East & Africa":[{"key":"johannesburg","label":"Johannesburg","offset":2.0},{"key":"dubai","label":"Dubai","offset":4.0}],"Asia-Pacific":[{"key":"bengaluru","label":"Bengaluru","offset":5.5},{"key":"singapore","label":"Singapore","offset":8.0},{"key":"hong-kong","label":"Hong Kong","offset":8.0},{"key":"shanghai","label":"Shanghai","offset":8.0},{"key":"tokyo","label":"Tokyo","offset":9.0},{"key":"sydney","label":"Sydney","offset":10.0}]},"hqOffsets":{"san-francisco":-8.0,"chicago":-6.0,"mexico-city":-6.0,"new-york":-5.0,"toronto":-5.0,"sao-paulo":-3.0,"dublin":0.0,"london":0.0,"amsterdam":1.0,"frankfurt":1.0,"madrid":1.0,"paris":1.0,"stockholm":1.0,"warsaw":1.0,"zurich":1.0,"johannesburg":2.0,"dubai":4.0,"bengaluru":5.5,"singapore":8.0,"hong-kong":8.0,"shanghai":8.0,"tokyo":9.0,"sydney":10.0},"marketNames":{"ch":"Switzerland","de":"Germany","nl":"Netherlands","gb":"United Kingdom","es":"Spain","sg":"Singapore","pl":"Poland","mx":"Mexico","za":"South Africa","in":"India","br":"Brazil"},"workingDay":[9.0,17.0],"hq":"zurich","topN":3,"robustAt":0.9,"evidenceFloor":10,"separableAt":0.65,"auditCorrect":24,"auditTotal":40,"modelClassificationError":true,"sources":[{"pillar":"Cost","name":"ILOSTAT earnings by occupation","detail":"ISCO-08 2/3/4, USD, aged to a common year","vintage":"2020\u20132025"},{"pillar":"Talent","name":"ILOSTAT employment by occupation","detail":"same three ISCO groups","vintage":"2025"},{"pillar":"Governance","name":"World Bank Worldwide Governance Indicators","detail":"five dimensions with their 90% intervals","vintage":"2024"},{"pillar":"Capability","name":"Adzuna job postings","detail":"GBS/GCC roles only","vintage":"Aug 2026"},{"pillar":"Overlap","name":"computed","detail":"hours shared with headquarters","vintage":"\u2014"},{"pillar":"Durability","name":"ILOSTAT, derived","detail":"wage drift, split from currency","vintage":"2015\u20132025"},{"pillar":"Employer depth","name":"Adzuna job postings","detail":"distinct employers hiring","vintage":"Aug 2026"}],"limits":["Only Polish cities have city-level cost. The rest use their country's, so cities within them differ on capability alone \u2014 treat that order as undetermined.","Capability comes from few postings, as low as five per city. The stability column already accounts for this; the ranking below the top few is not meaningful.","The GBS/GCC classifier was audited five times over a hundred postings; two of the last twenty were clearly wrong. That error rate is modelled in the stability column, not just noted.","One snapshot. A city hiring quietly during the fetch is under-represented; absence is weak evidence, not a verdict."],"asOf":"August 2026","views":{"city":{"transactional_hub":[{"id":"pl:Krak\u00f3w","name":"Krak\u00f3w","parent":"pl","isCity":true,"marketType":"delivery","cost":3810.8536822329656,"depth":52.0,"driftLcu":0.08295190283081633,"fxDrift":0.0019845396897897327,"costObserved":3512.513298363638,"costYear":2025,"costLag":1,"driftMeasured":true,"drift":0.08493644252060606,"regionIndex":1.4610969480696034,"regionYear":"2023","costResolved":true,"employers":11,"talent":2871213.55,"risk":67.06951662,"capability":0.4507978723404255,"timezone":8.0,"durability":-0.08493644252060606,"postings":17,"postingsSeen":36,"capN":47,"capP":0.4507978723404255,"contaminant":0.42911877394636017},{"id":"pl:Warsaw","name":"Warsaw","parent":"pl","isCity":true,"marketType":"delivery","cost":4722.933486508505,"depth":52.0,"driftLcu":0.08295190283081633,"fxDrift":0.0019845396897897327,"costObserved":4353.189091460353,"costYear":2025,"costLag":1,"driftMeasured":true,"drift":0.08493644252060606,"regionIndex":1.8107920897739298,"regionYear":"2023","costResolved":true,"employers":14,"talent":2871213.55,"risk":67.06951662,"capability":0.640625,"timezone":8.0,"durability":-0.08493644252060606,"postings":14,"postingsSeen":17,"capN":44,"capP":0.640625,"contaminant":0.42911877394636017},{"id":"pl:Wroc\u0142aw","name":"Wroc\u0142aw","parent":"pl","isCity":true,"marketType":"delivery","cost":2964.12073735103,"depth":52.0,"driftLcu":0.08295190283081633,"fxDrift":0.0019845396897897327,"costObserved":2732.0685536791093,"costYear":2025,"costLag":1,"driftMeasured":true,"drift":0.08493644252060606,"regionIndex":1.1364560605527487,"regionYear":"2023","costResolved":true,"employers":9,"talent":2871213.55,"risk":67.06951662,"capability":0.5282738095238095,"timezone":8.0,"durability":-0.08493644252060606,"postings":12,"postingsSeen":16,"capN":42,"capP":0.5282738095238095,"contaminant":0.42911877394636017},{"id":"pl:Pozna\u0144","name":"Pozna\u0144","parent":"pl","isCity":true,"marketType":"delivery","cost":2269.1365005630055,"depth":52.0,"driftLcu":0.08295190283081633,"fxDrift":0.0019845396897897327,"costObserved":2091.492562726695,"costYear":2025,"costLag":1,"driftMeasured":true,"drift":0.08493644252060606,"regionIndex":0.8699962507569369,"regionYear":"2023","costResolved":true,"employers":9,"talent":2871213.55,"risk":67.06951662,"capability":0.6387195121951219,"timezone":8.0,"durability":-0.08493644252060606,"postings":11,"postingsSeen":12,"capN":41,"capP":0.6387195121951219,"contaminant":0.42911877394636017},{"id":"za:Johannesburg","name":"Johannesburg","parent":"za","isCity":true,"marketType":"delivery","cost":854.0784580886193,"depth":13.0,"driftLcu":null,"fxDrift":null,"costObserved":711.0357,"costYear":2020,"costLag":6,"driftMeasured":false,"drift":0.031021512236124482,"regionIndex":null,"regionYear":null,"costResolved":false,"employers":5,"talent":1587991.8,"risk":51.49145317999999,"capability":0.5833333333333334,"timezone":7.0,"durability":-0.031021512236124482,"postings":2,"postingsSeen":5,"capN":32,"capP":0.5833333333333334,"contaminant":0.36363636363636365},{"id":"in:Pune","name":"Pune","parent":"in","isCity":true,"marketType":"delivery","cost":342.0251928466503,"depth":58.0,"driftLcu":0.05232236654622979,"fxDrift":-0.0356178551581936,"costObserved":336.4057,"costYear":2025,"costLag":1,"driftMeasured":true,"drift":0.01670451138803619,"regionIndex":null,"regionYear":null,"costResolved":false,"employers":12,"talent":20051083.85,"risk":52.63878096,"capability":0.644,"timezone":3.5,"durability":-0.01670451138803619,"postings":20,"postingsSeen":22,"capN":50,"capP":0.644,"contaminant":0.7242647058823529},{"id":"in:Bangalore","name":"Bangalore","parent":"in","isCity":true,"marketType":"delivery","cost":342.0251928466503,"depth":58.0,"driftLcu":0.05232236654622979,"fxDrift":-0.0356178551581936,"costObserved":336.4057,"costYear":2025,"costLag":1,"driftMeasured":true,"drift":0.01670451138803619,"regionIndex":null,"regionYear":null,"costResolved":false,"employers":14,"talent":20051083.85,"risk":52.63878096,"capability":0.6044444444444445,"timezone":3.5,"durability":-0.01670451138803619,"postings":15,"postingsSeen":20,"capN":45,"capP":0.6044444444444445,"contaminant":0.7242647058823529},{"id":"in:Mumbai","name":"Mumbai","parent":"in","isCity":true,"marketType":"delivery","cost":342.0251928466503,"depth":58.0,"driftLcu":0.05232236654622979,"fxDrift":-0.0356178551581936,"costObserved":336.4057,"costYear":2025,"costLag":1,"driftMeasured":true,"drift":0.01670451138803619,"regionIndex":null,"regionYear":null,"costResolved":false,"employers":7,"talent":20051083.85,"risk":52.63878096,"capability":0.681081081081081,"timezone":3.5,"durability":-0.01670451138803619,"postings":7,"postingsSeen":14,"capN":37,"capP":0.681081081081081,"contaminant":0.7242647058823529},{"id":"in:Hyderabad","name":"Hyderabad","parent":"in","isCity":true,"marketType":"delivery","cost":342.0251928466503,"depth":58.0,"driftLcu":0.05232236654622979,"fxDrift":-0.0356178551581936,"costObserved":336.4057,"costYear":2025,"costLag":1,"driftMeasured":true,"drift":0.01670451138803619,"regionIndex":null,"regionYear":null,"costResolved":false,"employers":8,"talent":20051083.85,"risk":52.63878096,"capability":0.5771428571428571,"timezone":3.5,"durability":-0.01670451138803619,"postings":5,"postingsSeen":11,"capN":35,"capP":0.5771428571428571,"contaminant":0.7242647058823529},{"id":"in:Chennai","name":"Chennai","parent":"in","isCity":true,"marketType":"delivery","cost":342.0251928466503,"depth":58.0,"driftLcu":0.05232236654622979,"fxDrift":-0.0356178551581936,"costObserved":336.4057,"costYear":2025,"costLag":1,"driftMeasured":true,"drift":0.01670451138803619,"regionIndex":null,"regionYear":null,"costResolved":false,"employers":4,"talent":20051083.85,"risk":52.63878096,"capability":0.6529411764705882,"timezone":3.5,"durability":-0.01670451138803619,"postings":4,"postingsSeen":5,"capN":34,"capP":0.6529411764705882,"contaminant":0.7242647058823529},{"id":"br:S\u00e3o Paulo","name":"S\u00e3o Paulo","parent":"br","isCity":true,"marketType":"delivery","cost":836.4421987610026,"depth":14.0,"driftLcu":0.0687111909443372,"fxDrift":-0.0539956478477881,"costObserved":824.312,"costYear":2025,"costLag":1,"driftMeasured":true,"drift":0.0147155430965491,"regionIndex":null,"regionYear":null,"costResolved":false,"employers":6,"talent":10288351.05,"risk":48.61358474,"capability":0.5275735294117647,"timezone":4.0,"durability":-0.0147155430965491,"postings":2,"postingsSeen":7,"capN":32,"capP":0.5275735294117647,"contaminant":0.4090909090909091}],"judgment_centre":[{"id":"pl:Krak\u00f3w","name":"Krak\u00f3w","parent":"pl","isCity":true,"marketType":"delivery","cost":3810.8536822329656,"depth":52.0,"driftLcu":0.08295190283081633,"fxDrift":0.0019845396897897327,"costObserved":3512.513298363638,"costYear":2025,"costLag":1,"driftMeasured":true,"drift":0.08493644252060606,"regionIndex":1.4610969480696034,"regionYear":"2023","costResolved":true,"employers":11,"talent":2871213.55,"risk":67.06951662,"capability":0.5492021276595744,"timezone":8.0,"durability":-0.08493644252060606,"postings":17,"postingsSeen":36,"capN":47,"capP":0.5492021276595744,"contaminant":0.5708812260536398},{"id":"pl:Warsaw","name":"Warsaw","parent":"pl","isCity":true,"marketType":"delivery","cost":4722.933486508505,"depth":52.0,"driftLcu":0.08295190283081633,"fxDrift":0.0019845396897897327,"costObserved":4353.189091460353,"costYear":2025,"costLag":1,"driftMeasured":true,"drift":0.08493644252060606,"regionIndex":1.8107920897739298,"regionYear":"2023","costResolved":true,"employers":14,"talent":2871213.55,"risk":67.06951662,"capability":0.359375,"timezone":8.0,"durability":-0.08493644252060606,"postings":14,"postingsSeen":17,"capN":44,"capP":0.359375,"contaminant":0.5708812260536398},{"id":"pl:Wroc\u0142aw","name":"Wroc\u0142aw","parent":"pl","isCity":true,"marketType":"delivery","cost":2964.12073735103,"depth":52.0,"driftLcu":0.08295190283081633,"fxDrift":0.0019845396897897327,"costObserved":2732.0685536791093,"costYear":2025,"costLag":1,"driftMeasured":true,"drift":0.08493644252060606,"regionIndex":1.1364560605527487,"regionYear":"2023","costResolved":true,"employers":9,"talent":2871213.55,"risk":67.06951662,"capability":0.47172619047619047,"timezone":8.0,"durability":-0.08493644252060606,"postings":12,"postingsSeen":16,"capN":42,"capP":0.47172619047619047,"contaminant":0.5708812260536398},{"id":"pl:Pozna\u0144","name":"Pozna\u0144","parent":"pl","isCity":true,"marketType":"delivery","cost":2269.1365005630055,"depth":52.0,"driftLcu":0.08295190283081633,"fxDrift":0.0019845396897897327,"costObserved":2091.492562726695,"costYear":2025,"costLag":1,"driftMeasured":true,"drift":0.08493644252060606,"regionIndex":0.8699962507569369,"regionYear":"2023","costResolved":true,"employers":9,"talent":2871213.55,"risk":67.06951662,"capability":0.36128048780487804,"timezone":8.0,"durability":-0.08493644252060606,"postings":11,"postingsSeen":12,"capN":41,"capP":0.36128048780487804,"contaminant":0.5708812260536398},{"id":"za:Johannesburg","name":"Johannesburg","parent":"za","isCity":true,"marketType":"delivery","cost":854.0784580886193,"depth":13.0,"driftLcu":null,"fxDrift":null,"costObserved":711.0357,"costYear":2020,"costLag":6,"driftMeasured":false,"drift":0.031021512236124482,"regionIndex":null,"regionYear":null,"costResolved":false,"employers":5,"talent":1587991.8,"risk":51.49145317999999,"capability":0.41666666666666663,"timezone":7.0,"durability":-0.031021512236124482,"postings":2,"postingsSeen":5,"capN":32,"capP":0.41666666666666663,"contaminant":0.6363636363636364},{"id":"in:Pune","name":"Pune","parent":"in","isCity":true,"marketType":"delivery","cost":342.0251928466503,"depth":58.0,"driftLcu":0.05232236654622979,"fxDrift":-0.0356178551581936,"costObserved":336.4057,"costYear":2025,"costLag":1,"driftMeasured":true,"drift":0.01670451138803619,"regionIndex":null,"regionYear":null,"costResolved":false,"employers":12,"talent":20051083.85,"risk":52.63878096,"capability":0.3559999999999999,"timezone":3.5,"durability":-0.01670451138803619,"postings":20,"postingsSeen":22,"capN":50,"capP":0.3559999999999999,"contaminant":0.2757352941176471},{"id":"in:Bangalore","name":"Bangalore","parent":"in","isCity":true,"marketType":"delivery","cost":342.0251928466503,"depth":58.0,"driftLcu":0.05232236654622979,"fxDrift":-0.0356178551581936,"costObserved":336.4057,"costYear":2025,"costLag":1,"driftMeasured":true,"drift":0.01670451138803619,"regionIndex":null,"regionYear":null,"costResolved":false,"employers":14,"talent":20051083.85,"risk":52.63878096,"capability":0.3955555555555555,"timezone":3.5,"durability":-0.01670451138803619,"postings":15,"postingsSeen":20,"capN":45,"capP":0.3955555555555555,"contaminant":0.2757352941176471},{"id":"in:Mumbai","name":"Mumbai","parent":"in","isCity":true,"marketType":"delivery","cost":342.0251928466503,"depth":58.0,"driftLcu":0.05232236654622979,"fxDrift":-0.0356178551581936,"costObserved":336.4057,"costYear":2025,"costLag":1,"driftMeasured":true,"drift":0.01670451138803619,"regionIndex":null,"regionYear":null,"costResolved":false,"employers":7,"talent":20051083.85,"risk":52.63878096,"capability":0.3189189189189189,"timezone":3.5,"durability":-0.01670451138803619,"postings":7,"postingsSeen":14,"capN":37,"capP":0.3189189189189189,"contaminant":0.2757352941176471},{"id":"in:Hyderabad","name":"Hyderabad","parent":"in","isCity":true,"marketType":"delivery","cost":342.0251928466503,"depth":58.0,"driftLcu":0.05232236654622979,"fxDrift":-0.0356178551581936,"costObserved":336.4057,"costYear":2025,"costLag":1,"driftMeasured":true,"drift":0.01670451138803619,"regionIndex":null,"regionYear":null,"costResolved":false,"employers":8,"talent":20051083.85,"risk":52.63878096,"capability":0.4228571428571428,"timezone":3.5,"durability":-0.01670451138803619,"postings":5,"postingsSeen":11,"capN":35,"capP":0.4228571428571428,"contaminant":0.2757352941176471},{"id":"in:Chennai","name":"Chennai","parent":"in","isCity":true,"marketType":"delivery","cost":342.0251928466503,"depth":58.0,"driftLcu":0.05232236654622979,"fxDrift":-0.0356178551581936,"costObserved":336.4057,"costYear":2025,"costLag":1,"driftMeasured":true,"drift":0.01670451138803619,"regionIndex":null,"regionYear":null,"costResolved":false,"employers":4,"talent":20051083.85,"risk":52.63878096,"capability":0.34705882352941175,"timezone":3.5,"durability":-0.01670451138803619,"postings":4,"postingsSeen":5,"capN":34,"capP":0.34705882352941175,"contaminant":0.2757352941176471},{"id":"br:S\u00e3o Paulo","name":"S\u00e3o Paulo","parent":"br","isCity":true,"marketType":"delivery","cost":836.4421987610026,"depth":14.0,"driftLcu":0.0687111909443372,"fxDrift":-0.0539956478477881,"costObserved":824.312,"costYear":2025,"costLag":1,"driftMeasured":true,"drift":0.0147155430965491,"regionIndex":null,"regionYear":null,"costResolved":false,"employers":6,"talent":10288351.05,"risk":48.61358474,"capability":0.4724264705882353,"timezone":4.0,"durability":-0.0147155430965491,"postings":2,"postingsSeen":7,"capN":32,"capP":0.4724264705882353,"contaminant":0.5909090909090908}]}},"reference":{"transactional_hub":{"pl:Krak\u00f3w":0.0001,"pl:Warsaw":0.003,"pl:Wroc\u0142aw":0.0017,"pl:Pozna\u0144":0.0136,"za:Johannesburg":0.0005,"in:Pune":0.6708,"in:Bangalore":0.4688,"in:Mumbai":0.8088,"in:Hyderabad":0.3403,"in:Chennai":0.6922,"br:S\u00e3o Paulo":0.0002},"judgment_centre":{"pl:Krak\u00f3w":0.395,"pl:Warsaw":0.0341,"pl:Wroc\u0142aw":0.2381,"pl:Pozna\u0144":0.0764,"za:Johannesburg":0.0004,"in:Pune":0.3974,"in:Bangalore":0.573,"in:Mumbai":0.2451,"in:Hyderabad":0.6792,"in:Chennai":0.359,"br:S\u00e3o Paulo":0.0023}}};
 const $ = (s) => document.querySelector(s);
 
 const state = {
@@ -433,6 +444,24 @@ function mulberry(seed) {
 }
 const CONCENTRATION = 40, DRAWS = 2000;
 
+/* Beta via two Gammas — needed to draw the classifier's precision per
+   iteration, exactly as src/stability.py does. */
+function beta(rng, a, b) {
+  const x = gamma(rng, a), y = gamma(rng, b);
+  return x / (x + y);
+}
+
+/* An observed capability share is a mixture of correctly and wrongly admitted
+   postings; this recovers the former. Mirrors _correct_for_precision in
+   src/stability.py — the dashboard ran without it for one revision and showed a
+   different leader from the study it presents. */
+function correctForPrecision(observed, precision, row) {
+  if (!DATA.modelClassificationError || precision <= 0.05) return observed;
+  if (row.contaminant == null) return observed;
+  const t = (observed - (1 - precision) * row.contaminant) / precision;
+  return Math.min(1, Math.max(0, t));
+}
+
 /* Weights are not the only thing that is uncertain, and on the centre view they
    are not even the important one: centres inside one country share every pillar
    except capability, so a run that varies only the weights can never reorder
@@ -447,6 +476,11 @@ const CONCENTRATION = 40, DRAWS = 2000;
 function stability(base, weights) {
   const rng = mulberry(20260821);
   const hits = new Map(base.map((it) => [it.row.id, 0]));
+  // Who finishes ahead of whom, so the ranking can be grouped into bands the
+  // draws actually support rather than printed as N distinct positions.
+  const ids = base.map((it) => it.row.id);
+  const beats = new Map(ids.map((a) => [a, new Map(ids.map((b) => [b, 0]))]));
+  const meanRank = new Map(ids.map((a) => [a, 0]));
   const alpha = DATA.pillars.map((p) => Math.max(CONCENTRATION * weights[p], 0.05));
   const topN = DATA.topN;
   const others = DATA.pillars.filter((p) => p !== "capability");
@@ -457,6 +491,12 @@ function stability(base, weights) {
     const gsum = g.reduce((a, b) => a + b, 0);
     const w = {}; DATA.pillars.forEach((p, i) => (w[p] = g[i] / gsum));
 
+    // One precision per draw: the classifier is a single instrument and its
+    // accuracy does not vary by city.
+    const precision = DATA.modelClassificationError
+      ? beta(rng, DATA.auditCorrect + 1, DATA.auditTotal - DATA.auditCorrect + 1)
+      : 1;
+
     let lo = Infinity, hi = -Infinity;
     for (let i = 0; i < base.length; i++) {
       const row = base[i].row;
@@ -466,6 +506,7 @@ function stability(base, weights) {
         const sd = Math.sqrt(Math.max(pHat * (1 - pHat), 0) / n);
         draw = Math.min(1, Math.max(0, pHat + normal(rng) * sd));
       }
+      draw = correctForPrecision(draw, precision, row);
       caps[i] = draw;
       if (draw < lo) lo = draw;
       if (draw > hi) hi = draw;
@@ -480,10 +521,33 @@ function stability(base, weights) {
     for (let i = 0; i < topN && i < ranked.length; i++) {
       hits.set(ranked[i].id, hits.get(ranked[i].id) + 1);
     }
+    for (let i = 0; i < ranked.length; i++) {
+      meanRank.set(ranked[i].id, meanRank.get(ranked[i].id) + i + 1);
+      const row = beats.get(ranked[i].id);
+      for (let j = i + 1; j < ranked.length; j++) row.set(ranked[j].id, row.get(ranked[j].id) + 1);
+    }
   }
   const out = new Map();
   for (const [k, v] of hits) out.set(k, v / DRAWS);
-  return out;
+  const order = [...ids].sort((a, b) => meanRank.get(a) - meanRank.get(b));
+  return { frequency: out, band: bandsFrom(order, beats), order };
+}
+
+/* A city opens a new band only when every current member of the band clearly
+   outranks it. Comparing against all members, not just the previous city, keeps
+   the grouping transitive — a chain of close neighbours cannot merge into one
+   band spanning a gap the draws do separate. Mirrors _bands in stability.py. */
+function bandsFrom(order, beats) {
+  const band = new Map();
+  let current = 1, members = [];
+  for (const key of order) {
+    if (members.length && members.every((m) => (beats.get(m).get(key) / DRAWS) >= DATA.separableAt)) {
+      current += 1; members = [];
+    }
+    band.set(key, current);
+    members.push(key);
+  }
+  return band;
 }
 
 /* "Robust" is a claim about evidence, not just arithmetic: Mumbai reached 90% of
@@ -503,13 +567,16 @@ function verdict(f, row) {
    here changes every time a weight moves. The headline is therefore written
    from the current result rather than fixed in the markup: what survives, and
    what it would take to believe otherwise. */
-function writeHeadline(ranked, stab) {
+function writeHeadline(ranked, stab, band) {
   const robust = ranked.filter((r) => verdict(stab.get(r.row.id) ?? 0, r.row) === "robust");
   const lead = ranked[0];
+  const top = ranked.filter((r) => band.get(r.row.id) === 1);
   const arch = DATA.archetypes[state.archetype].short.toLowerCase();
 
   let headline;
-  if (robust.length === 1) {
+  if (top.length > 1) {
+    headline = `${top.length} cities finish level at the top.`;
+  } else if (robust.length === 1) {
     headline = `Only ${robust[0].row.name} survives a change of mind.`;
   } else if (robust.length > 1) {
     const names = robust.slice(0, 3).map((r) => r.row.name);
@@ -519,13 +586,22 @@ function writeHeadline(ranked, stab) {
   }
   $("#headline").textContent = headline;
 
-  const pct = ((stab.get(lead.row.id) ?? 0) * 100).toFixed(0);
-  const where = DATA.marketNames[lead.row.parent] || "";
-  $("#takeaway").innerHTML = robust.length
-    ? `<strong>${lead.row.name}</strong> (${where}) leads and holds a top-three place in `
-      + `${pct}% of 2,000 nearby weightings.`
-    : `<strong>${lead.row.name}</strong> (${where}) leads on your weighting but holds a `
-      + `top-three place in only ${pct}% of 2,000 nearby ones — the ranking is yours, not the evidence's.`;
+  // The leading band, not the leading city: naming one city as first when the
+  // draws cannot separate it from four others is the error this tool argues
+  // against.
+  if (top.length > 1) {
+    const names = top.map((r) => r.row.name);
+    const last = names.pop();
+    $("#takeaway").innerHTML =
+      `<strong>${names.join(", ")} and ${last}</strong> finish together — `
+      + `the draws cannot separate them, so treat the order inside that group as undetermined.`;
+  } else {
+    const pct = ((stab.get(lead.row.id) ?? 0) * 100).toFixed(0);
+    const where = DATA.marketNames[lead.row.parent] || "";
+    $("#takeaway").innerHTML =
+      `<strong>${lead.row.name}</strong> (${where}) leads on its own, holding a top-three `
+      + `place in ${pct}% of 2,000 nearby weightings.`;
+  }
 }
 
 /* ---- what your weighting believes ---- */
@@ -550,12 +626,21 @@ function render() {
   const rows = DATA.views.city[state.archetype];
   const items = pillarValues(rows);
   const scaled = normalise(items);
-  const ranked = scoreAll(scaled, state.weights);
-  const stab = stability(scaled, state.weights);
+  let ranked = scoreAll(scaled, state.weights);
+  const result = stability(scaled, state.weights);
+  const stab = result.frequency;
+  const band = result.band;
   const ref = DATA.reference[state.archetype];
   const C = colors();
 
-  writeHeadline(ranked, stab);
+  // Order by band first: a ranking that prints positions the draws cannot
+  // support is the thing this tool exists to argue against.
+  // Band first; within a band by how often the city survives reweighting,
+  // since the band already says the score order is not established.
+  ranked = ranked.slice().sort((a, b) =>
+    (band.get(a.row.id) - band.get(b.row.id))
+    || ((stab.get(b.row.id) ?? 0) - (stab.get(a.row.id) ?? 0)));
+  writeHeadline(ranked, stab, band);
   $("#board-title").textContent =
     `${DATA.archetypes[state.archetype].label}: ${ranked.length} cities ranked on your weighting`;
   $("#scope").textContent = `${rows.length} GBS and GCC cities`;
@@ -569,8 +654,10 @@ function render() {
   ranked.forEach((r, i) => {
     const f = stab.get(r.row.id) ?? 0;
     const v = verdict(f, r.row);
+    const b = band.get(r.row.id);
+    const opensBand = i === 0 || band.get(ranked[i - 1].row.id) !== b;
     const el = document.createElement("div");
-    el.className = "row" + (i < DATA.topN ? " in-top" : "");
+    el.className = "row" + (b === 1 ? " in-top" : "") + (opensBand ? " band-start" : "");
     el.dataset.id = r.row.id;
 
     // The country first: a reader should not have to know where Poznań is to
@@ -593,7 +680,7 @@ function render() {
       : `<span class="${thin ? "thin" : ""}">${n}</span>`;
 
     el.innerHTML =
-      `<div class="rank">${i + 1}</div>` +
+      `<div class="rank">${opensBand ? b : ""}</div>` +
       `<div class="who"><span class="nm">${r.row.name}</span><span class="sub">${sub}</span></div>` +
       `<div class="bar-cell"><div class="bar">${segs}</div></div>` +
       `<div class="evidence" title="postings behind the capability pillar">${evidence}</div>` +
@@ -709,6 +796,7 @@ function buildControls() {
   $("#limits").innerHTML = DATA.limits.map((x) => `<li>${x}</li>`).join("");
   $("#asof").textContent = `${DATA.pillars.length} pillars · ${DATA.asOf}`;
   $("#floor-n").textContent = DATA.evidenceFloor;
+  $("#sep-n").textContent = Math.round(DATA.separableAt * 100) + "%";
 
   $("#copy").addEventListener("click", copyTable);
 

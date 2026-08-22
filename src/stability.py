@@ -28,7 +28,7 @@ that holds it only in a corner of the space is a preference wearing a number.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import numpy as np
 
@@ -55,6 +55,10 @@ class Stability:
     # for a contingent market to belong on the list.
     weight_when_in: dict[str, dict[str, float]]
     weight_when_out: dict[str, dict[str, float]]
+    # How often the row key outranks the column key, across all draws.
+    beats: dict[str, dict[str, float]] = field(default_factory=dict)
+    # Band number per market: neighbours the draws cannot separate share one.
+    band: dict[str, int] = field(default_factory=dict)
 
     # Set by `run` so a verdict can weigh how much evidence sits behind it.
     evidence: dict[str, int] | None = None
@@ -75,6 +79,29 @@ class Stability:
 
 def _wgi_sigma(lo: float, hi: float) -> float:
     return max((hi - lo) / (2 * Z90), 0.0)
+
+
+def _bands(ordered: list[str], beats: dict[str, dict[str, float]]) -> dict[str, int]:
+    """Group a ranking into bands the evidence can actually support.
+
+    Walking the order, a city opens a new band only when the band's current
+    members clearly outrank it — clearly meaning above `SEPARABLE_AT` in the
+    draws. Comparing against every member rather than only the previous city
+    keeps the grouping transitive: a chain of individually-close neighbours
+    cannot merge into one band spanning a gap the draws do separate.
+    """
+    band: dict[str, int] = {}
+    current = 1
+    members: list[str] = []
+    for key in ordered:
+        if members and all(
+            beats.get(m, {}).get(key, 0.0) >= C.SEPARABLE_AT for m in members
+        ):
+            current += 1
+            members = []
+        band[key] = current
+        members.append(key)
+    return band
 
 
 def _correct_for_precision(observed: float, precision: float, market, metric: str) -> float:
@@ -143,6 +170,7 @@ def run(
     )
 
     hits = {k: 0 for k in markets}
+    beats = {a: {b: 0 for b in markets if b != a} for a in markets}
     rank_sum = {k: 0 for k in markets}
     best = {k: len(markets) for k in markets}
     worst = {k: 1 for k in markets}
@@ -248,6 +276,12 @@ def run(
         )
         order = rank(score(normalise(raw, transform=transform), weights))
 
+        # Pairwise separability: who actually finishes ahead of whom, rather
+        # than who happens to sit above whom in one ordering.
+        for rank_a, a in enumerate(order):
+            for b in order[rank_a + 1:]:
+                beats[a][b] += 1
+
         for position, iso2 in enumerate(order, start=1):
             rank_sum[iso2] += position
             best[iso2] = min(best[iso2], position)
@@ -260,7 +294,11 @@ def run(
                 hits[iso2] += 1
                 n_in[iso2] += 1
 
+    beat_rate = {a: {b: v / draws for b, v in row.items()} for a, row in beats.items()}
+    ordered = rank({k: -rank_sum[k] for k in markets})
     return Stability(
+        beats=beat_rate,
+        band=_bands(ordered, beat_rate),
         evidence={
             k: panel[k].postings_in_scope
             for k in markets

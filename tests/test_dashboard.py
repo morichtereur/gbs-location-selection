@@ -78,6 +78,28 @@ def test_javascript_agrees_under_a_lopsided_weighting():
 
 
 @needs_postings
+def test_payload_carries_what_the_monte_carlo_needs():
+    """Guards a divergence the ranking parity test cannot see.
+
+    The parity tests compare the deterministic ranking, which does not touch
+    the resampling. The dashboard ran a full revision without the
+    classification-error correction and showed a different leading city from
+    the study it presents, because the payload simply lacked the inputs. If
+    the correction is switched on, every row must carry what it needs.
+    """
+    data = payload()
+    assert data["modelClassificationError"] is C.MODEL_CLASSIFICATION_ERROR
+    if not data["modelClassificationError"]:
+        return
+    assert data["auditTotal"] > 0 and 0 < data["auditCorrect"] <= data["auditTotal"]
+    for rows in data["views"]["city"].values():
+        for row in rows:
+            assert row["capN"] is not None, row["name"]
+            assert row["contaminant"] is not None, row["name"]
+            assert 0.0 <= row["contaminant"] <= 1.0
+
+
+@needs_postings
 def test_payload_carries_every_pillar_for_every_entity():
     data = payload()
     assert set(data["views"]) == {"city"}, "cities only"
