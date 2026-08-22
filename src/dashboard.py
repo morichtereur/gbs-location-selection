@@ -124,6 +124,7 @@ LIMITS = [
     "One snapshot. A city hiring quietly during the fetch is under-represented; absence is weak evidence, not a verdict.",
     # The first question any GBS room asks is where Manila is. Better that the
     # exhibit answers it than that the audience finds the hole.
+    "Exhibit 3 subtracts a national baseline from cities that sometimes carry a regional index, so a capital-city premium sits on one side of it and not the other. Warsaw against a UK baseline is the clearest case: it reads as dearer than the UK, which is partly Mazowieckie against a British national mean rather than a wage fact.",
     "Exhibit 3 is a wage line, not a business case. It excludes facilities, technology, management overhead, transition and severance, and holds headcount one-for-one. Read it as the upper bound on one component of the saving.",
     "Six established locations are absent because the postings feed does not reach them: Manila, Kuala Lumpur, Bucharest, Prague, Budapest and Lisbon. The ranking is therefore within the cities shown, not against every credible alternative.",
 ]
@@ -1519,8 +1520,8 @@ function renderCase(ranked) {
   const zero = (Math.abs(worst) / (span + Math.abs(worst))) * 100;
 
   $("#case-title").innerHTML =
-    `Annual wage gap for <strong>${fte.toLocaleString("en-US")} roles</strong> leaving `
-    + `<strong>${base.label}</strong>`;
+    `Annual wage gap for <strong>${fte.toLocaleString("en-US")} `
+    + `role${fte === 1 ? "" : "s"}</strong> leaving <strong>${base.label}</strong>`;
 
   $("#case").innerHTML = items.map((i) => {
     const w = (Math.abs(i.total) / (span + Math.abs(worst))) * 100;
@@ -1536,13 +1537,28 @@ function renderCase(ranked) {
 
   // Print keeps the bounds that change how the number is read and drops the
   // elaborations, because the page is decided by three lines here.
+  // A baseline is always a national average; some cities carry a regional index.
+  // That puts a capital premium on one side of the subtraction and not the other,
+  // which is what makes Warsaw look dearer than a UK national mean.
+  const tilted = ranked
+    .filter((r) => r.row.regionIndex && r.row.regionIndex > 1)
+    .sort((a, b) => b.row.regionIndex - a.row.regionIndex);
+  const tilt = tilted.length
+    ? `The baseline is a national average, while `
+      + tilted.slice(0, 2).map((r) =>
+          `${r.row.name} carries ${r.row.regionIndex.toFixed(2)}\u00d7`).join(" and ")
+      + ` its own country mean, so a capital-city premium sits on one side of the `
+      + `subtraction and not the other. `
+    : ``;
+
   $("#case-caveat").innerHTML =
     `Wage line only, at ${base.label}\u2019s blended rate for professional and clerical `
     + `occupations. It excludes facilities, technology, management overhead, transition and `
     + `severance, so it is an upper bound on the wage component and not a savings case. `
+    + tilt
     + `Headcount is held one-for-one<span class="screen-only">; a centre that is still ramping `
     + `needs more heads for the same volume, which moves this number further than the wage gap `
-    + `itself does. Cost is national except for the Polish cities</span>.`;
+    + `itself does</span>.`;
 }
 
 function hqLabel() {
