@@ -488,9 +488,19 @@ select {
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .who .sub { display: block; font-size: 10.5px; color: var(--ink-3); font-family: var(--mono); }
-.bar { display: flex; height: 22px; width: 100%; background: var(--panel-2); border: 1px solid var(--rule); }
-.seg-fill { height: 100%; border-right: 2px solid var(--panel); position: relative; }
-.seg-fill:last-child { border-right: 0; }
+/* Primary mark: one solid bar whose length is the score. The leading band is
+   the accent, everything below it recedes to a neutral — so the answer the
+   headline states is visible in the exhibit without reading a number. */
+.bar-wrap { width: 100%; }
+.bar { height: 15px; border-radius: 0 1px 1px 0; }
+.bar.lead { background: var(--accent); }
+.bar.rest { background: var(--rule-strong); }
+/* Secondary: composition, at a third the height and muted, so it informs on
+   inspection instead of competing for the first glance. */
+.mix { display: flex; height: 4px; margin-top: 2px; opacity: .5; }
+.mix .seg-fill { height: 100%; border-right: 1px solid var(--panel); }
+.mix .seg-fill:last-child { border-right: 0; }
+.row:hover .mix { opacity: 1; }
 .stab { text-align: right; font-family: var(--mono); font-size: 12px; font-variant-numeric: tabular-nums; }
 .stab .pct { display: block; }
 .stab .tag { display: block; font-size: 10px; letter-spacing: .06em; text-transform: uppercase; }
@@ -511,8 +521,11 @@ select {
 .sources dd { margin: 0; font-size: 12.5px; line-height: 1.35; }
 .sources .vint { color: var(--ink-3); font-size: 11.5px; }
 
-.legend { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 14px; font-size: 12px; color: var(--ink-2); }
-.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend { display: flex; flex-wrap: wrap; gap: 11px; margin-top: 14px; font-size: 11px; color: var(--ink-3); }
+.legend .swatch { opacity: .5; }
+.legend span { display: inline-flex; align-items: center; gap: 5px; }
+.legend-lede { color: var(--ink-3); font-family: var(--mono); font-size: 10px;
+  text-transform: uppercase; letter-spacing: .07em; }
 
 .table-actions { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
 .table-actions button {
@@ -602,7 +615,7 @@ footer p { max-width: 78ch; }
     <div class="exhibit-head">
       <p class="exhibit-label">Exhibit 1</p>
       <h2 id="board-title"></h2>
-      <p class="hint">Bar segments are pillar contributions. Hover for detail.</p>
+      <p class="hint">Bar length is the score. The strip beneath it is what the score is made of.</p>
     </div>
     <div class="belief" id="belief"></div>
     <div class="col-head">
@@ -909,6 +922,7 @@ function render() {
   host.querySelectorAll(".row").forEach((el) => prev.set(el.dataset.id, el.getBoundingClientRect().top));
 
   host.innerHTML = "";
+  const maxScore = Math.max(...ranked.map((x) => x.score), 1e-9);
   ranked.forEach((r, i) => {
     const f = stab.get(r.row.id) ?? 0;
     const v = verdict(f, r.row);
@@ -926,11 +940,21 @@ function render() {
       : "country cost";
     const sub = `${where} · ${r.row.employers} employers · ${costNote}`;
 
+    // Length carries the score, which is the comparative fact. Composition
+    // moves to a thin strip beneath: still there, no longer shouting. Eleven
+    // equal-length rainbows told the reader nothing and dominated the page.
+    const width = (r.score / maxScore) * 100;
+    const tone = b === 1 ? "lead" : "rest";
     const segs = DATA.pillars.map((p) => {
       const pct = (r.parts[p] / (r.score || 1)) * 100;
-      return `<div class="seg-fill" style="width:${pct.toFixed(2)}%;background:${C[p]}"
-        data-p="${p}" data-name="${r.row.name}"></div>`;
+      return `<i class="seg-fill" style="width:${pct.toFixed(2)}%;background:${C[p]}"
+        data-p="${p}" data-name="${r.row.name}"></i>`;
     }).join("");
+    const bar =
+      `<div class="bar-wrap">` +
+        `<div class="bar ${tone}" style="width:${width.toFixed(2)}%"></div>` +
+        `<div class="mix" style="width:${width.toFixed(2)}%">${segs}</div>` +
+      `</div>`;
 
     const n = r.row.postings;
     const thin = r.row.isCity && n != null && n < DATA.evidenceFloor;
@@ -940,7 +964,7 @@ function render() {
     el.innerHTML =
       `<div class="rank">${opensBand ? b : ""}</div>` +
       `<div class="who"><span class="nm">${r.row.name}</span><span class="sub">${sub}</span></div>` +
-      `<div class="bar-cell"><div class="bar">${segs}</div></div>` +
+      `<div class="bar-cell">${bar}</div>` +
       `<div class="evidence" title="postings behind the capability pillar">${evidence}</div>` +
       `<div class="stab"><span class="pct">${(f * 100).toFixed(0)}%</span>` +
       `<span class="tag ${v}">${v}</span></div>`;
@@ -962,7 +986,7 @@ function render() {
     });
   }
 
-  $("#legend").innerHTML = DATA.pillars.map((p) =>
+  $("#legend").innerHTML = `<span class="legend-lede">Composition strip:</span>` + DATA.pillars.map((p) =>
     `<span><i class="swatch" style="background:${C[p]}"></i>${DATA.pillarLabels[p]}</span>`).join("");
 
   renderTable(ranked, stab);

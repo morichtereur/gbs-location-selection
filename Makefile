@@ -1,4 +1,4 @@
-.PHONY: install fetch fetch-extra refresh run dashboard centres trend validate leverage test clean
+.PHONY: install fetch fetch-extra refresh run dashboard shot centres trend validate leverage test clean
 
 install:
 	python3 -m venv .venv && .venv/bin/pip install -q -r requirements.txt
@@ -25,6 +25,9 @@ run:
 
 dashboard:
 	.venv/bin/python -m src.dashboard
+
+shot:
+	./scripts/shoot.sh
 
 centres:
 	.venv/bin/python -m src.centres

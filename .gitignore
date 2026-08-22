@@ -10,3 +10,5 @@ data/gbs_postings.duckdb
 
 .env
 body.txt
+data/dashboard-light.png
+data/dashboard-dark.png
