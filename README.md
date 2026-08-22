@@ -11,7 +11,7 @@ A location study arrives as three cities and a weighted scorecard. The weights w
 ## What it finds
 
 **1. A transactional hub is a cost ranking wearing six other pillars.**
-Removing each pillar in turn, only cost changes the shortlist. Talent, governance, capability, overlap, durability and employer depth can each be deleted without moving it. For a judgment centre, five of seven move it.
+Removing each pillar in turn, only cost changes the shortlist. Talent, governance, capability, overlap, durability and employer depth can each be deleted without moving it. For a centre of excellence, five of seven move it.
 
 **2. Cities the evidence cannot separate are not ranked.**
 Seven of the 55 city pairs finish closer than 65/35. Those cities share a band rather than being given invented positions. For a transactional hub that is one band holding all five Indian cities.
@@ -33,7 +33,7 @@ starting point actually is.
 
 The tool is built around the same distinction. Its two centre types *are*
 arbitrage and value work, and the pillar test above says something sharp about
-them: a transactional hub is decided by cost alone, while a judgment centre
+them: a transactional hub is decided by cost alone, while a centre of excellence
 needs five of seven pillars. Cheap labour is sufficient to site arbitrage work
 and nowhere near sufficient to site value work.
 

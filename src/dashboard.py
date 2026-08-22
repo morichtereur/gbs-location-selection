@@ -197,7 +197,7 @@ def payload() -> dict:
                 "label": v["label"],
                 # A headline states a finding and has to stay short; the full
                 # label is the control's job, not the sentence's.
-                "short": v["label"].replace(" centre of excellence", " centre"),
+                "short": v["label"].lower().replace("centre of excellence", "centre of excellence"),
             "blurb": v["blurb"],
             "why": v["why"],
                 "weights": v["weights"],
@@ -1416,7 +1416,7 @@ function renderFoot(rows) {
 function buildControls() {
   const seg = $("#archetype");
   seg.innerHTML = Object.entries(DATA.archetypes).map(([k, v]) =>
-    `<button type="button" data-k="${k}" aria-pressed="${k === state.archetype}">${v.label.replace(" centre of excellence", " CoE")}</button>`).join("");
+    `<button type="button" data-k="${k}" aria-pressed="${k === state.archetype}">${v.label}</button>`).join("");
   seg.addEventListener("click", (e) => {
     const b = e.target.closest("button"); if (!b) return;
     state.archetype = b.dataset.k;

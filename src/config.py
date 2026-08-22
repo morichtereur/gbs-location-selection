@@ -366,10 +366,14 @@ ARCHETYPES = {
         "capability_metric": "transactional_share",
     },
     "judgment_centre": {
-        "label": "Judgment centre of excellence",
-        "blurb": "Analysis, controlling, business partnering and reporting. Bought on "
-                 "whether a market already does this kind of work, and can keep doing it.",
-        "why": "Capability leads because judgment work needs a market that already "
+        # "Centre of excellence" is the term the market uses; "judgment" was
+        # mine. Both archetypes are GBS, so naming one of them GBS and the
+        # other CoE would say a centre of excellence is not part of a GBS —
+        # which is the opposite of how the two relate.
+        "label": "Centre of excellence",
+        "blurb": "Judgment work: analysis, controlling, business partnering, reporting. "
+                 "Bought on whether a market already does this work and can keep doing it.",
+        "why": "Capability leads because this work needs a market that already "
                "staffs it, with governance and overlap close behind; cost matters "
                "least, because these centres are small and hired for scarce skills.",
         "weights": {
