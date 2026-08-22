@@ -185,6 +185,52 @@ select {
   line-height: 1.25; text-wrap: balance; max-width: 54ch;
 }
 .hint { font-size: 12px; color: var(--ink-3); margin: 6px 0 0; }
+/* The overlap pillar is geographic and was invisible: a number in a column.
+   Placing the cities on a clock relative to the headquarters shows why India is
+   a handover and Poland is a shared day — which is the pillar, drawn. */
+.strip-wrap { margin-top: 26px; border-top: 1px solid var(--rule-strong); padding-top: 10px; }
+.strip-title {
+  margin: 0 0 12px; font-size: 14px; font-weight: 600; letter-spacing: -.01em;
+}
+.tz { position: relative; height: 122px; }
+/* A vertical rule at the headquarters rather than a shaded window: the window
+   covered almost the whole axis and shaded nothing meaningful. */
+.tz .hqmark {
+  position: absolute; top: 18px; bottom: 24px; width: 1px;
+  background: var(--accent); opacity: .45;
+}
+.tz .axis {
+  position: absolute; left: 0; right: 0; bottom: 24px; height: 1px; background: var(--rule-strong);
+}
+.tz .tick {
+  position: absolute; bottom: 6px; transform: translateX(-50%);
+  font-family: var(--mono); font-size: 9.5px; color: var(--ink-3);
+}
+.tz .city {
+  position: absolute; transform: translateX(-50%); text-align: center; white-space: nowrap;
+}
+.tz .dot { width: 9px; height: 9px; border-radius: 50%; margin: 0 auto 3px; }
+.tz .dot.lead { background: var(--accent); }
+.tz .dot.rest { background: var(--rule-strong); }
+.tz .nm { font-size: 10.5px; color: var(--ink-2); }
+.tz .nm .n {
+  font-family: var(--mono); font-size: 8.5px; color: var(--ink-3);
+  border: 1px solid var(--rule-strong); border-radius: 6px; padding: 0 4px; margin-left: 3px;
+}
+.tz .hrs { font-family: var(--mono); font-size: 9px; color: var(--ink-3); }
+/* The headquarters gets its own row at the top: it frequently shares an offset
+   with a market — Zurich and Poland are both UTC+1 — and the two labels landed
+   on the same point. */
+.tz .hq {
+  position: absolute; top: 0; transform: translateX(-50%);
+  font-weight: 600;
+  font-family: var(--mono); font-size: 9.5px; color: var(--accent); white-space: nowrap;
+}
+.tz .hq::after {
+  content: ""; display: block; width: 1px; height: 6px; margin: 2px auto 0;
+  background: var(--accent); opacity: .5;
+}
+
 .exhibit-source {
   font-family: var(--mono); font-size: 10.5px; line-height: 1.5; color: var(--ink-3);
   margin: 12px 0 0; padding-top: 9px; border-top: 1px solid var(--rule);
@@ -294,7 +340,7 @@ select {
    would push it past a page. */
 @media print {
   @page { size: A4 portrait; margin: 14mm 12mm; }
-  .rail, .table-actions, .page-actions, .legend, details, footer { display: none !important; }
+  .rail, .table-actions, .page-actions, .legend, details, footer, .strip-wrap { display: none !important; }
   .layout { grid-template-columns: minmax(0,1fr); gap: 0; }
   .wrap { max-width: none; padding: 0; }
   body { background: #fff; color: #000; font-size: 9pt; }
@@ -328,11 +374,103 @@ select {
   .col-head { display: grid !important; }
   .bar { height: 11px; }
   .rank, .evidence, .stab { font-size: 8pt; }
-  .exhibit-source { margin-top: 8px; padding-top: 6px; }
+  /* The overlap pillar is geographic and was invisible: a number in a column.
+   Placing the cities on a clock relative to the headquarters shows why India is
+   a handover and Poland is a shared day — which is the pillar, drawn. */
+.strip-wrap { margin-top: 26px; border-top: 1px solid var(--rule-strong); padding-top: 10px; }
+.strip-title {
+  margin: 0 0 12px; font-size: 14px; font-weight: 600; letter-spacing: -.01em;
+}
+.tz { position: relative; height: 122px; }
+/* A vertical rule at the headquarters rather than a shaded window: the window
+   covered almost the whole axis and shaded nothing meaningful. */
+.tz .hqmark {
+  position: absolute; top: 18px; bottom: 24px; width: 1px;
+  background: var(--accent); opacity: .45;
+}
+.tz .axis {
+  position: absolute; left: 0; right: 0; bottom: 24px; height: 1px; background: var(--rule-strong);
+}
+.tz .tick {
+  position: absolute; bottom: 6px; transform: translateX(-50%);
+  font-family: var(--mono); font-size: 9.5px; color: var(--ink-3);
+}
+.tz .city {
+  position: absolute; transform: translateX(-50%); text-align: center; white-space: nowrap;
+}
+.tz .dot { width: 9px; height: 9px; border-radius: 50%; margin: 0 auto 3px; }
+.tz .dot.lead { background: var(--accent); }
+.tz .dot.rest { background: var(--rule-strong); }
+.tz .nm { font-size: 10.5px; color: var(--ink-2); }
+.tz .nm .n {
+  font-family: var(--mono); font-size: 8.5px; color: var(--ink-3);
+  border: 1px solid var(--rule-strong); border-radius: 6px; padding: 0 4px; margin-left: 3px;
+}
+.tz .hrs { font-family: var(--mono); font-size: 9px; color: var(--ink-3); }
+/* The headquarters gets its own row at the top: it frequently shares an offset
+   with a market — Zurich and Poland are both UTC+1 — and the two labels landed
+   on the same point. */
+.tz .hq {
+  position: absolute; top: 0; transform: translateX(-50%);
+  font-weight: 600;
+  font-family: var(--mono); font-size: 9.5px; color: var(--accent); white-space: nowrap;
+}
+.tz .hq::after {
+  content: ""; display: block; width: 1px; height: 6px; margin: 2px auto 0;
+  background: var(--accent); opacity: .5;
+}
+
+.exhibit-source { margin-top: 8px; padding-top: 6px; }
   .bar.lead { background: #146b54 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .bar.rest { background: #b6b9ae !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .mix { display: none; }
-  .exhibit-source { font-size: 8pt; }
+  /* The overlap pillar is geographic and was invisible: a number in a column.
+   Placing the cities on a clock relative to the headquarters shows why India is
+   a handover and Poland is a shared day — which is the pillar, drawn. */
+.strip-wrap { margin-top: 26px; border-top: 1px solid var(--rule-strong); padding-top: 10px; }
+.strip-title {
+  margin: 0 0 12px; font-size: 14px; font-weight: 600; letter-spacing: -.01em;
+}
+.tz { position: relative; height: 122px; }
+/* A vertical rule at the headquarters rather than a shaded window: the window
+   covered almost the whole axis and shaded nothing meaningful. */
+.tz .hqmark {
+  position: absolute; top: 18px; bottom: 24px; width: 1px;
+  background: var(--accent); opacity: .45;
+}
+.tz .axis {
+  position: absolute; left: 0; right: 0; bottom: 24px; height: 1px; background: var(--rule-strong);
+}
+.tz .tick {
+  position: absolute; bottom: 6px; transform: translateX(-50%);
+  font-family: var(--mono); font-size: 9.5px; color: var(--ink-3);
+}
+.tz .city {
+  position: absolute; transform: translateX(-50%); text-align: center; white-space: nowrap;
+}
+.tz .dot { width: 9px; height: 9px; border-radius: 50%; margin: 0 auto 3px; }
+.tz .dot.lead { background: var(--accent); }
+.tz .dot.rest { background: var(--rule-strong); }
+.tz .nm { font-size: 10.5px; color: var(--ink-2); }
+.tz .nm .n {
+  font-family: var(--mono); font-size: 8.5px; color: var(--ink-3);
+  border: 1px solid var(--rule-strong); border-radius: 6px; padding: 0 4px; margin-left: 3px;
+}
+.tz .hrs { font-family: var(--mono); font-size: 9px; color: var(--ink-3); }
+/* The headquarters gets its own row at the top: it frequently shares an offset
+   with a market — Zurich and Poland are both UTC+1 — and the two labels landed
+   on the same point. */
+.tz .hq {
+  position: absolute; top: 0; transform: translateX(-50%);
+  font-weight: 600;
+  font-family: var(--mono); font-size: 9.5px; color: var(--accent); white-space: nowrap;
+}
+.tz .hq::after {
+  content: ""; display: block; width: 1px; height: 6px; margin: 2px auto 0;
+  background: var(--accent); opacity: .5;
+}
+
+.exhibit-source { font-size: 8pt; }
 }
 
 details { margin-top: 26px; border-top: 1px solid var(--rule-strong); padding-top: 14px; }
@@ -423,6 +561,12 @@ footer p { max-width: 78ch; }
     </div>
     <div class="rows" id="rows"></div>
     <div class="legend" id="legend"></div>
+
+    <div class="strip-wrap">
+      <p class="exhibit-label">Exhibit 2</p>
+      <h3 class="strip-title" id="strip-title"></h3>
+      <div id="tzstrip"></div>
+    </div>
 
     <p class="exhibit-source" id="exhibit-source"></p>
 
@@ -854,6 +998,7 @@ function render() {
   $("#legend").innerHTML = `<span class="legend-lede">Composition:</span>` + DATA.pillars.map((p) =>
     `<span><i class="swatch" style="background:${C[p]}"></i>${DATA.pillarLabels[p]}</span>`).join("");
 
+  renderStrip(ranked, band);
   renderTable(ranked, stab);
   renderSource(rows);
   renderFoot(rows);
@@ -881,6 +1026,68 @@ function renderTable(ranked, stab) {
 
 /* Every exhibit carries its own source. A reader should not have to open a
    panel to learn what the numbers are made of. */
+/* Overlap is a market fact, not a city one: every Indian city sits at UTC+5.5.
+   Plotting cities individually piled five labels on one point and read as
+   noise, so the strip works at the grain the pillar actually has — one mark per
+   market, carrying its cities and its shared hours. */
+function renderStrip(ranked, band) {
+  const hq = DATA.hqOffsets[state.hq] ?? 0;
+
+  const byMarket = new Map();
+  for (const r of ranked) {
+    const key = r.row.parent;
+    if (!byMarket.has(key)) {
+      byMarket.set(key, {
+        name: DATA.marketNames[key] || key,
+        offset: DATA.offsets[key] ?? 0,
+        hours: overlapHours(key, state.hq),
+        cities: [],
+        lead: false,
+      });
+    }
+    const m = byMarket.get(key);
+    m.cities.push(r.row.name);
+    if (band.get(r.row.id) === 1) m.lead = true;
+  }
+
+  const markets = [...byMarket.values()].sort((a, b) => a.offset - b.offset);
+  const offsets = markets.map((m) => m.offset);
+  const lo = Math.min(...offsets, hq) - 1.5;
+  const hi = Math.max(...offsets, hq) + 1.5;
+  const pos = (o) => ((o - lo) / (hi - lo)) * 100;
+
+  const marks = markets.map((m, i) => {
+    const label = m.cities.length > 1
+      ? `${m.name} <span class="n">${m.cities.length}</span>`
+      : m.cities[0];
+    return `<div class="city" style="left:${pos(m.offset).toFixed(2)}%;top:${22 + (i % 2) * 30}px">`
+         + `<div class="dot ${m.lead ? "lead" : "rest"}"></div>`
+         + `<div class="nm">${label}</div>`
+         + `<div class="hrs">${m.hours}h shared</div></div>`;
+  }).join("");
+
+  const ticks = [];
+  for (let o = Math.ceil(lo); o <= Math.floor(hi); o += 2) {
+    const sign = o < 0 ? "\u2212" : "+";
+    ticks.push(`<div class="tick" style="left:${pos(o).toFixed(2)}%">UTC${sign}${Math.abs(o)}</div>`);
+  }
+
+  $("#strip-title").innerHTML =
+    `Working hours shared with <strong>${hqLabel()}</strong>`;
+  $("#tzstrip").innerHTML =
+    `<div class="tz"><div class="axis"></div>${ticks.join("")}${marks}`
+    + `<div class="hqmark" style="left:${pos(hq).toFixed(2)}%"></div>`
+    + `<div class="hq" style="left:${pos(hq).toFixed(2)}%">${hqLabel()}</div></div>`;
+}
+
+function hqLabel() {
+  for (const places of Object.values(DATA.hqGroups)) {
+    const hit = places.find((x) => x.key === state.hq);
+    if (hit) return hit.label;
+  }
+  return state.hq;
+}
+
 function renderSource(rows) {
   const resolved = rows.filter((r) => r.costResolved).length;
   const thin = rows.filter((r) => r.postings != null && r.postings < DATA.evidenceFloor).length;
