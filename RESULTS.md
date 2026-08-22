@@ -41,7 +41,7 @@ Baseline top 3: **India, Brazil, Mexico**.
 | Switzerland | 0.1% | 10.0 | 2–11 | never |  |
 | Netherlands | 0.1% | 10.0 | 3–11 | never |  |
 
-## Centre of excellence
+## Judgment centre
 
 Declared weights: cost 0.13, talent 0.17, risk 0.17, capability 0.22, timezone 0.13, durability 0.04, depth 0.14.
 Baseline top 3: **Germany, India, Netherlands**.
@@ -96,4 +96,4 @@ Two of those choices change the membership of the shortlist, not just the
 confidence in it:
 
 - **Transactional hub** — employed-stock talent gives India, Brazil, Mexico; education-pipeline talent gives India, Brazil, Mexico.
-- **Centre of excellence** — employed-stock talent gives Germany, India, Netherlands; education-pipeline talent gives India, Germany, Netherlands.
+- **Judgment centre** — employed-stock talent gives Germany, India, Netherlands; education-pipeline talent gives India, Germany, Netherlands.

@@ -197,7 +197,7 @@ def payload() -> dict:
                 "label": v["label"],
                 # A headline states a finding and has to stay short; the full
                 # label is the control's job, not the sentence's.
-                "short": v["label"].lower().replace("centre of excellence", "centre of excellence"),
+                "short": v["label"].lower(),
             "blurb": v["blurb"],
             "why": v["why"],
                 "weights": v["weights"],

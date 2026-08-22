@@ -366,11 +366,15 @@ ARCHETYPES = {
         "capability_metric": "transactional_share",
     },
     "judgment_centre": {
-        # "Centre of excellence" is the term the market uses; "judgment" was
-        # mine. Both archetypes are GBS, so naming one of them GBS and the
-        # other CoE would say a centre of excellence is not part of a GBS —
-        # which is the opposite of how the two relate.
-        "label": "Centre of excellence",
+        # The pair has to be parallel and has to name the work. "Centre of
+        # excellence" names an organisational form instead, and is ambiguous
+        # besides — a procure-to-pay CoE is transactional. "Judgment" carries
+        # the distinction the whole study rests on, which "excellence" does not.
+        #
+        # Naming the pair "GBS versus CoE" was also considered and rejected:
+        # GBS is the umbrella containing both, so that would assert a centre of
+        # excellence is not part of a GBS.
+        "label": "Judgment centre",
         "blurb": "Judgment work: analysis, controlling, business partnering, reporting. "
                  "Bought on whether a market already does this work and can keep doing it.",
         "why": "Capability leads because this work needs a market that already "
