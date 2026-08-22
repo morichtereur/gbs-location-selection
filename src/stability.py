@@ -49,9 +49,17 @@ class Stability:
     weight_when_in: dict[str, dict[str, float]]
     weight_when_out: dict[str, dict[str, float]]
 
+    # Set by `run` so a verdict can weigh how much evidence sits behind it.
+    evidence: dict[str, int] | None = None
+
     def verdict(self, iso2: str) -> str:
         f = self.frequency.get(iso2, 0.0)
-        if f >= C.ROBUST_AT:
+        thin = (
+            self.evidence is not None
+            and self.evidence.get(iso2) is not None
+            and self.evidence[iso2] < C.EVIDENCE_FLOOR
+        )
+        if f >= C.ROBUST_AT and not thin:
             return "robust"
         if f >= C.CONTINGENT_AT:
             return "contingent"
@@ -206,6 +214,11 @@ def run(
                 n_in[iso2] += 1
 
     return Stability(
+        evidence={
+            k: panel[k].postings_in_scope
+            for k in markets
+            if panel[k].is_city and panel[k].postings_in_scope is not None
+        },
         archetype=archetype,
         draws=draws,
         top_n=C.TOP_N,

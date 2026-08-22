@@ -112,6 +112,7 @@ def payload() -> dict:
         "hq": C.HQ,
         "topN": C.TOP_N,
         "robustAt": C.ROBUST_AT,
+        "evidenceFloor": C.EVIDENCE_FLOOR,
         "views": {},
         "reference": {},
     }
@@ -541,8 +542,14 @@ function stability(base, weights) {
   return out;
 }
 
-function verdict(f) {
-  if (f >= DATA.robustAt) return "robust";
+/* "Robust" is a claim about evidence, not just arithmetic: Mumbai reached 90% of
+   weightings on six postings, edging a centre with twenty by two points of a
+   shrunk share. A candidate below the evidence floor is capped at contingent
+   however often it survives. Mirrors Stability.verdict in src/stability.py. */
+function verdict(f, row) {
+  const thin = row && row.isCity && row.postings != null
+    && row.postings < DATA.evidenceFloor;
+  if (f >= DATA.robustAt && !thin) return "robust";
   if (f >= 0.10) return "contingent";
   return "never";
 }
@@ -585,7 +592,7 @@ function render() {
   host.innerHTML = "";
   ranked.forEach((r, i) => {
     const f = stab.get(r.row.id) ?? 0;
-    const v = verdict(f);
+    const v = verdict(f, r.row);
     const el = document.createElement("div");
     el.className = "row" + (i < DATA.topN ? " in-top" : "");
     el.dataset.id = r.row.id;

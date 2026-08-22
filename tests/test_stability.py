@@ -79,3 +79,15 @@ def test_verdict_thresholds(panel):  # noqa: F811
     assert st.verdict("a") == "robust"
     assert st.verdict("b") == "contingent"
     assert st.verdict("c") == "never"
+
+
+def test_thin_evidence_cannot_be_robust(panel):  # noqa: F811
+    """Mumbai cleared 90% of weightings on six postings and was labelled robust.
+    The frequency was right and the label was wrong."""
+    st = run(panel, "transactional_hub", draws=100)
+    st.frequency = {"thin": 0.99, "solid": 0.99}
+    st.evidence = {"thin": C.EVIDENCE_FLOOR - 1, "solid": C.EVIDENCE_FLOOR}
+    assert st.verdict("thin") == "contingent"
+    assert st.verdict("solid") == "robust"
+    # A candidate with no evidence entry — a country row — is unaffected.
+    assert st.verdict("absent") == "never"

@@ -256,3 +256,14 @@ TOP_N = 3
 # Frequency thresholds for calling a market's top-3 place robust or contingent.
 ROBUST_AT = 0.90
 CONTINGENT_AT = 0.10
+
+# "Robust" is a claim about evidence, not just about arithmetic. Mumbai reached
+# 90% of weightings on six postings from four employers, edging Pune — which
+# has twenty — by two points of a shrunk capability share. The frequency was
+# computed correctly and the label was still wrong: no amount of resampling
+# turns six postings into a durable finding.
+#
+# A candidate whose own sample is below this floor is therefore capped at
+# "contingent" however often it survives. Country rows, which rest on the whole
+# market's sample, are unaffected.
+EVIDENCE_FLOOR = 10
