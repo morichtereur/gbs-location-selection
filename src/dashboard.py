@@ -151,6 +151,11 @@ def _entity(m: Market, archetype: str) -> dict:
         "timezone": m.timezone_overlap,
         "durability": m.durability,
         "postings": m.postings_in_scope,
+        # The raw work mix behind the capability pillar. It decides whether a
+        # city suits arbitrage or value work, and was visible only as a
+        # normalised score.
+        "mixTransactional": m.transactional_share,
+        "mixRaw": m.capability_raw,
         "costPpp": m.cost_ppp_aged or m.cost_ppp,
         "languageShare": m.language_share,
         "languages": list(m.languages or ()),
@@ -577,7 +582,7 @@ select {
 }
 
 .col-head {
-  display: grid; grid-template-columns: 26px minmax(112px, 180px) minmax(0,1fr) 62px 92px;
+  display: grid; grid-template-columns: 26px minmax(150px, 215px) minmax(0,1fr) 58px 88px;
   gap: 12px; margin-top: 18px; padding-bottom: 5px;
   border-bottom: 1px solid var(--rule-strong);
 }
@@ -592,7 +597,7 @@ select {
 @media (max-width: 780px) { .col-head { display: none; } }
 .rows { position: relative; margin-top: 0; }
 .row {
-  display: grid; grid-template-columns: 26px minmax(112px, 180px) minmax(0,1fr) 62px 92px;
+  display: grid; grid-template-columns: 26px minmax(150px, 215px) minmax(0,1fr) 58px 88px;
   gap: 14px; align-items: center; padding: 11px 0; border-bottom: 1px solid var(--rule);
 }
 @media (max-width: 780px) {
@@ -1228,16 +1233,21 @@ function render() {
     // read the ranking.
     const where = DATA.marketNames[r.row.parent] || "";
     const costNote = r.row.costResolved
-      ? `cost ${(r.row.regionIndex).toFixed(2)}× national`
-      : "country cost";
+      ? `${(r.row.regionIndex).toFixed(2)}× national cost`
+      : "national cost";
     // Languages and local purchasing power are facts a reader asks for and
     // neither is scored: more languages helps only if you need them, and PPP
     // does not reorder anything because the cheapest market is cheapest on
     // both bases. Shown, not weighted.
     const langs = (r.row.languages || []).length
-      ? ` · ${r.row.languages.slice(0, 3).join(", ")}`
+      ? ` · ${r.row.languages.slice(0, 2).join(", ")}`
       : "";
-    const sub = `${where} · ${r.row.employers} employers · ${costNote}${langs}`;
+    // Lead with the work mix: which side of arbitrage-versus-value a city sits
+    // on is the thing the chosen centre type is actually asking about.
+    const mix = r.row.mixTransactional != null
+      ? `${Math.round(r.row.mixTransactional * 100)}% processing`
+      : "";
+    const sub = `${where} · ${mix} · ${r.row.employers} employers · ${costNote}${langs}`;
 
     // Length carries the score, which is the comparative fact. Composition
     // moves to a thin strip beneath: still there, no longer shouting. Eleven
@@ -1297,10 +1307,13 @@ function render() {
 function renderTable(ranked, stab) {
   const t = $("#table");
   const head = ["City", ...DATA.pillars.map((p) => DATA.pillarLabels[p]),
-                "Score", "Top-3", "Cost USD", "Cost PPP", "Languages"];
+                "Score", "Top-3", "Processing", "Judgment", "Cost USD", "Cost PPP",
+                "Languages"];
   t.querySelector("caption").textContent =
     "Normalised pillar scores (0–1, higher is better) under the current weights. "
-    + "Cost is monthly, per head: USD is what you pay, PPP what it buys locally. "
+    + "Processing and judgment are the work mix the city advertises, shrunk toward "
+    + "its country's where the sample is thin. Cost is monthly, per head: USD is what "
+    + "you pay, PPP what it buys locally. "
     + "Languages are those the city's postings ask for — reported, not scored.";
   t.innerHTML = t.querySelector("caption").outerHTML +
     "<thead><tr>" + head.map((h) => `<th>${h}</th>`).join("") + "</tr></thead><tbody>" +
@@ -1308,6 +1321,8 @@ function renderTable(ranked, stab) {
       `<tr><td>${r.row.name}</td>` +
       DATA.pillars.map((p) => `<td>${r.scaled[p].toFixed(2)}</td>`).join("") +
       `<td>${r.score.toFixed(3)}</td><td>${((stab.get(r.row.id) ?? 0) * 100).toFixed(0)}%</td>`
+      + `<td>${r.row.mixTransactional != null ? Math.round(r.row.mixTransactional * 100) + "%" : "—"}</td>`
+      + `<td>${r.row.mixTransactional != null ? Math.round((1 - r.row.mixTransactional) * 100) + "%" : "—"}</td>`
       + `<td>${Math.round(r.row.cost).toLocaleString()}</td>`
       + `<td>${r.row.costPpp ? Math.round(r.row.costPpp).toLocaleString() : "—"}</td>`
       + `<td>${(r.row.languages || []).join(", ") || "—"}</td></tr>`
