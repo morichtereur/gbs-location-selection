@@ -162,6 +162,8 @@ def payload() -> dict:
                 # A headline states a finding and has to stay short; the full
                 # label is the control's job, not the sentence's.
                 "short": v["label"].replace(" centre of excellence", " centre"),
+            "blurb": v["blurb"],
+            "why": v["why"],
                 "weights": v["weights"],
             }
             for k, v in C.ARCHETYPES.items()
@@ -416,6 +418,11 @@ h1 {
 .seg button[aria-pressed="true"] { background: var(--accent); color: #fff; }
 .seg button:focus-visible { outline: 2px solid var(--ink); outline-offset: -2px; }
 
+.blurb {
+  font-size: 12px; line-height: 1.45; color: var(--ink-2);
+  border-left: 2px solid var(--rule-strong); padding: 1px 0 1px 10px;
+  margin: 10px 0 4px;
+}
 .panel-note {
   font-size: 11.5px; line-height: 1.4; color: var(--ink-3);
   margin: -4px 0 14px;
@@ -609,7 +616,10 @@ footer p { max-width: 78ch; }
   <aside class="rail">
     <div class="card">
       <h2>Centre type</h2>
+      <p class="panel-note">What kind of work is moving? The two are bought on
+        different things, so they start from different weights.</p>
       <div class="seg" id="archetype" role="group" aria-label="Centre type"></div>
+      <p class="blurb" id="archetype-blurb"></p>
     </div>
 
     <div class="card">
@@ -618,6 +628,7 @@ footer p { max-width: 78ch; }
         Each number is that pillar's share of the decision. They always total 100%,
         so raising one lowers the rest.
       </p>
+      <p class="blurb" id="weights-why"></p>
       <div id="sliders"></div>
       <p class="reads" id="weight-sum"></p>
     </div>
@@ -1094,6 +1105,7 @@ function buildControls() {
     }).join("") + `</optgroup>`).join("");
   hq.addEventListener("change", (e) => { state.hq = e.target.value; render(); });
 
+  writeArchetypeCopy();
   $("#sources").innerHTML = DATA.sources.map((x) => `
     <div>
       <dt>${x.pillar}</dt>
@@ -1133,6 +1145,18 @@ async function copyTable() {
       : "Copying is blocked here. Select the table and press Ctrl-C.";
   }
   setTimeout(() => (status.textContent = ""), 4000);
+}
+
+/* The starting weights are a declared judgement, not a recommendation, and the
+   whole point of the tool is that the answer moves with them. Saying where they
+   come from is the difference between a control someone trusts and one they
+   assume is authoritative. */
+function writeArchetypeCopy() {
+  const a = DATA.archetypes[state.archetype];
+  $("#archetype-blurb").textContent = a.blurb;
+  $("#weights-why").innerHTML =
+    `<strong>Where these start:</strong> ${a.why} They are a starting point, not a `
+    + `recommendation \u2014 move them and watch what survives.`;
 }
 
 function syncSliders(writeInputs = true) {

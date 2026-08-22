@@ -346,6 +346,10 @@ WORKING_DAY = (9.0, 17.0)
 ARCHETYPES = {
     "transactional_hub": {
         "label": "Transactional hub",
+        "blurb": "High-volume processing: accounts payable and receivable, payroll, "
+                 "the ledger. Bought on cost and the size of the labour pool.",
+        "why": "Cost carries the most weight because processing work is bought on "
+               "unit cost, and scale next because these centres hire in hundreds.",
         "weights": {
             "cost": 0.30, "talent": 0.18, "risk": 0.09,
             "capability": 0.13, "timezone": 0.09, "durability": 0.09,
@@ -356,6 +360,11 @@ ARCHETYPES = {
     },
     "judgment_centre": {
         "label": "Judgment centre of excellence",
+        "blurb": "Analysis, controlling, business partnering and reporting. Bought on "
+                 "whether a market already does this kind of work, and can keep doing it.",
+        "why": "Capability leads because judgment work needs a market that already "
+               "staffs it, with governance and overlap close behind; cost matters "
+               "least, because these centres are small and hired for scarce skills.",
         "weights": {
             "cost": 0.13, "talent": 0.17, "risk": 0.17,
             "capability": 0.22, "timezone": 0.13, "durability": 0.04,
