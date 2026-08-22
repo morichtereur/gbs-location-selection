@@ -30,11 +30,14 @@ import duckdb
 from src import config as C
 
 # Location strings that name a country rather than a place inside it.
+# Every spelling a feed uses for a whole country, including the local one. The
+# Portuguese "Brasil" was missing and produced a GBS centre called Brasil.
 COUNTRY_ONLY = {
     "polska", "poland", "india", "bhārat", "deutschland", "germany",
     "méxico", "mexico", "south africa", "singapore", "singapur",
     "nederland", "netherlands", "españa", "spain", "united kingdom", "uk",
     "schweiz", "switzerland", "suisse", "svizzera",
+    "brasil", "brazil", "grande são paulo", "grande sao paulo",
 }
 
 

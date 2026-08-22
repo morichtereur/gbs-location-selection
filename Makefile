@@ -1,4 +1,4 @@
-.PHONY: install fetch run dashboard centres test clean
+.PHONY: install fetch run dashboard centres trend test clean
 
 install:
 	python3 -m venv .venv && .venv/bin/pip install -q -r requirements.txt
@@ -14,6 +14,9 @@ dashboard:
 
 centres:
 	.venv/bin/python -m src.centres
+
+trend:
+	.venv/bin/python -m src.trend
 
 test:
 	.venv/bin/python -m pytest tests -q

@@ -6,7 +6,7 @@ A location study arrives as three cities and a weighted scorecard. The weights
 were set in a workshop, and the weights are what chose the three cities. The
 study is then presented as measurement.
 
-This scores ten markets on six pillars from public data, and then does the
+This scores eleven markets on seven pillars from public data, and then does the
 part that is usually skipped: re-scores them ten thousand times under every
 weighting somebody in that room could have defended, and reports how often each
 market survives.
@@ -98,7 +98,8 @@ conclusion, that the model could not see Poland, was wrong.
 | Governance | [World Bank WGI](https://www.worldbank.org/en/publication/worldwide-governance-indicators) | Mean of five governance dimensions, each carrying the bounds of its own 90% confidence interval. |
 | Capability | Adzuna, classified by `src/delivery.py` | What the market demonstrably staffs, from 537 live postings that are GBS or GCC work. |
 | Overlap | computed | Hours of the market's working day that fall inside the headquarters' working day. Deterministic — no source to be stale. |
-| Durability | ILOSTAT, derived | How slowly the wage gap has been closing, from each market's own measured drift. A cost advantage is not a fact about the future. |
+| Durability | ILOSTAT, derived | How slowly the wage gap has been closing in dollars. A cost advantage is not a fact about the future. |
+| Employer depth | Adzuna, derived | Distinct employers advertising this work. Comparable only because the fetch applied identical effort to every market and the page cap did not bind. |
 
 The capability pillar is the one that is not available off the shelf. Every
 commercial location index measures talent *supply*. This measures what the
@@ -195,6 +196,33 @@ regional accounts. India, and every other market outside the EU, has no
 comparable public source, so its centres differ from each other on capability
 alone.
 
+## A cheap market may be a currency bet
+
+ILOSTAT publishes the same earnings in local currency and in dollars, so the
+drift behind the durability pillar can be split into what wages did and what the
+exchange rate did. The two are different risks and they do not point the same
+way.
+
+| market | drift in USD | drift in local currency | currency effect |
+|---|---:|---:|---:|
+| Poland | 8.5% | 8.3% | +0.2pp |
+| **India** | **1.7%** | **5.2%** | **−3.6pp** |
+| **Brazil** | **1.5%** | **6.9%** | **−5.4pp** |
+| Germany | 3.0% | 5.1% | −2.1pp |
+| Switzerland | 2.2% | 0.7% | +1.5pp |
+
+India and Brazil look like the most durable cost positions in the panel and are
+nothing of the kind. Local wages are rising at 5–7% a year in both; a weakening
+currency has been hiding it from a dollar buyer. Their apparent durability is a
+bet on the rupee and the real staying where they are.
+
+Poland is the opposite case, and the more honest one: its gap really is closing,
+on wages, with no currency help either way. Switzerland is the only market where
+the currency has made labour *more* expensive in dollars than local wages did.
+
+The pillar still scores the dollar figure, because that is what a sponsor pays.
+The split is reported so nobody mistakes a currency movement for wage restraint.
+
 ## Everything that is resampled
 
 The Monte Carlo varies four things at once, so a market's frequency is its
@@ -245,8 +273,21 @@ survival rate across all of them together:
   a per-country page cap, so posting *counts* say nothing about market size.
   Every demand-side metric is a ratio within a country's own sample.
 - **Point-in-time.** One snapshot cannot show a trend.
-- **Ten markets because ten markets have postings data.** The market set is
-  inherited from the sibling study, not chosen as a shortlist.
+- **Six GBS markets are missing and cannot be added yet.** Romania, Czechia,
+  Hungary, Portugal, the Philippines and Malaysia all have ILOSTAT cost and
+  talent, World Bank governance, and the two derived pillars — five of seven are
+  ready. Only the postings feed is missing: Adzuna returns 404 for each of them
+  with valid credentials, and the Jooble key that covered Central Europe in the
+  sibling study now returns 403 everywhere. A working key adds all six at once.
+  The Philippines in particular is a serious omission from a study about this
+  decision.
+- **Attrition is absent**, and it is probably the most important factor in a
+  real GBS location decision. There is no free public source, and this
+  repository would rather name the hole than fill it with a number nobody
+  measured. Tax and incentives are missing for the same reason.
+- **One snapshot so far.** `make trend` records each fetch under its own date
+  and compares them; with a single snapshot it says so and stops rather than
+  implying direction.
 
 ## Run it
 

@@ -57,6 +57,7 @@ LOCAL_TERMS = {
     "pl": ["centrum usług wspólnych", "SSC finance"],
     "es": ["servicios compartidos"],
     "mx": ["servicios compartidos", "centro de servicios compartidos"],
+    "br": ["serviços compartilhados", "centro de serviços compartilhados"],
 }
 
 DB_PATH = C.DATA / "gbs_postings.duckdb"
@@ -107,17 +108,73 @@ def _init(con: duckdb.DuckDBPyConnection) -> None:
         )
         """
     )
+    # `postings` keeps one row per advertisement, first seen wins. That cannot
+    # answer whether a market is growing, because a posting found in March and
+    # again in June looks identical to one found only in March. Presence is
+    # therefore recorded per run, so each snapshot can be counted on its own.
+    con.execute(
+        """
+        CREATE TABLE IF NOT EXISTS observations (
+            id VARCHAR, snapshot DATE, country VARCHAR,
+            PRIMARY KEY (id, snapshot)
+        )
+        """
+    )
+    con.execute(
+        """
+        CREATE TABLE IF NOT EXISTS snapshots (
+            snapshot DATE PRIMARY KEY, markets VARCHAR, max_pages INTEGER,
+            terms INTEGER, note VARCHAR
+        )
+        """
+    )
 
 
-def fetch() -> int:
+def backfill(con: duckdb.DuckDBPyConnection) -> int:
+    """Record the existing postings as one snapshot, dated when they were seen.
+
+    Snapshot tracking arrived after the first fetches. Without this the sample
+    already on disk would have no observation rows and would vanish from any
+    trend — throwing away real data to tidy a schema.
+    """
+    already = con.execute("SELECT count(*) FROM main.observations").fetchone()[0]
+    if already:
+        return 0
+    con.execute(
+        """
+        INSERT OR IGNORE INTO main.observations
+        SELECT id, CAST(substr(fetched_at, 1, 10) AS DATE), country FROM main.postings
+        WHERE fetched_at IS NOT NULL AND length(fetched_at) >= 10
+        """
+    )
+    con.execute(
+        """
+        INSERT OR IGNORE INTO main.snapshots
+        SELECT DISTINCT snapshot, 'backfilled', NULL, NULL,
+               'reconstructed from posting fetch dates'
+        FROM main.observations
+        """
+    )
+    return con.execute("SELECT count(*) FROM main.observations").fetchone()[0]
+
+
+def fetch(only: tuple[str, ...] | None = None) -> int:
+    """Fetch the sample. `only` limits to named markets, for topping up one
+    market without re-querying the rest."""
     app_id, app_key = _env()
     C.DATA.mkdir(exist_ok=True)
     con = duckdb.connect(str(DB_PATH))
     _init(con)
+    restored = backfill(con)
+    if restored:
+        print(f"backfilled {restored} observations from earlier fetches")
     stamp = time.strftime("%Y-%m-%dT%H:%M:%S")
+    today = time.strftime("%Y-%m-%d")
     seen = 0
 
     for country in C.MARKETS:
+        if only and country not in only:
+            continue
         for term in SEARCH_TERMS + LOCAL_TERMS.get(country, []):
             for page in range(1, MAX_PAGES + 1):
                 results = _page(country, term, page, app_id, app_key)
@@ -137,6 +194,10 @@ def fetch() -> int:
                             r.get("created") or "", r.get("redirect_url") or "", stamp,
                         ],
                     )
+                    con.execute(
+                        "INSERT OR IGNORE INTO observations VALUES (?,?,?)",
+                        [ident, today, country],
+                    )
                     seen += 1
                 time.sleep(REQUEST_INTERVAL)
         total = con.execute(
@@ -144,11 +205,20 @@ def fetch() -> int:
         ).fetchone()[0]
         print(f"  {country}: {total} unique postings held")
 
+    fetched = sorted(only) if only else sorted(C.MARKETS)
+    con.execute(
+        "INSERT OR REPLACE INTO snapshots VALUES (?,?,?,?,?)",
+        [today, ",".join(fetched), MAX_PAGES, len(SEARCH_TERMS), ""],
+    )
     total = con.execute("SELECT count(*) FROM postings").fetchone()[0]
+    snaps = con.execute("SELECT count(*) FROM snapshots").fetchone()[0]
     con.close()
     print(f"{seen} results seen, {total} unique postings in {DB_PATH.name}")
+    print(f"snapshot {today} recorded ({snaps} snapshot(s) held)")
     return total
 
 
 if __name__ == "__main__":
-    fetch()
+    import sys
+
+    fetch(tuple(sys.argv[1:]) or None)

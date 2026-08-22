@@ -27,6 +27,7 @@ def make(iso2: str, cost: float, talent: float, risk: float, trans: float) -> Ma
     m.judgment_share = 1.0 - trans
     m.timezone_overlap = 8.0 - 3.0 * trans
     m.durability = -0.03
+    m.depth = 10.0 + 40.0 * trans
     m.bpo_share = 0.1
     m.employer_fragmentation = 0.5
     m.postings_in_scope = 100

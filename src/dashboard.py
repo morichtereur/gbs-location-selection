@@ -16,7 +16,7 @@ import json
 
 from src import config as C
 from src.panel import Market, build, with_centres
-from src.score import PILLARS
+from src.score import LOG_SCALED, LOWER_IS_BETTER, PILLARS
 from src.stability import run
 
 # Validated categorical palette — six slots, one per pillar. Checked with the
@@ -33,6 +33,7 @@ PILLAR_COLORS = {
     "capability": "#eda100",
     "timezone": "#e87ba4",
     "durability": "#008300",
+    "depth": "#4a3aa7",
 }
 PILLAR_COLORS_DARK = {
     "cost": "#3987e5",
@@ -41,6 +42,7 @@ PILLAR_COLORS_DARK = {
     "capability": "#c98500",
     "timezone": "#d55181",
     "durability": "#008300",
+    "depth": "#9085e9",
 }
 PILLAR_LABELS = {
     "cost": "Cost",
@@ -49,6 +51,7 @@ PILLAR_LABELS = {
     "capability": "Capability",
     "timezone": "Overlap",
     "durability": "Durability",
+    "depth": "Employer depth",
 }
 PILLAR_NOTES = {
     "cost": "Blended ISCO 2/3/4 wage basket, USD, aged to a common year",
@@ -56,7 +59,8 @@ PILLAR_NOTES = {
     "risk": "Mean of five World Bank governance dimensions",
     "capability": "What the market demonstrably staffs, from live postings",
     "timezone": "Working hours shared with the headquarters",
-    "durability": "How slowly the wage gap has been closing",
+    "durability": "How slowly the wage gap has been closing, in dollars",
+    "depth": "Distinct employers hiring this work in the market",
 }
 
 
@@ -75,7 +79,9 @@ SOURCES = [
     {"pillar": "Overlap", "name": "computed",
      "detail": "working hours shared with the declared headquarters", "vintage": "—"},
     {"pillar": "Durability", "name": "ILOSTAT, derived",
-     "detail": "each market's own measured wage drift", "vintage": "2015–2025"},
+     "detail": "measured wage drift, split into local wages and currency", "vintage": "2015–2025"},
+    {"pillar": "Employer depth", "name": "Adzuna job postings",
+     "detail": "distinct employers advertising this work, uniform fetch effort", "vintage": "Aug 2026"},
 ]
 
 LIMITS = [
@@ -97,6 +103,9 @@ def _entity(m: Market, archetype: str) -> dict:
         "isCity": m.is_city,
         "marketType": m.market_type,
         "cost": m.cost_usd_aged or m.cost_usd,
+        "depth": m.depth,
+        "driftLcu": m.wage_cagr_lcu,
+        "fxDrift": m.fx_drift,
         "costObserved": m.cost_usd,
         "costYear": m.cost_year,
         "costLag": m.cost_lag,
@@ -129,8 +138,11 @@ def payload() -> dict:
         "pillarNotes": PILLAR_NOTES,
         "colors": PILLAR_COLORS,
         "colorsDark": PILLAR_COLORS_DARK,
-        "lowerIsBetter": ["cost"],
-        "logScaled": ["cost", "talent"],
+        # Derived, never restated. These were hand-written lists and drifted the
+        # moment a log-scaled pillar was added: Python scaled depth and the page
+        # did not, so the two ranked differently.
+        "lowerIsBetter": sorted(LOWER_IS_BETTER),
+        "logScaled": sorted(LOG_SCALED),
         "archetypes": {
             k: {"label": v["label"], "weights": v["weights"]}
             for k, v in C.ARCHETYPES.items()
@@ -211,11 +223,13 @@ function pillarValues(rows) {
   return rows.map((r) => {
     const parentId = r.parent || r.id;
     const tz = overlapHours(parentId, state.hq);
-    return { row: r, v: {
-      cost: r.cost, talent: r.talent, risk: r.risk,
-      capability: r.capability, timezone: tz === null ? r.timezone : tz,
-      durability: r.durability,
-    }};
+    // Built from DATA.pillars rather than a hand-written list: the last time
+    // this was spelled out by hand, adding a pillar left it undefined here and
+    // the page ranked on NaN while the study ranked correctly.
+    const v = {};
+    for (const p of DATA.pillars) v[p] = r[p];
+    v.timezone = tz === null ? r.timezone : tz;
+    return { row: r, v };
   });
 }
 

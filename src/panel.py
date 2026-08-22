@@ -30,6 +30,9 @@ class Market:
     cost_year: int | None = None
     wage_components_usd: dict[str, float] = field(default_factory=dict)
     wage_cagr: float | None = None
+    wage_cagr_lcu: float | None = None
+    fx_drift: float | None = None
+    depth: float | None = None
     cost_usd_aged: float | None = None
     drift_used: float | None = None
     drift_measured: bool = False
@@ -99,6 +102,7 @@ class Market:
             for v in (
                 self.cost_usd, self.talent_proxy, self.risk_score,
                 self.transactional_share, self.timezone_overlap, self.durability,
+                self.depth,
             )
         )
 
@@ -107,6 +111,7 @@ class Market:
             "cost": self.cost_usd, "talent": self.talent_proxy,
             "risk": self.risk_score, "capability": self.transactional_share,
             "timezone": self.timezone_overlap, "durability": self.durability,
+            "depth": self.depth,
         }
         return [k for k, v in names.items() if v is None]
 
@@ -156,6 +161,7 @@ def age(cost: float, lag: int | None, drift: float) -> float:
 def build() -> dict[str, Market]:
     wages = ilostat.load()
     history = ilostat.series()
+    history_lcu = ilostat.series("CUR_TYPE_LCU")
     employment = ilostat.employment()
     talent = unesco.load()
     risk = worldbank.load()
@@ -175,6 +181,13 @@ def build() -> dict[str, Market]:
             )
             if iso2 in history:
                 m.wage_cagr = _cagr(history[iso2], w["year"])
+            if iso2 in history_lcu:
+                m.wage_cagr_lcu = _cagr(history_lcu[iso2], w["year"])
+            if m.wage_cagr is not None and m.wage_cagr_lcu is not None:
+                # What the dollar buyer saw, minus what local wages actually
+                # did. A positive figure means the currency worked against the
+                # buyer; a negative one means it cushioned local wage growth.
+                m.fx_drift = m.wage_cagr - m.wage_cagr_lcu
 
         if iso2 in employment:
             e = employment[iso2]
@@ -215,6 +228,7 @@ def build() -> dict[str, Market]:
             m.gcc_share = d["gcc_share"]
             m.ambiguous_share = d["ambiguous_share"]
             m.employer_fragmentation = d["employers"] / d["postings_in_scope"]
+            m.depth = float(d["employers"])
             m.postings_in_scope = d["postings_in_scope"]
 
         m.timezone_overlap = overlap_hours(iso2)

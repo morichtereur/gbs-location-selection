@@ -37,6 +37,21 @@ MARKETS: dict[str, dict[str, str]] = {
     "mx": {"iso3": "MEX", "name": "Mexico", "type": "delivery"},
     "za": {"iso3": "ZAF", "name": "South Africa", "type": "delivery"},
     "in": {"iso3": "IND", "name": "India", "type": "delivery"},
+    "br": {"iso3": "BRA", "name": "Brazil", "type": "delivery"},
+}
+
+# Markets that belong in a GBS study and cannot be added, with the reason
+# tested rather than assumed. Adzuna returns 404 for each of these with valid
+# credentials — the endpoints do not exist, so this is not a permissions
+# problem — and the Jooble key that covered Central Europe in the sibling study
+# now returns 403 on every market.
+#
+# ILOSTAT, the World Bank and the derived pillars all cover them: five of the
+# seven pillars are ready. Only the postings feed is missing, so a working
+# Jooble key or an equivalent source would add all six at once.
+UNREACHABLE = {
+    "ro": "Romania", "cz": "Czechia", "hu": "Hungary",
+    "pt": "Portugal", "ph": "Philippines", "my": "Malaysia",
 }
 
 ISO3_TO_ISO2 = {m["iso3"]: k for k, m in MARKETS.items()}
@@ -65,7 +80,12 @@ WAGE_BLEND_JITTER = 0.10
 # it answers a different question — how good the wage is for the employee, and
 # therefore how hard the market will be to retain in. They are not
 # interchangeable and the panel keeps both.
-CURRENCIES = ("CUR_TYPE_USD", "CUR_TYPE_PPP")
+# USD is what the buyer pays. PPP says how good the wage is locally, and so how
+# hard the market is to retain in. LCU is here to answer a third question the
+# other two cannot: when a cost gap closes, is that wages rising or the currency
+# moving? Those are different risks with different responses, and USD alone
+# cannot tell them apart.
+CURRENCIES = ("CUR_TYPE_USD", "CUR_TYPE_PPP", "CUR_TYPE_LCU")
 
 # --- Risk -----------------------------------------------------------------
 # WGI publishes a 0-100 score and the bounds of its own 90% confidence
@@ -189,6 +209,9 @@ HQ = "ch"
 UTC_OFFSET = {
     "ch": 1.0, "de": 1.0, "nl": 1.0, "es": 1.0, "pl": 1.0,
     "gb": 0.0, "za": 2.0, "in": 5.5, "sg": 8.0, "mx": -6.0,
+    # Brasília time. Brazil spans four zones; the GBS corridor from São Paulo
+    # through Curitiba and Barueri sits in this one.
+    "br": -3.0,
 }
 WORKING_DAY = (9.0, 17.0)
 
@@ -208,12 +231,25 @@ WORKING_DAY = (9.0, 17.0)
 # the substantive point rather than a configuration detail. A transactional
 # hub is bought on cost and scale; a judgment centre is bought on whether the
 # market demonstrably staffs judgment work at all.
+# --- Employer depth ------------------------------------------------------
+# How many distinct employers advertise GBS or GCC work in a market. A market
+# where sixty-two employers compete for the profile is a different proposition
+# from one with five — faster to hire into, harder to retain in.
+#
+# This is only a fair comparison because the fetch applied the same effort to
+# every market: the same search terms and the same page cap. The cap did not
+# bind anywhere — India returned 2,060 postings against Switzerland's 90, well
+# inside the ceiling — so the difference is supply rather than where the fetch
+# stopped. `make fetch` must stay uniform for this pillar to keep meaning what
+# it says.
+
 ARCHETYPES = {
     "transactional_hub": {
         "label": "Transactional hub",
         "weights": {
-            "cost": 0.35, "talent": 0.20, "risk": 0.10,
-            "capability": 0.15, "timezone": 0.10, "durability": 0.10,
+            "cost": 0.30, "talent": 0.18, "risk": 0.09,
+            "capability": 0.13, "timezone": 0.09, "durability": 0.09,
+            "depth": 0.12,
         },
         # Which end of the postings mix counts as fit for this archetype.
         "capability_metric": "transactional_share",
@@ -221,8 +257,9 @@ ARCHETYPES = {
     "judgment_centre": {
         "label": "Judgment centre of excellence",
         "weights": {
-            "cost": 0.15, "talent": 0.20, "risk": 0.20,
-            "capability": 0.25, "timezone": 0.15, "durability": 0.05,
+            "cost": 0.13, "talent": 0.17, "risk": 0.17,
+            "capability": 0.22, "timezone": 0.13, "durability": 0.04,
+            "depth": 0.14,
         },
         "capability_metric": "judgment_share",
     },

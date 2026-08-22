@@ -74,19 +74,24 @@ def load() -> dict[str, dict]:
     return out
 
 
-def series() -> dict[str, dict[int, float]]:
-    """Blended USD wage basket per market per year, for measuring wage drift.
+def series(currency: str = "CUR_TYPE_USD") -> dict[str, dict[int, float]]:
+    """Blended wage basket per market per year, for measuring wage drift.
 
-    Three of the ten markets have earnings observations several years old. The
-    honest way to age them is each market's own measured trend rather than an
-    assumed inflation number, so the history is pulled from the same response.
+    Several markets have earnings observations years old. The honest way to age
+    them is each market's own measured trend rather than an assumed inflation
+    number, so the history is pulled from the same response.
+
+    Runs on either currency. USD drift is what a dollar buyer experiences and
+    is what ages the cost pillar; local-currency drift is the same series with
+    the exchange rate taken out. The gap between them is the currency's
+    contribution, which USD alone cannot separate from wage growth.
     """
     body = fetch(_url(), ACCEPT, suffix=".csv")
     obs: dict[str, dict[tuple[int, str], float]] = {}
     for r in csv.DictReader(io.StringIO(body)):
         if (
             r["SEX"] != "SEX_T"
-            or r["CUR"] != "CUR_TYPE_USD"
+            or r["CUR"] != currency
             or r["OCU"] not in C.ISCO_GROUPS
             or not r["OBS_VALUE"]
         ):

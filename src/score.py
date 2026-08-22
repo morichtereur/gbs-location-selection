@@ -22,9 +22,13 @@ import math
 from src import config as C
 from src.panel import Market
 
-PILLARS = ("cost", "talent", "risk", "capability", "timezone", "durability")
+PILLARS = (
+    "cost", "talent", "risk", "capability", "timezone", "durability", "depth",
+)
 LOWER_IS_BETTER = {"cost"}
-LOG_SCALED = {"cost", "talent"}
+# Employer depth spans 5 to 62 and is a count, so it is scaled like the other
+# count variables rather than linearly.
+LOG_SCALED = {"cost", "talent", "depth"}
 
 
 def raw_pillars(
@@ -65,6 +69,7 @@ def raw_pillars(
             "capability": (capability_draw or {}).get(iso2, getattr(m, metric)),
             "timezone": m.timezone_overlap,
             "durability": m.durability,
+            "depth": m.depth,
         }
     return out
 

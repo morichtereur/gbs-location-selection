@@ -36,13 +36,25 @@ import re
 from src import config as C
 
 # --- gate 1: is this finance or accounting work? --------------------------
+# English first, then the languages the sampled markets actually advertise in.
+# Leaving these out is not a neutral omission: Brazil returned 947 postings and
+# the classifier recognised seven, because every Portuguese one was invisible
+# to an English-only gate.
 FINANCE = re.compile(
     r"\b(accounts payable|accounts receivable|record to report|order to cash|"
     r"procure to pay|general ledger|accounting|accountant|bookkeep|"
     r"reconcilia|financial report|financial statement|month.end close|"
     r"intercompany|accounts assistant|finance analyst|financial analyst|"
     r"controller|controlling|treasury|invoice|billing|credit control|"
-    r"tax compliance|fp&a|\bap\b|\bar\b|\br2r\b|\bp2p\b|\bo2c\b)",
+    r"tax compliance|fp&a|\bap\b|\bar\b|\br2r\b|\bp2p\b|\bo2c\b|"
+    # Portuguese
+    r"contas a pagar|contas a receber|contabil|concilia[çc]|faturamento|"
+    r"financeir|ci[êe]ncias cont[áa]beis|"
+    # Spanish
+    r"cuentas por pagar|cuentas por cobrar|contabilidad|conciliaci[óo]n|"
+    r"facturaci[óo]n|tesorer[íi]a|"
+    # Polish
+    r"ksi[ęe]gow|rozrachunk|faktur|zobowi[ąa]za[nń]|nale[żz]no[śs]ci)",
     re.I,
 )
 
@@ -51,7 +63,10 @@ FINANCE = re.compile(
 TRANSACTIONAL_PROCESS = re.compile(
     r"\b(accounts payable|accounts receivable|record to report|order to cash|"
     r"procure to pay|general ledger|reconcilia|invoice|billing|credit control|"
-    r"\bap\b|\bar\b|\br2r\b|\bp2p\b|\bo2c\b|\brtr\b|\bptp\b|\botc\b)",
+    r"\bap\b|\bar\b|\br2r\b|\bp2p\b|\bo2c\b|\brtr\b|\bptp\b|\botc\b|"
+    r"contas a pagar|contas a receber|concilia[çc]|faturamento|"
+    r"cuentas por pagar|cuentas por cobrar|facturaci[óo]n|"
+    r"rozrachunk|faktur)",
     re.I,
 )
 
@@ -68,6 +83,7 @@ GCC_TERMS = re.compile(
 GBS_TERMS = re.compile(
     r"\b(global business services|\bgbs\b|shared service|\bssc\b|"
     r"centrum usług wspólnych|servicios compartidos|"
+    r"servi[çc]os compartilhados|centro de servi[çc]os|\bcsc\b|"
     r"business service cent(er|re)|finance service cent(er|re)|"
     r"captive cent(er|re)|delivery cent(er|re))",
     re.I,

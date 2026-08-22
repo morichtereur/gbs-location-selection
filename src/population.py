@@ -25,6 +25,7 @@ import duckdb
 
 from src import config as C
 from src.delivery import IN_SCOPE, _org_type, classify
+from src import workfamily
 from src.gbs_fetch import DB_PATH
 
 
@@ -86,14 +87,20 @@ def load() -> tuple[Posting, ...]:
         model = classify(title, description, company, org_type)
         if model not in IN_SCOPE:
             continue
-        result = classify_text(f"{title or ''} || {description or ''}")
+        text = f"{title or ''} || {description or ''}"
+        result = classify_text(text)
+        family = "ambiguous" if result.ambiguous else result.label
+        if family == "ambiguous":
+            # Only the residual: the supplement can add recall in the languages
+            # the English taxonomy cannot read, and can never overturn it.
+            family = workfamily.decide(text) or "ambiguous"
         out.append(
             Posting(
                 country=country,
                 city=_clean_city(location),
                 company=(company or "").strip().lower(),
                 model=model,
-                family="ambiguous" if result.ambiguous else result.label,
+                family=family,
             )
         )
     return tuple(out)
