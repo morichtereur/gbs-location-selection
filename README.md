@@ -358,6 +358,41 @@ That is a bound, not a correction. The supplement's mix rests on 23 postings —
 enough to prove the subset is skewed, too thin to build a prior on — so nothing
 is imputed and the measured figures stand as published.
 
+## Seven pillars are declared. One or five decide the answer.
+
+Weighting seven pillars does not mean seven pillars decide anything. Removing
+each in turn — weight to zero, the rest renormalised — and comparing the top
+band shows which are carrying the result and which are decoration with a number
+attached. `make leverage` runs it.
+
+| pillar removed | transactional hub | judgment centre |
+|---|---|---|
+| **Cost** | **changes** — Poznań and Warsaw join | **changes** — every Indian city drops |
+| **Talent** | unchanged | **changes** — every Indian city drops |
+| **Governance** | unchanged | **changes** — Kraków and Wrocław drop |
+| **Capability** | unchanged | **changes** — Kraków and Wrocław drop |
+| **Overlap** | unchanged | **changes** — Kraków and Wrocław drop |
+| Durability | unchanged | unchanged |
+| Employer depth | unchanged | unchanged |
+
+**For a transactional hub this is a cost ranking wearing six other pillars.**
+Every one of them can be deleted without moving the shortlist. That is not an
+argument for deleting them — they would matter on a different candidate set, and
+the point of measuring them was never to assume — but a reader should know that
+the answer to "where do we put the processing centre" is being decided by one
+number.
+
+The judgment archetype is the opposite: five of seven pillars move it, and
+durability and depth are the two that do not.
+
+**This is the sharpest thing the repository can say about its own weakest
+input.** Capability is the only pillar built from this project's own classifier
+rather than an official statistic; it carries the classification error corrected
+in `stability.py` and the subset bias measured in `validate.py`. It is
+**irrelevant to the transactional answer and load-bearing for the judgment one**
+— so the India-over-Germany reversal genuinely depends on the input with the
+most error in it, and the transactional shortlist is immune to all of it.
+
 ## Everything that is resampled
 
 The Monte Carlo varies four things at once, so a market's frequency is its

@@ -143,6 +143,7 @@ def run(
     transform: str = "log",
     resample_inputs: bool = True,
     wgi_correlation: str = "perfect",
+    weights: dict[str, float] | None = None,
 ) -> Stability:
     """Rank stability across resampled weights and resampled inputs.
 
@@ -159,8 +160,13 @@ def run(
     rng = np.random.default_rng(seed)
     markets = [k for k, m in panel.items() if m.complete]
     fallback_drift = median_drift(panel)
-    declared = C.ARCHETYPES[archetype]["weights"]
-    alpha = np.array([C.WEIGHT_CONCENTRATION * declared[p] for p in PILLARS])
+    declared = weights or C.ARCHETYPES[archetype]["weights"]
+    # A pillar removed for a leverage test has weight zero, and a Dirichlet
+    # needs a positive concentration on every component; the floor keeps the
+    # draw valid while leaving the pillar effectively switched off.
+    alpha = np.array([
+        max(C.WEIGHT_CONCENTRATION * declared[p], 1e-3) for p in PILLARS
+    ])
 
     baseline = rank(
         score(
