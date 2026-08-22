@@ -56,7 +56,8 @@ class Market:
     capability_shrunk_from: float | None = None
     transactional_share: float | None = None
     judgment_share: float | None = None
-    bpo_share: float | None = None
+    gcc_share: float | None = None
+    ambiguous_share: float | None = None
     employer_fragmentation: float | None = None
     postings_in_scope: int | None = None
 
@@ -158,7 +159,7 @@ def build() -> dict[str, Market]:
     employment = ilostat.employment()
     talent = unesco.load()
     risk = worldbank.load()
-    demand = postings.load()
+    demand = postings.load_market_shares()
 
     panel: dict[str, Market] = {}
     for iso2, meta in C.MARKETS.items():
@@ -211,8 +212,9 @@ def build() -> dict[str, Market]:
             d = demand[iso2]
             m.transactional_share = d["transactional_share"]
             m.judgment_share = d["judgment_share"]
-            m.bpo_share = d["bpo_share"]
-            m.employer_fragmentation = d["employer_fragmentation"]
+            m.gcc_share = d["gcc_share"]
+            m.ambiguous_share = d["ambiguous_share"]
+            m.employer_fragmentation = d["employers"] / d["postings_in_scope"]
             m.postings_in_scope = d["postings_in_scope"]
 
         m.timezone_overlap = overlap_hours(iso2)
@@ -298,7 +300,7 @@ def with_centres(panel: dict[str, Market]) -> dict[str, Market]:
             ) / (n + k)
             row.capability_raw = centre.transactional_share
             row.capability_shrunk_from = m.transactional_share
-            row.bpo_share = centre.bpo_share
+            row.gcc_share = centre.gcc_share
             row.postings_in_scope = centre.postings
             row.employers = centre.employers
             out[row.iso2] = row

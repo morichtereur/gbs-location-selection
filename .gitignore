@@ -6,3 +6,4 @@ data/cache/
 
 # Build outputs that are regenerated, not reviewed
 dashboard.artifact.html
+data/gbs_postings.duckdb

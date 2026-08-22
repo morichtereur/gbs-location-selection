@@ -1,7 +1,10 @@
-.PHONY: install run dashboard centres test clean
+.PHONY: install fetch run dashboard centres test clean
 
 install:
 	python3 -m venv .venv && .venv/bin/pip install -q -r requirements.txt
+
+fetch:
+	.venv/bin/python -m src.gbs_fetch
 
 run:
 	.venv/bin/python -m src.analyze

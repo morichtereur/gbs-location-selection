@@ -185,6 +185,42 @@ def results_md(panel, results, variants) -> str:
     return "\n".join(lines) + "\n"
 
 
+def _broad_shares() -> dict:
+    """The original finance-operations sample, for comparison only."""
+    import duckdb
+
+    from src.delivery import _org_type
+
+    org_type = _org_type()
+    con = duckdb.connect(str(C.POSTINGS_DB), read_only=True)
+    rows = con.execute(
+        """
+        SELECT p.country, p.company, l.label FROM postings p JOIN labels l USING (id)
+        WHERE l.label IN ('transactional', 'judgment', 'agent_ops')
+        """
+    ).fetchall()
+    con.close()
+    agg: dict[str, list] = {}
+    for country, company, label in rows:
+        if org_type(company) == "advisory":
+            continue
+        agg.setdefault(country, []).append(label)
+    return {
+        k: {"transactional_share": v.count("transactional") / len(v), "n": len(v)}
+        for k, v in agg.items()
+        if v
+    }
+
+
+def _focused_shares() -> dict:
+    from src.sources.postings import load_market_shares
+
+    return {
+        k: {"transactional_share": v["transactional_share"], "n": v["postings_in_scope"]}
+        for k, v in load_market_shares().items()
+    }
+
+
 def _swing(base, other, panel):
     """Largest absolute change in any market's top-3 frequency."""
     k = max(base.frequency, key=lambda k: abs(base.frequency[k] - other.frequency[k]))
@@ -232,6 +268,7 @@ def main() -> None:
     C.DATA.mkdir(exist_ok=True)
     chart(panel, results, C.DATA / "chart_stability.png")
     centres_chart(with_centres(panel), C.DATA / "chart_centres.png")
+    filter_chart(_broad_shares(), _focused_shares(), C.DATA / "chart_filter.png")
     (C.ROOT / "RESULTS.md").write_text(results_md(panel, results, variants))
     print("wrote data/chart_stability.png and RESULTS.md")
     for a, st in results.items():
@@ -266,9 +303,12 @@ def centres_chart(panel, path):
         reverse=True,
     )
 
-    fig, ax = plt.subplots(figsize=(10, 5.4))
+    # Height follows the number of countries the sample can localise, which
+    # changed from seven to two when the population narrowed to GBS and GCC.
+    fig, ax = plt.subplots(figsize=(10, 2.0 + 0.62 * len(order)))
     fig.patch.set_facecolor("white")
-    fig.subplots_adjust(top=0.80, bottom=0.14, left=0.16, right=0.97)
+    top = 1 - 1.35 / (2.0 + 0.62 * len(order))
+    fig.subplots_adjust(top=top, bottom=0.20, left=0.16, right=0.97)
 
     for row, market in enumerate(order):
         entries = sorted(grouped[market], key=lambda kv: kv[1])
@@ -309,17 +349,82 @@ def centres_chart(panel, path):
     ax.grid(axis="x", color="#e6e6e2", lw=0.8)
     ax.set_axisbelow(True)
 
-    fig.text(0.02, 0.955, "Choosing a city matters where you can measure it",
+    fig.text(0.02, 0.955, "Where GBS and GCC work is actually advertised",
              fontsize=16, fontweight="bold", color="#121a17", va="top")
     fig.text(
         0.02, 0.893,
-        f"{sum(len(v) for v in grouped.values())} locations where GBS roles are actually advertised by four or more employers.\n"
-        "Filled dots have city-level labour cost from Eurostat; hollow dots carry their country's figure, so\n"
-        "the spread between them is residual noise rather than measured difference.",
+        f"{sum(len(v) for v in grouped.values())} locations where GBS or GCC finance roles are advertised by four or more\n"
+        "employers. Filled dots have city-level labour cost from Eurostat; hollow dots carry their country's\n"
+        "figure, so the spread between them is residual noise rather than measured difference.",
         fontsize=10.5, color="#555", va="top", linespacing=1.45,
     )
     fig.savefig(path, dpi=170, facecolor="white")
     plt.close(fig)
+
+
+def filter_chart(broad, focused, path):
+    """What restricting the sample to GBS and GCC work does to the reading.
+
+    The original sample searched "finance operations" and similar, and only 13%
+    of it carried any shared-services signal. The rest was retained finance,
+    which does a different job and skews judgment-heavy. Showing the two
+    readings side by side is the clearest statement of why the narrower
+    population is the right one — and of how thin it is.
+    """
+    markets = [m for m in broad if m in focused]
+    markets.sort(key=lambda m: focused[m]["transactional_share"] - broad[m]["transactional_share"])
+
+    fig, ax = plt.subplots(figsize=(10, 0.52 * len(markets) + 3.0))
+    fig.patch.set_facecolor("white")
+    fig.subplots_adjust(top=0.78, bottom=0.17, left=0.20, right=0.94)
+
+    for row, market in enumerate(markets):
+        a = broad[market]["transactional_share"] * 100
+        b = focused[market]["transactional_share"] * 100
+        ax.plot([a, b], [row, row], color="#c9cbc2", lw=2, zorder=1,
+                solid_capstyle="round")
+        ax.scatter(a, row, s=62, facecolor="white", edgecolor="#9aa29b",
+                   linewidth=1.6, zorder=3)
+        ax.scatter(b, row, s=62, color=TRANSACTIONAL_COLOR, zorder=3)
+        ax.annotate(f"n={focused[market]['n']}", (max(a, b), row),
+                    textcoords="offset points", xytext=(11, 0), ha="left",
+                    va="center", fontsize=9, color="#7d857e")
+
+    ax.set_yticks(range(len(markets)))
+    ax.set_yticklabels([C.MARKETS[m]["name"] for m in markets], fontsize=11)
+    ax.set_ylim(len(markets) - 0.4, -0.9)
+    ax.set_xlim(0, 105)
+    ax.set_xlabel("share of postings that are transactional work", fontsize=10,
+                  color="#444", labelpad=8)
+    ax.xaxis.set_major_formatter(lambda v, _: f"{v:.0f}%")
+    ax.tick_params(axis="x", labelsize=10)
+    for spine in ("top", "right", "left"):
+        ax.spines[spine].set_visible(False)
+    ax.spines["bottom"].set_color("#cccccc")
+    ax.grid(axis="x", color="#e6e6e2", lw=0.8)
+    ax.set_axisbelow(True)
+
+    fig.text(0.02, 0.955, "What the old sample was actually measuring",
+             fontsize=16, fontweight="bold", color="#121a17", va="top")
+    fig.text(
+        0.02, 0.888,
+        "Hollow: a broad finance-operations sample, where only 13% of postings carried any shared-services\n"
+        "signal. Filled: the same markets restricted to GBS and GCC work. The gap is retained finance that was\n"
+        "never in scope — and n is what honestly remains.",
+        fontsize=10.5, color="#555", va="top", linespacing=1.45,
+    )
+
+    handles = [
+        plt.Line2D([], [], marker="o", linestyle="", markerfacecolor="white",
+                   markeredgecolor="#9aa29b", markersize=9, label="all finance operations"),
+        plt.Line2D([], [], marker="o", linestyle="", color=TRANSACTIONAL_COLOR,
+                   markersize=9, label="GBS and GCC only"),
+    ]
+    fig.legend(handles=handles, loc="lower center", ncol=2, frameon=False,
+               fontsize=10.5, bbox_to_anchor=(0.55, 0.005))
+    fig.savefig(path, dpi=170, facecolor="white")
+    plt.close(fig)
+
 
 if __name__ == "__main__":
     main()

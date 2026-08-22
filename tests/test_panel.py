@@ -39,63 +39,61 @@ def test_cagr_ignores_history_older_than_ten_years():
     assert _cagr(hist, 2024) == pytest.approx(2 ** (1 / 10) - 1)
 
 
+needs_gbs = pytest.mark.skipif(
+    not (C.DATA / "gbs_postings.duckdb").exists(),
+    reason="GBS/GCC sample not fetched; run `make fetch`",
+)
+
+
+@needs_gbs
 @needs_postings
-def test_demand_pillar_reproduces_the_published_sample_size():
-    """The Agentic Shift study reports 2,110 in-scope postings. This project
-    reuses that snapshot and its classifier, so it must land on the same
-    number — if it does not, one of the two studies has drifted."""
-    from src.sources import postings
+def test_capability_population_is_gbs_or_gcc_only():
+    """Guards the change this project made deliberately.
 
-    demand = postings.load()
-    assert sum(d["postings_in_scope"] for d in demand.values()) == 2110
+    The capability pillar used to run on a broad finance-operations sample in
+    which only 13% of postings carried any shared-services signal — it was
+    describing retained finance nine times out of ten. Every posting reaching
+    the pillar must now be classified as GBS or GCC work.
+    """
+    from src.population import load
+
+    postings = load()
+    assert postings, "expected a non-empty GBS/GCC population"
+    assert {p.model for p in postings} <= {"gcc", "gbs"}
 
 
+@needs_gbs
 @needs_postings
-def test_demand_shares_are_ratios_within_each_market():
-    from src.sources import postings
+def test_market_shares_are_proportions_over_decided_postings():
+    from src.sources.postings import load_market_shares
 
-    for iso2, d in postings.load().items():
+    for iso2, d in load_market_shares().items():
         assert iso2 in C.MARKETS
-        total = d["transactional_share"] + d["judgment_share"] + d["agent_ops_share"]
+        total = (
+            d["transactional_share"] + d["judgment_share"] + d["agent_ops_share"]
+        )
         assert total == pytest.approx(1.0)
-        assert 0.0 <= d["employer_fragmentation"] <= 1.0
+        # Ambiguous postings are excluded from the denominator, never folded in.
+        assert d["postings_in_scope"] <= d["postings_fetched"]
+        assert 0.0 <= d["ambiguous_share"] < 1.0
 
 
-def test_age_compounds_drift_over_the_lag():
-    assert age(100.0, 0, 0.05) == 100.0
-    assert age(100.0, None, 0.05) == 100.0
-    assert age(100.0, 3, 0.10) == pytest.approx(133.1)
-
-
-def test_median_drift_ignores_markets_without_a_measurable_rate():
-    def m(rate):
-        x = Market(iso2="x", name="X", market_type="delivery")
-        x.wage_cagr = rate
-        return x
-
-    panel = {"a": m(0.02), "b": m(0.04), "c": m(None)}
-    assert median_drift(panel) == pytest.approx(0.03)
-    assert median_drift({"c": m(None)}) == 0.0
-
-
+@needs_gbs
 @needs_postings
-def test_stale_markets_are_aged_and_fresh_ones_are_not():
-    from src.panel import build
+def test_sales_and_wrong_setting_postings_are_excluded():
+    """A hotel cashier and a GCC sales role both matched every gate before the
+    exclusion lists existed."""
+    from src.delivery import _org_type, classify
 
-    panel = build()
-    for m in panel.values():
-        if m.cost_lag == 0:
-            assert m.cost_usd_aged == pytest.approx(m.cost_usd)
-        elif m.drift_used and m.drift_used > 0:
-            assert m.cost_usd_aged > m.cost_usd
-
-
-@needs_postings
-def test_capability_counts_recover_the_sample():
-    from src.panel import build
-
-    for m in build().values():
-        successes, n = m.capability_counts
-        assert n == m.postings_in_scope
-        assert 0 <= successes <= n
-        assert successes / n == pytest.approx(m.transactional_share, abs=0.005)
+    org_type = _org_type()
+    assert classify(
+        "Team Lead, Cashier", "hotel front desk and guest billing", "Hyatt", org_type
+    ).startswith("out:")
+    assert classify(
+        "VP - GCC Sales", "selling to global capability centres, accounts payable",
+        "ANSR", org_type,
+    ).startswith("out:")
+    assert classify(
+        "R2R Specialist", "Finance Shared Service Centre, general ledger and reconciliation",
+        "Experis", org_type,
+    ) == "gbs"

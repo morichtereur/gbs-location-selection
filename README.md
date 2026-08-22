@@ -1,6 +1,6 @@
 # gbs-location-selection
 
-**A shared-services location shortlist, and a measurement of how much of it was ever really in play.**
+**A GBS and GCC location shortlist, and a measurement of how much of it was ever really in play.**
 
 A location study arrives as three cities and a weighted scorecard. The weights
 were set in a workshop, and the weights are what chose the three cities. The
@@ -96,67 +96,104 @@ conclusion, that the model could not see Poland, was wrong.
 | Cost | [ILOSTAT](https://ilostat.ilo.org/topics/wages/) `DF_EAR_EMTA_SEX_OCU_CUR_NB` | Blended monthly wage basket across ISCO-08 major groups 2, 3 and 4, USD, carried forward to a common year at each market's own measured wage drift. |
 | Talent | ILOSTAT `DF_EMP_2EMP_SEX_OCU_NB` | Employed stock in the same three ISCO groups, blended with the same staffing weights, so cost and talent describe one workforce. |
 | Governance | [World Bank WGI](https://www.worldbank.org/en/publication/worldwide-governance-indicators) | Mean of five governance dimensions, each carrying the bounds of its own 90% confidence interval. |
-| Capability | [gbs-agentic-shift](https://github.com/morichtereur/gbs-agentic-shift) | What the market demonstrably staffs, from 2,110 classified live GBS postings. |
+| Capability | Adzuna, classified by `src/delivery.py` | What the market demonstrably staffs, from 537 live postings that are GBS or GCC work. |
 | Overlap | computed | Hours of the market's working day that fall inside the headquarters' working day. Deterministic — no source to be stale. |
 | Durability | ILOSTAT, derived | How slowly the wage gap has been closing, from each market's own measured drift. A cost advantage is not a fact about the future. |
 
 The capability pillar is the one that is not available off the shelf. Every
 commercial location index measures talent *supply*. This measures what the
-market actually hires for — India runs 72% transactional, Switzerland 80%
-judgment — and whether an outsourcing ecosystem already operates there. It
-reuses the classifier from the sibling study by import rather than
-reimplementation, and a test asserts that both land on the same 2,110 postings,
-so the two readouts cannot quietly drift apart.
+market actually hires for. The work-family taxonomy is loaded from the sibling
+[gbs-agentic-shift](https://github.com/morichtereur/gbs-agentic-shift) study by
+file path rather than reimplemented, so the two studies cannot drift apart on
+what counts as transactional work — even though the sample underneath has been
+replaced.
+
+## Only GBS and GCC work counts
+
+This study originally ran on a sample searched for "finance operations",
+"record to report" and similar. Measured against its own result, **only 13% of
+those 2,159 postings carried any shared-services or capability-centre signal**,
+and eight mentioned a GCC. The capability pillar was describing retained finance
+nine times out of ten — the work a GBS exists *not* to do.
+
+The population is now fetched for the delivery model rather than the process,
+and every posting passes two independent classifiers: one deciding whether it is
+GBS or GCC work, one deciding whether that work is transactional or judgment.
+
+![What the filter changed](data/chart_filter.png)
+
+Restricting the sample raises the transactional share in eight of ten markets,
+because the dilution is gone. Switzerland moves from 19% to 60%, Mexico from 43%
+to 86%. It also shows what honestly remains: Switzerland contributes five
+decided postings, the Netherlands nine.
+
+**India is the only real GCC market in this sample** — 28% of its in-scope
+postings name a capability centre, against 7% in Mexico and zero everywhere
+else.
+
+### Precision is measured, not claimed
+
+The delivery classifier is visible phrase lists, so a reader can disagree with a
+specific entry. Twenty in-scope postings drawn at random were adjudicated by
+hand in [`eval/precision_audit.md`](eval/precision_audit.md): **16 correct, 3
+wrong, 1 unclear — precision around 80%**, on an audit small enough that the
+95% interval runs from roughly 56% to 94%.
+
+The three failures are the useful part. An IT cost-management analyst, a
+corporate consolidations lead, and a collections agent with no centre evidence
+all matched. Earlier versions were worse: a hotel cashier cleared every gate
+before a wrong-setting list existed, and Singapore's sovereign wealth fund was
+read as a capability centre because "GIC" was in the acronym list.
+
+Recall is not measured and is certainly worse than precision. Adzuna truncates
+every description at 500 characters, so a posting that identifies itself as
+centre work further down is invisible to every gate. **All counts here are
+floors.**
 
 ## Real GBS centres, not regions
 
-An earlier version of this study ranked NUTS-2 regions, which put Munich,
-Hamburg and Amsterdam on a shared-services shortlist. Nobody places a delivery
-centre in Munich. The candidate set is now evidenced from the same postings
-snapshot the capability pillar uses: **a location qualifies only where GBS and
-finance-operations roles are actually advertised, by four or more employers.**
+An earlier version ranked NUTS-2 regions, which put Munich, Hamburg and
+Amsterdam on a shared-services shortlist. Nobody places a delivery centre in
+Munich. A location now qualifies only where GBS or GCC finance roles are
+actually advertised by four or more employers.
 
-The employer threshold does the real work. Volume alone admits
-Rheda-Wiedenbrück, where seventeen postings come from two employers, and
-Oberkochen, where five come from one. Those are a single company's office, not
-a labour market a programme could hire into. `make centres` prints the full list
-and exactly what the thresholds exclude.
+The employer threshold does the work. Volume alone admits a Berlin district with
+nine postings from one employer — that is a single company's office, not a
+labour market. `make centres` prints the list and what the thresholds exclude.
 
-That leaves **26 centres** — including Kraków, Wrocław, Gdańsk, Bangalore, Pune,
-Hyderabad, Mexico City and Monterrey. It also declines to invent any: the feeds
-for the United Kingdom and South Africa carry no location string at all, so
-neither can be resolved below national level, and Singapore is a city already.
+![Where the work is advertised](data/chart_centres.png)
 
-### The tool can name Pune. It cannot tell Pune from Bangalore.
+That leaves **nine centres, in two markets**:
 
-Only 15 of the 26 centres have city-level labour cost, because Eurostat's
-regional accounts reach Poland, Germany, the Netherlands and Spain and nothing
-else. For the other 11, every pillar except capability is the national figure —
-so the ranking between Pune and Bangalore rests entirely on a transactional
-share estimated from eleven postings against twenty-four.
+| market | centres |
+|---|---|
+| Poland | Kraków, Wrocław, Warsaw, Poznań, Gdańsk |
+| India | Pune, Bangalore, Hyderabad, Mumbai |
 
-That is sampling noise wearing the clothes of a finding, so it is not allowed to
-act like one. Each centre's capability share is shrunk toward its country's in
-proportion to how thin the evidence is, and the Monte Carlo redraws it from the
-binomial that produced it. What survives is the honest answer: **nothing in the
-centre view is robust.** Pune leads the transactional ranking at 86%, and the
-four Indian centres behind it are not separable from it on this evidence.
+Germany, the UK, Singapore, Mexico, the Netherlands, Spain and Switzerland all
+carry in-scope postings but too dispersed for any city to clear the thresholds.
+That is a statement about fetch depth, not about those markets.
 
-| country | centres | internal spread, as share of the full score range | city-level cost |
-|---|---:|---:|---|
-| Poland | 6 | **18%** transactional · **30%** judgment | measured |
-| Spain | 3 | 9% · 19% | measured |
-| Netherlands | 2 | 8% · 5% | measured |
-| Germany | 4 | 6% · 7% | measured |
-| India | 5 | 6% · 16% | inherited |
-| Mexico | 4 | 4% · 11% | inherited |
-| Switzerland | 2 | 6% · 13% | inherited |
+**The filter changes which city leads.** In the broad sample Warsaw dominated
+Poland with 76 postings, because it is the country's largest finance job market.
+On GBS and GCC work alone, Kraków leads — because it is the country's largest
+*shared-services* market. Those are different questions with different answers,
+and only the second one is a location decision.
 
-Where cost is measured, choosing between a country's centres is a real decision —
-in Poland it moves up to 30% of the entire range, because Warsaw costs 1.81× the
-national average while Łódź sits at 0.73×. Where cost is only inherited, the
-spread is what shrinkage could not remove, and the order inside that country
-should be read as undetermined.
+### The tool can name Pune. It cannot rank it.
+
+Nothing in the centre view is robust. Centres inside one country share every
+pillar except capability, and often cost too, so the ranking between Pune and
+Bangalore rests on a transactional share measured across twenty postings against
+eighteen. Each centre's share is shrunk toward its country's in proportion to
+how thin the evidence is, and the Monte Carlo redraws it from its own binomial.
+What survives is that the centres are not separable, which is the honest answer
+rather than a caveat on a false one.
+
+Only the five Polish centres have city-level labour cost, from Eurostat's
+regional accounts. India, and every other market outside the EU, has no
+comparable public source, so its centres differ from each other on capability
+alone.
 
 ## Everything that is resampled
 
@@ -215,6 +252,7 @@ survival rate across all of them together:
 
 ```
 make install
+make fetch      # rebuilds the GBS/GCC sample (needs free Adzuna credentials)
 make run        # rebuilds data/chart_stability.png and RESULTS.md
 make dashboard  # rebuilds dashboard.html
 make centres    # lists the evidenced GBS centres and what the thresholds exclude

@@ -46,7 +46,7 @@ class Centre:
     employers: int
     transactional_share: float
     judgment_share: float
-    bpo_share: float
+    gcc_share: float
     nuts2: str | None
 
     @property
@@ -73,48 +73,37 @@ def _clean(location: str | None) -> str | None:
 
 
 def survey() -> tuple[list[Centre], list[Centre]]:
-    """Return (centres that clear both thresholds, those that do not)."""
-    org_type = _org_type()
-    con = duckdb.connect(str(C.POSTINGS_DB), read_only=True)
-    rows = con.execute(
-        """
-        SELECT p.country, p.location, p.company, l.label
-        FROM postings p JOIN labels l USING (id)
-        WHERE l.label IN ('transactional', 'judgment', 'agent_ops')
-        """
-    ).fetchall()
-    con.close()
+    """Return (centres that clear both thresholds, those that do not).
 
-    agg: dict[tuple[str, str], dict] = {}
-    for country, location, company, label in rows:
-        if country not in C.MARKETS:
+    Surveys the GBS/GCC population, not the broad finance-operations sample.
+    That is the whole point of the filter: Warsaw led the broad sample with 76
+    postings because it is Poland's largest finance job market, while Kraków
+    leads the GBS/GCC one because it is Poland's largest *shared-services*
+    market. The two questions have different answers.
+    """
+    from src.population import load, shares
+
+    postings = load()
+    grouped: dict[tuple[str, str], list] = {}
+    for posting in postings:
+        if posting.country not in C.MARKETS or not posting.city:
             continue
-        if org_type(company) == "advisory":
-            continue
-        city = _clean(location)
-        if not city:
-            continue
-        rec = agg.setdefault(
-            (country, city),
-            {"n": 0, "transactional": 0, "judgment": 0, "bpo": 0, "firms": set()},
-        )
-        rec["n"] += 1
-        if label in ("transactional", "judgment"):
-            rec[label] += 1
-        rec["bpo"] += org_type(company) == "bpo"
-        rec["firms"].add((company or "").strip().lower())
+        grouped.setdefault((posting.country, posting.city), []).append(posting)
 
     kept: list[Centre] = []
     dropped: list[Centre] = []
-    for (market, city), rec in agg.items():
+    for (market, city), rows in grouped.items():
+        stats = shares(rows)
+        if stats["n"] == 0:
+            continue
         centre = Centre(
             market=market,
             name=city,
-            postings=rec["n"],
-            employers=len(rec["firms"]),
-            transactional_share=rec["transactional"] / rec["n"],
-            judgment_share=rec["judgment"] / rec["n"],
-            bpo_share=rec["bpo"] / rec["n"],
+            postings=stats["n"],
+            employers=stats["employers"],
+            transactional_share=stats["transactional_share"],
+            judgment_share=stats["judgment_share"],
+            gcc_share=stats["gcc_share"],
             nuts2=C.CENTRE_NUTS.get(city),
         )
         target = (
