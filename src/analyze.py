@@ -308,6 +308,7 @@ def main() -> None:
     chart(panel, results, C.DATA / "chart_stability.png")
     centres_chart(with_centres(panel), C.DATA / "chart_centres.png")
     filter_chart(_broad_shares(), _focused_shares(), C.DATA / "chart_filter.png")
+    coverage_chart(C.DATA / "chart_coverage.png")
     (C.ROOT / "RESULTS.md").write_text(results_md(panel, results, variants))
     print("wrote data/chart_stability.png and RESULTS.md")
     for a, st in results.items():
@@ -397,6 +398,87 @@ def centres_chart(panel, path):
         "figure, so the spread between them is residual noise rather than measured difference.",
         fontsize=10.5, color="#555", va="top", linespacing=1.45,
     )
+    fig.savefig(path, dpi=170, facecolor="white")
+    plt.close(fig)
+
+
+def coverage_chart(path):
+    """Every location the study can say anything about, and how much.
+
+    The filter chart tells the story of an earlier decision. This one tells the
+    current one: cost is measured the same way in every market, so all
+    twenty-one sit on a single honest axis, while the six pillars that would
+    turn cost into a ranking reach only eleven of them. Filled and hollow is
+    the whole argument -- a hollow marker is a real number that cannot be
+    ranked, which is a different thing from a blank.
+    """
+    from src.beyond import load as beyond_load
+    from src.centres import survey  # noqa: F401  (kept for the threshold text)
+
+    panel = {k: m for k, m in with_centres(build()).items()
+             if m.complete and m.is_city}
+    archetype = list(C.ARCHETYPES)[0]
+    weights = C.ARCHETYPES[archetype]["weights"]
+    st = run(panel, archetype, weights=weights)
+
+    ranked = [
+        {"label": m.name, "parent": C.MARKETS[m.parent]["name"],
+         "cost": m.cost_usd_aged or m.cost_usd, "band": st.band.get(k), "ranked": True}
+        for k, m in panel.items() if (m.cost_usd_aged or m.cost_usd)
+    ]
+    priced = [
+        {"label": r["city"], "parent": r["market"], "cost": r["cost"],
+         "band": None, "ranked": False}
+        for r in beyond_load()
+    ]
+    rows = sorted(ranked + priced, key=lambda r: r["cost"])
+
+    fig, ax = plt.subplots(figsize=(10, 0.40 * len(rows) + 3.4))
+    fig.patch.set_facecolor("white")
+    fig.subplots_adjust(top=0.795, bottom=0.14, left=0.29, right=0.96)
+
+    for row, r in enumerate(rows):
+        ax.plot([0, r["cost"]], [row, row], color="#ececE8", lw=1.2, zorder=1)
+        if r["ranked"]:
+            # The band is not annotated. It comes from seven pillars while this
+            # axis is one of them, so "Warsaw band 3" above "Krakow band 4"
+            # reads as an error to anyone who cannot ask about it.
+            ax.scatter(r["cost"], row, s=74, color=ROBUST_COLOR, zorder=3)
+        else:
+            ax.scatter(r["cost"], row, s=74, facecolor="white",
+                       edgecolor="#9aa29b", linewidth=1.7, zorder=3)
+
+    ax.set_yticks(range(len(rows)))
+    ax.set_yticklabels([f"{r['label']}  ·  {r['parent']}" for r in rows], fontsize=9.5)
+    ax.set_ylim(len(rows) - 0.4, -0.9)
+    ax.set_xlim(0, max(r["cost"] for r in rows) * 1.22)
+    ax.set_xlabel("blended wage for professional and clerical occupations, USD per month",
+                  fontsize=10, color="#444", labelpad=8)
+    ax.xaxis.set_major_formatter(lambda v, _: f"{v:,.0f}")
+    ax.tick_params(axis="x", labelsize=10)
+    for spine in ("top", "right", "left"):
+        ax.spines[spine].set_visible(False)
+    ax.spines["bottom"].set_color("#cccccc")
+    ax.grid(axis="x", color="#e6e6e2", lw=0.8)
+    ax.set_axisbelow(True)
+
+    fig.text(0.02, 0.965, "What the evidence can rank, and what it can only price",
+             fontsize=16, fontweight="bold", color="#121a17", va="top")
+    fig.text(
+        0.02, 0.905,
+        "Filled: ranked on all seven pillars, where cities the draws cannot separate share a band\n"
+        "rather than a position.\n"
+        "Hollow: priced on the five pillars that reach every country, never ranked \u2014 the two built\n"
+        "from job postings stop at the feed\u2019s country list. Wuxi and Casablanca are absent because\n"
+        "ILOSTAT prices neither; Cairo because its series does not hold together.",
+        fontsize=10.5, color="#4d554f", va="top", linespacing=1.5)
+
+    ax.scatter([], [], s=74, color=ROBUST_COLOR, label="ranked on seven pillars")
+    ax.scatter([], [], s=74, facecolor="white", edgecolor="#9aa29b", linewidth=1.7,
+               label="priced on five, not ranked")
+    ax.legend(loc="upper center", bbox_to_anchor=(0.42, -0.075), ncol=2,
+              frameon=False, fontsize=10, handletextpad=0.6, columnspacing=2.4)
+
     fig.savefig(path, dpi=170, facecolor="white")
     plt.close(fig)
 
