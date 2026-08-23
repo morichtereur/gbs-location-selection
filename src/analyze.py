@@ -76,7 +76,7 @@ def chart(panel, results, path):
             color="#8a8a84", ha="right", va="center", style="italic")
 
     fig.text(0.02, 0.955, "Which markets survive a change of mind",
-             fontsize=16, fontweight="bold", color="#121a17", va="top")
+             fontsize=14.5, fontweight="bold", color="#121a17", va="top")
     fig.text(
         0.02, 0.895,
         "Ten markets scored on six pillars — cost, talent, governance, demonstrated capability, hours\n"
@@ -390,7 +390,7 @@ def centres_chart(panel, path):
     ax.set_axisbelow(True)
 
     fig.text(0.02, 0.955, "Where GBS and GCC work is actually advertised",
-             fontsize=16, fontweight="bold", color="#121a17", va="top")
+             fontsize=14.5, fontweight="bold", color="#121a17", va="top")
     fig.text(
         0.02, 0.893,
         f"{sum(len(v) for v in grouped.values())} locations where GBS or GCC finance roles are advertised by four or more\n"
@@ -433,9 +433,12 @@ def coverage_chart(path):
     ]
     rows = sorted(ranked + priced, key=lambda r: r["cost"])
 
-    fig, ax = plt.subplots(figsize=(10, 0.40 * len(rows) + 3.4))
+    # The card renders this at 704px. Displayed type size is fontsize x 9.78 /
+    # figure width in inches -- the dpi cancels -- so a narrower figure is what
+    # makes the labels legible, not a bigger font on a wider one.
+    fig, ax = plt.subplots(figsize=(8.4, 0.30 * len(rows) + 2.9))
     fig.patch.set_facecolor("white")
-    fig.subplots_adjust(top=0.795, bottom=0.14, left=0.29, right=0.96)
+    fig.subplots_adjust(top=0.80, bottom=0.155, left=0.345, right=0.965)
 
     for row, r in enumerate(rows):
         ax.plot([0, r["cost"]], [row, row], color="#ececE8", lw=1.2, zorder=1)
@@ -453,31 +456,31 @@ def coverage_chart(path):
     ax.set_ylim(len(rows) - 0.4, -0.9)
     ax.set_xlim(0, max(r["cost"] for r in rows) * 1.22)
     ax.set_xlabel("blended wage for professional and clerical occupations, USD per month",
-                  fontsize=10, color="#444", labelpad=8)
+                  fontsize=9.5, color="#444", labelpad=7)
     ax.xaxis.set_major_formatter(lambda v, _: f"{v:,.0f}")
-    ax.tick_params(axis="x", labelsize=10)
+    ax.tick_params(axis="x", labelsize=9.5)
     for spine in ("top", "right", "left"):
         ax.spines[spine].set_visible(False)
     ax.spines["bottom"].set_color("#cccccc")
     ax.grid(axis="x", color="#e6e6e2", lw=0.8)
     ax.set_axisbelow(True)
 
-    fig.text(0.02, 0.965, "What the evidence can rank, and what it can only price",
-             fontsize=16, fontweight="bold", color="#121a17", va="top")
+    fig.text(0.025, 0.968, "What the evidence can rank, and what it can only price",
+             fontsize=14.5, fontweight="bold", color="#121a17", va="top")
     fig.text(
-        0.02, 0.905,
+        0.025, 0.913,
         "Filled: ranked on all seven pillars, where cities the draws cannot separate share a band\n"
         "rather than a position.\n"
         "Hollow: priced on the five pillars that reach every country, never ranked \u2014 the two built\n"
         "from job postings stop at the feed\u2019s country list. Wuxi and Casablanca are absent because\n"
         "ILOSTAT prices neither; Cairo because its series does not hold together.",
-        fontsize=10.5, color="#4d554f", va="top", linespacing=1.5)
+        fontsize=9.5, color="#4d554f", va="top", linespacing=1.55)
 
     ax.scatter([], [], s=74, color=ROBUST_COLOR, label="ranked on seven pillars")
     ax.scatter([], [], s=74, facecolor="white", edgecolor="#9aa29b", linewidth=1.7,
                label="priced on five, not ranked")
-    ax.legend(loc="upper center", bbox_to_anchor=(0.42, -0.075), ncol=2,
-              frameon=False, fontsize=10, handletextpad=0.6, columnspacing=2.4)
+    ax.legend(loc="upper center", bbox_to_anchor=(0.40, -0.082), ncol=2,
+              frameon=False, fontsize=9.5, handletextpad=0.6, columnspacing=2.2)
 
     fig.savefig(path, dpi=170, facecolor="white")
     plt.close(fig)
@@ -526,7 +529,7 @@ def filter_chart(broad, focused, path):
     ax.set_axisbelow(True)
 
     fig.text(0.02, 0.955, "What the old sample was actually measuring",
-             fontsize=16, fontweight="bold", color="#121a17", va="top")
+             fontsize=14.5, fontweight="bold", color="#121a17", va="top")
     fig.text(
         0.02, 0.888,
         "Hollow: a broad finance-operations sample, where only 13% of postings carried any shared-services\n"
