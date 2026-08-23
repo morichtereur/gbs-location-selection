@@ -200,6 +200,7 @@ LIMITS = [
     "One snapshot. A city hiring quietly during the fetch is under-represented; absence is weak evidence, not a verdict.",
     # The first question any GBS room asks is where Manila is. Better that the
     # exhibit answers it than that the audience finds the hole.
+    "A second job board would not close the coverage gap. Employer depth counts distinct employers within one feed, so another feed\u2019s count is not comparable, and splicing one in would move Manila into the ranking on evidence unlike the rest.",
     "Exhibit 3 subtracts a national baseline from cities that sometimes carry a regional index, so a capital-city premium sits on one side of it and not the other. Warsaw against a UK baseline is the clearest case: it reads as dearer than the UK, which is partly Mazowieckie against a British national mean rather than a wage fact.",
     "Exhibit 3 is a wage line, not a business case. It excludes facilities, technology, management overhead, transition and severance, and holds headcount one-for-one. Read it as the upper bound on one component of the saving.",
     "Six established locations sit outside the ranking because the postings feed does not reach them: Manila, Kuala Lumpur, Bucharest, Prague, Budapest and Lisbon. Five pillars do reach them and are reported under 'Beyond the sample'; capability and employer depth are the two that cannot be, so these markets are never scored against the ranked cities.",
@@ -725,9 +726,15 @@ select {
 .settles b { color: var(--ink); font-weight: 600; }
 @media (max-width: 700px) { .settles-cols { grid-template-columns: 1fr; gap: 16px; } }
 
+/* 70ch left a third of the measure blank beside a table that used all of it.
+   Dropping the cap alone would give a 105-character line, so the width is
+   filled with two columns rather than one long one. */
 .case-caveat {
-  margin: 10px 0 0; font-size: 11.5px; line-height: 1.5; color: var(--ink-3); max-width: 70ch;
+  margin: 10px 0 0; font-size: 11.5px; line-height: 1.5; color: var(--ink-3);
+  columns: 2; column-gap: 32px;
 }
+.case-caveat b { color: var(--ink-2); }
+@media (max-width: 860px) { .case-caveat { columns: 1; } }
 .fld {
   display: block; font-size: 11px; letter-spacing: .04em; text-transform: uppercase;
   color: var(--ink-3); margin: 9px 0 3px;
@@ -780,8 +787,9 @@ select {
 .exhibit-source {
   font-family: var(--mono); font-size: 10.5px; line-height: 1.5; color: var(--ink-3);
   margin: 12px 0 0; padding-top: 9px; border-top: 1px solid var(--rule);
-  max-width: 92ch;
+  columns: 2; column-gap: 32px;
 }
+@media (max-width: 860px) { .exhibit-source { columns: 1; } }
 
 .col-head {
   display: grid; grid-template-columns: 26px minmax(150px, 215px) minmax(0,1fr) 58px 88px;
@@ -865,7 +873,7 @@ select {
 .copy-status { font-size: 12px; color: var(--ink-3); }
 .table-scroll { overflow-x: auto; }
 
-.method { font-size: 13.5px; line-height: 1.55; max-width: 78ch; }
+.method { font-size: 13.5px; line-height: 1.55; max-width: 90ch; }
 .method h3 {
   font-family: var(--mono); font-size: 10.5px; text-transform: uppercase;
   letter-spacing: .09em; color: var(--ink-3); margin: 16px 0 6px; font-weight: 600;
@@ -902,7 +910,9 @@ select {
   .case-row { line-height: 1.15; }
   .case-val { font-size: 7.5pt; }
   .case-val .per { font-size: 6.5pt; }
-  .case-caveat { font-size: 6.7pt; line-height: 1.35; margin-top: 4px; max-width: none; }
+  .case-caveat {
+    font-size: 6.7pt; line-height: 1.35; margin-top: 4px; max-width: none; columns: 1;
+  }
   /* Print drops the long forms: the column header clipped to "REWEIGHTIN", and
      the caveat's last clause repeats the source note beneath it. */
   .screen-only, .settles, .beyond { display: none !important; }
@@ -1042,7 +1052,9 @@ select {
 
 /* Four lines of source note is what decided the second page. At this size it is
    three, and still comfortably legible in print. */
-.exhibit-source { font-size: 6.3pt; line-height: 1.3; margin-top: 4px; padding-top: 3px; }
+.exhibit-source {
+  font-size: 6.3pt; line-height: 1.3; margin-top: 4px; padding-top: 3px; columns: 1;
+}
 }
 
 details { margin-top: 26px; border-top: 1px solid var(--rule-strong); padding-top: 14px; }
@@ -1753,8 +1765,9 @@ function hqLabel() {
    a reader who moves a slider must see the boundary move with it, or it reads
    as boilerplate and gets skipped. */
 function renderBeyond() {
+  // One column, one unit: 722,616 beside 2.4m made the reader convert.
   const n = (x, d) => x == null ? "\u2014"
-    : x >= 1e6 ? `${(x / 1e6).toFixed(1)}m`
+    : x >= 1e5 ? `${(x / 1e6).toFixed(1)}m`
     : x.toLocaleString("en-US", { maximumFractionDigits: d ?? 0 });
 
   $("#beyond").innerHTML = DATA.beyond.map((r) =>
@@ -1770,9 +1783,7 @@ function renderBeyond() {
   $("#beyond-note").innerHTML =
     `Reported, not ranked. Five pillars reach these markets because ILOSTAT and the World `
     + `Bank cover every country alike; <b>capability and employer depth do not</b>, and those `
-    + `are the two the postings carry. A second job board would not close it either \u2014 `
-    + `another feed's employer count is not comparable with this one's, so it would move `
-    + `Manila into the ranking on evidence unlike the rest. Cost is national, observed `
+    + `are the two the postings carry. Cost is national, observed `
     + `${years[0] === years[years.length - 1] ? years[0] : `${years[0]}\u2013${years[years.length - 1]}`}; `
     + `the city named is the one a programme would consider, not a measured city figure.`;
 }
@@ -1780,7 +1791,8 @@ function renderBeyond() {
 /* Three ways a location can be missing, and they are not the same thing.
    A reader who asks about one of them should not be told about another. */
 function renderNotShown() {
-  const near = DATA.nearMisses.map((m) =>
+  // Six locations with two figures each is a list, not a finding. Three carry it.
+  const near = DATA.nearMisses.slice(0, 3).map((m) =>
     `<b>${m.name}</b> (${m.postings} postings, ${m.employers} employer`
     + `${m.employers === 1 ? "" : "s"})`).join(", ");
   const un = Object.entries(DATA.unpriceable)
