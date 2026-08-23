@@ -605,6 +605,32 @@ select {
   font-variant-numeric: tabular-nums; color: var(--ink);
 }
 .case-val .per { display: block; font-size: 10px; color: var(--ink-3); }
+/* The limitations sat behind a disclosure triangle at the foot of the page,
+   which is where a reader looks last and a sceptic looks first. Public evidence
+   running out is the finding here, so it is set beside the exhibits, in their
+   register, rather than confessed at the bottom. */
+.settles { margin-top: 26px; border-top: 1px solid var(--rule-strong); padding-top: 10px; }
+.settles-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 26px; margin-top: 10px; }
+.settles h4 {
+  margin: 0 0 7px; font-size: 11px; font-weight: 600; letter-spacing: .05em;
+  text-transform: uppercase; color: var(--ink-2);
+}
+.settles .not h4 { color: var(--warn); }
+.settles ul { margin: 0; padding: 0; list-style: none; }
+.settles li {
+  font-size: 12.5px; line-height: 1.45; color: var(--ink-2);
+  padding: 0 0 7px 15px; position: relative;
+}
+.settles li::before {
+  content: ""; position: absolute; left: 0; top: 7px;
+  width: 6px; height: 6px; border-radius: 50%; background: var(--accent);
+}
+.settles .not li::before {
+  background: none; border-top: 1.5px solid var(--warn); height: 0; top: 9px;
+}
+.settles b { color: var(--ink); font-weight: 600; }
+@media (max-width: 700px) { .settles-cols { grid-template-columns: 1fr; gap: 16px; } }
+
 .case-caveat {
   margin: 10px 0 0; font-size: 11.5px; line-height: 1.5; color: var(--ink-3); max-width: 70ch;
 }
@@ -785,7 +811,7 @@ select {
   .case-caveat { font-size: 6.7pt; line-height: 1.35; margin-top: 4px; max-width: none; }
   /* Print drops the long forms: the column header clipped to "REWEIGHTIN", and
      the caveat's last clause repeats the source note beneath it. */
-  .screen-only { display: none !important; }
+  .screen-only, .settles { display: none !important; }
   .col-head { margin-bottom: 2px; }
   .case-bar { background: #146b54 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .case-bar.over { background: #b0374a !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -1039,6 +1065,14 @@ footer p { max-width: 78ch; }
     </div>
 
     <p class="exhibit-source" id="exhibit-source"></p>
+
+    <div class="settles">
+      <p class="exhibit-label">The boundary of this evidence</p>
+      <div class="settles-cols">
+        <div><h4>What it settles</h4><ul id="settles-yes"></ul></div>
+        <div class="not"><h4>What it does not</h4><ul id="settles-no"></ul></div>
+      </div>
+    </div>
 
     <div class="page-actions">
       <button type="button" id="one-pager">Print one-pager</button>
@@ -1430,6 +1464,7 @@ function render() {
   renderStrip(ranked, band);
   renderTable(ranked, stab);
   renderCase(ranked);
+  renderSettles(ranked, band, rows);
   renderSource(rows);
   renderFoot(rows);
 }
@@ -1603,6 +1638,43 @@ function hqLabel() {
     if (hit) return hit.label;
   }
   return state.hq;
+}
+
+/* Both columns are built from the run on screen rather than written down once:
+   a reader who moves a slider must see the boundary move with it, or it reads
+   as boilerplate and gets skipped. */
+function renderSettles(ranked, band, rows) {
+  const lead = ranked.filter((r) => band.get(r.row.id) === 1);
+  const bands = new Set([...band.values()]).size;
+  const postings = rows.reduce((a, r) => a + (r.postings || 0), 0);
+  const named = ranked.filter((r) => (r.row.operators || []).length).length;
+  const decisive = DATA.pillarLabels[
+    Object.entries(state.weights).sort((a, b) => b[1] - a[1])[0][0]
+  ].toLowerCase();
+
+  $("#settles-yes").innerHTML = [
+    `Which cities genuinely advertise this work: <b>${rows.length}</b> clear the evidence `
+      + `threshold, on <b>${postings.toLocaleString("en-US")}</b> GBS and GCC postings.`,
+    lead.length > 1
+      ? `That <b>${lead.length} cities finish level</b> at the top. The draws cannot separate `
+        + `them, so their order is not a finding.`
+      : `That <b>${lead[0] ? lead[0].row.name : "one city"}</b> leads alone, and the draws `
+        + `keep it there.`,
+    `That the answer turns on <b>${decisive}</b> at your weighting, and how far it moves when `
+      + `you price something else.`,
+    named ? `Who already operates in <b>${named}</b> of them, by name.` : "",
+    `How far the evidence separates them: <b>${bands} bands</b>, not ${rows.length} ranks.`,
+  ].filter(Boolean).map((x) => `<li>${x}</li>`).join("");
+
+  $("#settles-no").innerHTML = [
+    `Anything about <b>Manila, Kuala Lumpur, Bucharest, Prague, Budapest or Lisbon</b>. The `
+      + `postings feed does not reach them, so they are absent, not rejected.`,
+    `<b>Attrition, incentives, property and transition cost.</b> None are in this study, and `
+      + `the first is the driver a GBS case usually turns on.`,
+    `The <b>fully loaded</b> saving. Exhibit 3 is one line of a run-cost, and an upper bound `
+      + `on that line.`,
+    `Whether a city suits <b>your</b> mandate. Nothing here is a recommendation.`,
+  ].map((x) => `<li>${x}</li>`).join("");
 }
 
 function renderSource(rows) {

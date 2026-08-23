@@ -87,6 +87,12 @@ it excludes facilities, technology, management overhead, transition and
 severance, and holds headcount one-for-one, which for a ramping centre is
 optimistic. It is an upper bound on one component, not a saving.
 
+**The boundary is stated on the exhibit, not in a footnote.** What public
+evidence settles here and what it cannot are set side by side beneath the
+ranking, both built from the run on screen so they move when the weighting
+does. The tool covers eleven cities and one function on public data alone;
+saying where that stops is the finding, not a disclaimer.
+
 **A workbook** (`make excel`) carries the same study for readers who will not
 open a browser: what it does and does not claim, the seven criteria with their
 sources and both starting weightings, the ranking with band and stability, and
