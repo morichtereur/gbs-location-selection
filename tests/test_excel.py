@@ -6,9 +6,20 @@ import pytest
 from openpyxl import load_workbook
 
 from src import config as C
+from src import population
 from src.excel import build_workbook
 
-pytest.importorskip("duckdb")
+# Both snapshots are gitignored, so CI has no data to build a workbook from.
+# importorskip found the duckdb module and let these run anyway, and the build
+# failed on the missing file instead of skipping. Two databases are in play:
+# this repo's GBS/GCC sample, and the sibling repo's broad one behind the
+# contaminant shares. The workbook needs both.
+_DBS = (population.DB_PATH, C.POSTINGS_DB)
+needs_postings = pytest.mark.skipif(
+    not all(db.exists() for db in _DBS),
+    reason="postings snapshot missing: "
+           + ", ".join(str(db) for db in _DBS if not db.exists()),
+)
 
 
 @pytest.fixture(scope="module")
@@ -33,12 +44,14 @@ def test_the_module_entry_point_does_not_shadow_the_panel_builder():
     )
 
 
+@needs_postings
 def test_every_sheet_is_present_and_carries_rows(book):
     assert book.sheetnames == ["Read me", "Criteria & weights", "City ranking", "Wage gap"]
     for name in book.sheetnames:
         assert book[name].max_row > 5, name
 
 
+@needs_postings
 def test_weights_on_the_criteria_sheet_total_one_per_centre_type(book):
     """The sheet states the shares total 100%; a reader will add the column up."""
     ws = book["Criteria & weights"]
@@ -49,6 +62,7 @@ def test_weights_on_the_criteria_sheet_total_one_per_centre_type(book):
         assert abs(sum(shares) - 1.0) < 1e-9, (col, sum(shares))
 
 
+@needs_postings
 def test_the_ranking_sheet_is_actually_ranked(book):
     """It was not, at first: it carried the payload's source order under a title
     that promised a ranking."""

@@ -12,13 +12,17 @@ import subprocess
 import pytest
 
 from src import config as C
+from src import population
 from src.dashboard import SCORING_JS, payload
 from src.panel import build, with_centres
 from src.score import normalise, rank, raw_pillars, score
 
 node = shutil.which("node")
 needs_node = pytest.mark.skipif(node is None, reason="node not available")
-has_postings = C.POSTINGS_DB.exists()
+# Two databases: this repo's GBS/GCC sample, and the sibling repo's broad one
+# behind the contaminant shares. Checking only the second meant a missing local
+# sample failed the suite rather than skipping it.
+has_postings = population.DB_PATH.exists() and C.POSTINGS_DB.exists()
 needs_postings = pytest.mark.skipif(
     not has_postings, reason=f"postings snapshot not present at {C.POSTINGS_DB}"
 )
