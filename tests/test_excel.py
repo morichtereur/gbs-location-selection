@@ -46,7 +46,9 @@ def test_the_module_entry_point_does_not_shadow_the_panel_builder():
 
 @needs_postings
 def test_every_sheet_is_present_and_carries_rows(book):
-    assert book.sheetnames == ["Read me", "Criteria & weights", "City ranking", "Wage gap"]
+    assert book.sheetnames == [
+        "Read me", "Criteria & weights", "City ranking", "Wage gap", "Not ranked",
+    ]
     for name in book.sheetnames:
         assert book[name].max_row > 5, name
 

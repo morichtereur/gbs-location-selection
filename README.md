@@ -127,7 +127,8 @@ saying where that stops is the finding, not a disclaimer.
 open a browser: what it does and does not claim, the seven criteria with their
 sources and both starting weightings, the ranking with band and stability, and
 the wage gap priced against all sixteen origins so the comparison can be
-re-based in the sheet. The dashboard cannot hand a file over — its published
+re-based in the sheet, and the locations it cannot rank with the three
+reasons they are absent. The dashboard cannot hand a file over — its published
 form runs under a policy that blocks downloads a page starts itself — so the
 workbook is built here instead.
 

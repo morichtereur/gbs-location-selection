@@ -490,6 +490,7 @@ __FONTS__
   --accent: #146b54;
   --warn: #b0374a;
   --shadow: 0 1px 2px rgba(18,26,23,.06);
+  --flag-edge: rgba(18,26,23,.22);
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
@@ -505,6 +506,7 @@ __FONTS__
     --accent: #3fa585;
     --warn: #d97186;
     --shadow: none;
+    --flag-edge: rgba(238,241,238,.30);
   }
 }
 :root[data-theme="dark"] {
@@ -513,6 +515,7 @@ __FONTS__
   --ink: #eef1ee; --ink-2: #b3bab4; --ink-3: #848d86;
   --rule: #2e343a; --rule-strong: #454d54;
   --accent: #3fa585; --warn: #d97186; --shadow: none;
+  --flag-edge: rgba(238,241,238,.30);
 }
 * { box-sizing: border-box; }
 body {
@@ -657,10 +660,11 @@ select {
 .case-row .cn { font-size: 12.5px; color: var(--ink-2); }
 .flag {
   width: 15px; height: 10px; margin-right: 7px; vertical-align: -1px;
-  border: .5px solid rgba(0,0,0,.22); border-radius: 1px; flex: none;
+  border: .5px solid var(--flag-edge); border-radius: 1px; flex: none;
   -webkit-print-color-adjust: exact; print-color-adjust: exact;
 }
-:root[data-theme="dark"] .flag { border-color: rgba(255,255,255,.28); }
+/* Through a token, not an attribute override: the attribute is absent in the
+   default "system" setting, so a literal here kept a black edge on dark ground. */
 .case-track { position: relative; height: 15px; }
 .case-bar { position: absolute; top: 0; bottom: 0; background: var(--accent); border-radius: 0 3px 3px 0; }
 .case-bar.over { background: var(--warn); border-radius: 3px 0 0 3px; }

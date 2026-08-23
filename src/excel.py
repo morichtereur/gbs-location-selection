@@ -101,6 +101,7 @@ def build_workbook(path: str = OUT) -> str:
     _criteria(wb, data)
     _ranking(wb, data)
     _wage_gap(wb, data)
+    _not_ranked(wb, data)
 
     wb.save(path)
     return path
@@ -279,6 +280,54 @@ def _wage_gap(wb, data):
         "Germany's earnings come from EU-SILC where the others come from labour force surveys, "
         "and Germany (2022) and Singapore (2021) are the oldest observations in the set.",
     ])
+
+
+def _not_ranked(wb, data):
+    """The dashboard answers "what about Manila"; the workbook has to as well.
+
+    Without this sheet the two deliverables disagree about what the study
+    covers, and the workbook is the one that gets forwarded.
+    """
+    ws = _sheet(
+        wb, "Not ranked", "Locations outside the ranking",
+        "Five pillars reach these markets because ILOSTAT and the World Bank "
+        "cover every country alike. Capability and employer depth do not, and "
+        "those are the two the job postings carry, so nothing here is scored "
+        "or ranked against the cities that are.",
+    )
+    _header(
+        ws, 5,
+        ["City", "Market", "Cost USD / month", "Observed", "Relevant workforce",
+         "Governance", "Hours shared with HQ"],
+        [18, 20, 15, 10, 17, 12, 18],
+    )
+    for i, r in enumerate(data["beyond"]):
+        _row(ws, 6 + i, [
+            r["city"], r["market"], r["cost"], r["costYear"],
+            r["talent"], r["risk"], r["overlap"],
+        ], formats={3: "#,##0", 4: "0", 5: "#,##0", 6: "0", 7: "0.0"},
+             banded=i % 2 == 1)
+
+    row = 6 + len(data["beyond"]) + 1
+    ws.cell(row=row, column=1, value="Three other kinds of absence").font = H2
+    row += 1
+    near = ", ".join(
+        f"{m['name']} ({m['postings']} postings, {m['employers']} employers)"
+        for m in data["nearMisses"][:4]
+    )
+    un = " and ".join(f"{c} ({cities})" for c, cities in data["unpriceable"].items())
+    row = _notes(ws, row, [
+        f"Seen but too thin: {data['nearMissTotal']} locations appear in the sample and clear "
+        f"neither threshold. Closest are {near}. The employer count is usually what stops "
+        "them, and one employer hiring is an office rather than a centre.",
+        f"Not priceable: {un}. ILOSTAT publishes no earnings by occupation for either, so "
+        "there is no cost figure on the basis every market here uses.",
+        "Incoherent: Egypt reports professionals at 1.06x clerical pay against 1.3-2.9x in "
+        "every other market, so it is excluded by test rather than by judgement.",
+    ])
+    for r_ in range(row - 3, row):
+        ws.row_dimensions[r_].height = 30
+        ws.merge_cells(start_row=r_, start_column=1, end_row=r_, end_column=7)
 
 
 def main() -> None:
