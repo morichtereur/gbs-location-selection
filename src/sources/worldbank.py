@@ -26,11 +26,21 @@ def _series(indicator: str) -> dict[str, tuple[int, float]]:
     )
     url = (
         f"{BASE}/country/{iso3}/indicator/{indicator}"
-        f"?format=json&source=3&per_page=500"
+        # per_page was 500. Twenty-two countries times the WGI's year history is
+        # 572 rows, so the API paginated and the last countries -- South Africa
+        # among them, which is ranked -- vanished without an error. The guard
+        # below is the point: a page cap that binds must fail, not truncate.
+        f"?format=json&source=3&per_page=20000"
     )
     payload = json.loads(fetch(url, suffix=".json"))
     if len(payload) < 2 or not payload[1]:
         raise RuntimeError(f"no data returned for {indicator}")
+    total, per_page = int(payload[0]["total"]), int(payload[0]["per_page"])
+    if total > per_page:
+        raise RuntimeError(
+            f"{indicator}: {total} rows but only {per_page} returned. Raise per_page "
+            "or paginate; silently dropping countries is how South Africa was lost."
+        )
     latest: dict[str, tuple[int, float]] = {}
     for row in payload[1]:
         if row["value"] is None:

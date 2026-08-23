@@ -97,3 +97,41 @@ def test_sales_and_wrong_setting_postings_are_excluded():
         "R2R Specialist", "Finance Shared Service Centre, general ledger and reconciliation",
         "Experis", org_type,
     ) == "gbs"
+
+
+def test_the_governance_pull_fails_rather_than_truncating():
+    """A page cap that binds must raise, not drop the countries past it.
+
+    per_page was 500. Adding markets took the WGI response to 572 rows, the
+    API paginated, and South Africa -- which is ranked -- disappeared with no
+    error anywhere. The guard turns that into a failure.
+    """
+    import inspect
+
+    from src.sources import worldbank
+
+    src = inspect.getsource(worldbank._series)
+    assert "per_page" in src and "total" in src, "the truncation guard is gone"
+    data = worldbank.load()
+    want = set(C.MARKETS) | set(C.BEYOND_SAMPLE)
+    assert want <= set(data), f"no governance for {sorted(want - set(data))}"
+
+
+def test_every_ranked_market_has_a_coherent_wage_series():
+    """Professionals out-earn clerical staff in a working series.
+
+    Egypt reported 1.06x and was excluded from the reported markets on that
+    test. The same test is run here over the markets that are actually scored,
+    so a refresh that breaks one of them fails rather than ranking on it.
+    """
+    from src.sources import ilostat
+
+    wages = ilostat.load()
+    for key in C.MARKETS:
+        w = wages.get(key)
+        if not w or "usd_2" not in w or "usd_4" not in w:
+            continue
+        premium = w["usd_2"] / w["usd_4"]
+        assert premium >= C.MIN_PROFESSIONAL_PREMIUM, (
+            f"{C.MARKETS[key]['name']} reports professionals at {premium:.2f}x clerical"
+        )

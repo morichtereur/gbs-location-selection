@@ -19,6 +19,7 @@ from src.panel import Market, build, with_centres
 from src.fonts import face_css
 from src.baselines import load as baseline_load
 from src.beyond import load as beyond_load
+from src.centres import survey as centres_survey
 from src.operators import by_city as operators_by_city, title as operator_title
 from src.score import LOG_SCALED, LOWER_IS_BETTER, PILLARS
 from src.stability import run
@@ -110,11 +111,28 @@ FLAGS.update({
     "hu": '<rect width="21" height="4.67" fill="#ce2939"/>'
           '<rect y="4.67" width="21" height="4.66" fill="#fff"/>'
           '<rect y="9.33" width="21" height="4.67" fill="#477050"/>',
+    "do": '<rect width="21" height="14" fill="#002d62"/>'
+          '<path d="M10.5 0h10.5v7H10.5zM0 7h10.5v7H0z" fill="#ce1126"/>'
+          '<path d="M0 5.8h21v2.4H0zM9.3 0h2.4v14H9.3z" fill="#fff"/>',
+    "cr": '<rect width="21" height="14" fill="#fff"/>'
+          '<path d="M0 0h21v2.8H0zM0 11.2h21V14H0z" fill="#002b7f"/>'
+          '<path d="M0 5.1h21v3.8H0z" fill="#ce1126"/>',
+    "co": '<rect width="21" height="7" fill="#fcd116"/>'
+          '<rect y="7" width="21" height="3.5" fill="#003893"/>'
+          '<rect y="10.5" width="21" height="3.5" fill="#ce1126"/>',
+    "vn": '<rect width="21" height="14" fill="#da251d"/>'
+          '<path d="M10.5 3.6l1.05 3.23h3.4l-2.75 2 1.05 3.23-2.75-2-2.75 2 1.05-3.23-2.75-2h3.4z" fill="#ff0"/>',
+    "eg": '<rect width="21" height="4.67" fill="#ce1126"/>'
+          '<rect y="4.67" width="21" height="4.66" fill="#fff"/>'
+          '<rect y="9.33" width="21" height="4.67" fill="#000"/>'
+          '<path d="M10.5 5.6l.9 1.4-.9 1.4-.9-1.4z" fill="#c09300"/>',
 })
 FLAG_TITLES = {
     "in": "India", "pl": "Poland", "br": "Brazil", "za": "South Africa",
     "ph": "Philippines", "my": "Malaysia", "pt": "Portugal",
     "ro": "Romania", "cz": "Czechia", "hu": "Hungary",
+    "do": "Dominican Republic", "cr": "Costa Rica", "co": "Colombia",
+    "vn": "Vietnam", "eg": "Egypt",
 }
 
 PILLAR_ICONS = {
@@ -252,6 +270,13 @@ def payload() -> dict:
     countries = build()
     baselines = baseline_load()
     beyond = beyond_load()
+    # Locations the sample did see and the thresholds turned away. A reader
+    # asking "what about Gdansk" deserves the count, not silence.
+    _, below = centres_survey()
+    # Employers is the binding threshold, so closeness is measured on it first.
+    # Sorting by postings surfaced single-employer towns, which are the ones the
+    # threshold exists to reject.
+    near = sorted(below, key=lambda c: (-c.employers, -c.postings))[:6]
     centres = with_centres(countries)
     data = {
         "pillars": list(PILLARS),
@@ -306,6 +331,13 @@ def payload() -> dict:
         "flagTitles": FLAG_TITLES,
         "baselines": baselines,
         "beyond": beyond,
+        "nearMisses": [
+            {"name": c.name, "market": C.MARKETS[c.market]["name"],
+             "postings": c.postings, "employers": c.employers}
+            for c in near
+        ],
+        "nearMissTotal": len(below),
+        "unpriceable": C.UNPRICEABLE,
         "baselineDefault": C.BASELINE_DEFAULT,
         "fteDefault": C.FTE_DEFAULT,
         "asOf": ASOF,
@@ -1134,6 +1166,7 @@ footer p { max-width: 78ch; }
       </div>
       <div id="beyond"></div>
       <p class="case-caveat" id="beyond-note"></p>
+      <p class="case-caveat" id="beyond-more"></p>
     </div>
 
     <div class="settles">
@@ -1535,6 +1568,7 @@ function render() {
   renderTable(ranked, stab);
   renderCase(ranked);
   renderBeyond();
+  renderNotShown();
   renderSettles(ranked, band, rows);
   renderSource(rows);
   renderFoot(rows);
@@ -1737,6 +1771,26 @@ function renderBeyond() {
     + `Manila into the ranking on evidence unlike the rest. Cost is national, observed `
     + `${years[0] === years[years.length - 1] ? years[0] : `${years[0]}\u2013${years[years.length - 1]}`}; `
     + `the city named is the one a programme would consider, not a measured city figure.`;
+}
+
+/* Three ways a location can be missing, and they are not the same thing.
+   A reader who asks about one of them should not be told about another. */
+function renderNotShown() {
+  const near = DATA.nearMisses.map((m) =>
+    `<b>${m.name}</b> (${m.postings} postings, ${m.employers} employer`
+    + `${m.employers === 1 ? "" : "s"})`).join(", ");
+  const un = Object.entries(DATA.unpriceable)
+    .map(([c, cities]) => `<b>${c}</b> (${cities})`).join(" and ");
+
+  $("#beyond-more").innerHTML =
+    `Two other kinds of absence. <b>Seen but too thin:</b> ${DATA.nearMissTotal} locations `
+    + `appear in the sample and clear neither threshold \u2014 ${near} come closest. The `
+    + `employer count is usually what stops them, and one employer hiring is an office, not `
+    + `a centre. <b>Not priceable at all:</b> ${un} \u2014 ILOSTAT publishes no earnings by `
+    + `occupation for either, so there is no cost figure on the basis every market here uses, `
+    + `and two pillars without the decisive one would be worse than no row. Egypt was dropped `
+    + `for a third reason: its professionals report 1.06\u00d7 clerical pay against 1.3\u2013`
+    + `2.9\u00d7 everywhere else, which is a broken series rather than a cheap country.`;
 }
 
 function renderSettles(ranked, band, rows) {

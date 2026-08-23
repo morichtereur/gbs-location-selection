@@ -99,6 +99,17 @@ and are **never scored or ranked**, because a score over five of seven pillars
 would render beside the ranked cities' scores and would not mean the same
 thing.
 
+Eleven locations are reported that way, from Prague at USD 3,128 a month down
+to Ho Chi Minh City at 478. Three other kinds of absence are named rather than
+left blank: **seen but too thin** (105 locations appear in the sample and clear
+neither threshold — Gdańsk and Katowice at 7 postings from 3 employers come
+closest, and the employer count is usually what stops them); **not priceable at
+all** (ILOSTAT publishes no earnings by occupation for China or Morocco, so
+Wuxi and Casablanca have no cost figure on the basis every other market uses);
+and **incoherent** (Egypt reports professionals at 1.06× clerical pay against
+1.3–2.9× everywhere else, which is a broken series rather than a cheap country,
+and `MIN_PROFESSIONAL_PREMIUM` excludes it by a test rather than a judgement).
+
 A second job board does not fix this. Employer depth counts distinct
 employers *within one feed*; another feed's count is not comparable, so
 splicing one in would move Manila into the ranking on evidence unlike the

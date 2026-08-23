@@ -223,7 +223,18 @@ def test_the_unreachable_markets_are_reported_but_never_ranked():
     """
     data = payload()
     beyond = {r["key"] for r in data["beyond"]}
-    assert beyond == set(C.BEYOND_SAMPLE), beyond
+    # Not equality: a declared market can still be withheld by the coherence
+    # gate, which is how Egypt leaves. Anything shown must be declared, and
+    # anything withheld must have failed the gate rather than gone missing.
+    assert beyond <= set(C.BEYOND_SAMPLE), beyond - set(C.BEYOND_SAMPLE)
+    from src.sources import ilostat
+
+    wages = ilostat.load()
+    for key in set(C.BEYOND_SAMPLE) - beyond:
+        w = wages.get(key)
+        assert w is None or w["usd_2"] / w["usd_4"] < C.MIN_PROFESSIONAL_PREMIUM, (
+            f"{key} was declared, is priceable and coherent, yet is not shown"
+        )
 
     ranked = {r["parent"] for rows in data["views"]["city"].values() for r in rows}
     assert not (beyond & ranked), f"{beyond & ranked} reached the ranking"

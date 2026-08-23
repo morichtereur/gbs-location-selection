@@ -108,7 +108,29 @@ BEYOND_SAMPLE = {
     "ro": {"name": "Romania", "iso3": "ROU", "city": "Bucharest", "utc": 2.0},
     "cz": {"name": "Czechia", "iso3": "CZE", "city": "Prague", "utc": 1.0},
     "hu": {"name": "Hungary", "iso3": "HUN", "city": "Budapest", "utc": 1.0},
+    # Nearshore and offshore locations a finance shortlist reaches for that
+    # Adzuna also has no endpoint for. Same treatment: priced, never ranked.
+    "do": {"name": "Dominican Republic", "iso3": "DOM", "city": "Santo Domingo", "utc": -4.0},
+    "cr": {"name": "Costa Rica", "iso3": "CRI", "city": "San José", "utc": -6.0},
+    "co": {"name": "Colombia", "iso3": "COL", "city": "Bogotá", "utc": -5.0},
+    "vn": {"name": "Vietnam", "iso3": "VNM", "city": "Ho Chi Minh City", "utc": 7.0},
+    "eg": {"name": "Egypt", "iso3": "EGY", "city": "Cairo", "utc": 2.0},
 }
+
+# Tested and not addable at all. ILOSTAT's earnings-by-occupation dataflow
+# returns 404 for both, so Wuxi, Dalian and Casablanca have no cost figure on
+# the basis every other market here uses. Employment and governance do exist
+# for them; a row carrying two pillars and not the decisive one would be worse
+# than no row.
+UNPRICEABLE = {"China": "Wuxi, Dalian, Chengdu", "Morocco": "Casablanca, Rabat"}
+
+# A market's own series has to be internally coherent before it is shown.
+# Professionals out-earn clerical staff everywhere: the ratio runs 1.3x in
+# Vietnam and Romania to 2.9x in South Africa across every market here. Egypt
+# reports 1.06x -- USD 117 against 110 -- which is not a labour market, it is a
+# broken series, and it would have put Cairo on the exhibit at a third of
+# India's cost. Checked rather than judged, so the exclusion is reproducible.
+MIN_PROFESSIONAL_PREMIUM = 1.15
 
 ISO3_TO_ISO2 = {m["iso3"]: k for k, m in MARKETS.items()}
 ISO3_TO_ISO2.update({m["iso3"]: k for k, m in BEYOND_SAMPLE.items()})

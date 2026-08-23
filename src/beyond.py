@@ -33,6 +33,7 @@ def load(hq: str | None = None) -> list[dict]:
     shift_base = hq_offset(hq or C.HQ)
 
     out: list[dict] = []
+    skipped: list[tuple[str, float]] = []
     for key, meta in C.BEYOND_SAMPLE.items():
         w = wages.get(key)
         if not w:
@@ -40,6 +41,13 @@ def load(hq: str | None = None) -> list[dict]:
         parts = {g: w[f"usd_{g[-1]}"] for g in C.ISCO_GROUPS if f"usd_{g[-1]}" in w}
         if len(parts) != len(C.ISCO_GROUPS):
             continue
+        # A series where professionals barely out-earn clerical staff is not
+        # measuring what the pillar reads. Egypt fails this at 1.06x.
+        premium = parts["OCU_ISCO08_2"] / parts["OCU_ISCO08_4"]
+        if premium < C.MIN_PROFESSIONAL_PREMIUM:
+            skipped.append((meta["name"], premium))
+            continue
+
         drift = _cagr(history[key], w["year"]) if key in history else None
         lag = REFERENCE_YEAR - w["year"]
 
@@ -71,6 +79,9 @@ def load(hq: str | None = None) -> list[dict]:
             "driftMeasured": drift is not None,
         })
 
+    for name, premium in skipped:
+        print(f"  excluded {name}: professional premium {premium:.2f}x "
+              f"below {C.MIN_PROFESSIONAL_PREMIUM:.2f}x")
     return sorted(out, key=lambda x: -(x["cost"] or 0))
 
 
