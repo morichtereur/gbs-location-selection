@@ -87,6 +87,25 @@ it excludes facilities, technology, management overhead, transition and
 severance, and holds headcount one-for-one, which for a ramping centre is
 optimistic. It is an upper bound on one component, not a saving.
 
+**The unreachable locations are priced, not omitted** (`make beyond`). Manila is
+the first name a GBS room says, and the study could not put a number on it at
+all. That was a gap in the tool rather than a fact about Manila: wages,
+employed stock, governance and overlap come from sources that cover every
+country alike, and only the two pillars built from job postings stop at
+Adzuna's country list. So Manila, Kuala Lumpur, Lisbon, Bucharest, Prague and
+Budapest are reported on those five — Manila at USD 505 a month against
+India's 342, with the largest relevant workforce in the comparison at 9.2m —
+and are **never scored or ranked**, because a score over five of seven pillars
+would render beside the ranked cities' scores and would not mean the same
+thing.
+
+A second job board does not fix this. Employer depth counts distinct
+employers *within one feed*; another feed's count is not comparable, so
+splicing one in would move Manila into the ranking on evidence unlike the
+rest. The Muse API was tested and rejected for a different reason: its
+location filter is inert, and "Atlantis, Nowhere" returns the same 110 jobs
+as Manila.
+
 **The boundary is stated on the exhibit, not in a footnote.** What public
 evidence settles here and what it cannot are set side by side beneath the
 ranking, both built from the run on screen so they move when the weighting

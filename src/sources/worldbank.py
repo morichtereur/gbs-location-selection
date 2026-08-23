@@ -20,7 +20,10 @@ BASE = "https://api.worldbank.org/v2"
 
 
 def _series(indicator: str) -> dict[str, tuple[int, float]]:
-    iso3 = ";".join(m["iso3"] for m in C.MARKETS.values())
+    iso3 = ";".join(
+        [m["iso3"] for m in C.MARKETS.values()]
+        + [m["iso3"] for m in C.BEYOND_SAMPLE.values()]
+    )
     url = (
         f"{BASE}/country/{iso3}/indicator/{indicator}"
         f"?format=json&source=3&per_page=500"

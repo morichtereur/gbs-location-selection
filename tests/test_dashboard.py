@@ -211,3 +211,40 @@ def test_the_default_baseline_is_dearer_than_every_city_it_is_compared_with():
             if row["cost"] is None:
                 continue
             assert row["cost"] < base["monthly"], (row["name"], row["cost"])
+
+
+@needs_postings
+def test_the_unreachable_markets_are_reported_but_never_ranked():
+    """Five of seven pillars reach them, which is exactly the temptation.
+
+    A score over five pillars would render beside the ranked cities' scores
+    and would not mean the same thing, so these rows must carry figures and
+    no score, no band and no stability, and must not appear in any view.
+    """
+    data = payload()
+    beyond = {r["key"] for r in data["beyond"]}
+    assert beyond == set(C.BEYOND_SAMPLE), beyond
+
+    ranked = {r["parent"] for rows in data["views"]["city"].values() for r in rows}
+    assert not (beyond & ranked), f"{beyond & ranked} reached the ranking"
+
+    for r in data["beyond"]:
+        assert r["cost"] and r["cost"] > 0, r
+        assert r["talent"] and r["talent"] > 0, r
+        assert r["risk"] is not None, r
+        assert r["overlap"] is not None, r
+        # The two the postings carry must be absent, not zero: a zero would
+        # rank as "worst" rather than as "unknown".
+        for absent in ("capability", "depth", "score", "band"):
+            assert absent not in r, f"{r['key']} carries {absent}"
+
+
+@needs_postings
+def test_every_market_shown_has_a_flag():
+    """Flags are drawn by hand, so a market added later silently loses one."""
+    data = payload()
+    shown = {r["parent"] for rows in data["views"]["city"].values() for r in rows}
+    shown |= {r["key"] for r in data["beyond"]}
+    missing = shown - set(data["flags"])
+    assert not missing, f"no flag drawn for {missing}"
+    assert set(data["flags"]) <= set(data["flagTitles"]), "a flag has no accessible name"

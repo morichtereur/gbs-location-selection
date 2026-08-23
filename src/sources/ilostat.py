@@ -24,6 +24,7 @@ def _url() -> str:
     key = "+".join(
         [m["iso3"] for m in C.MARKETS.values()]
         + [m["iso3"] for m in C.BASELINE_EXTRA.values()]
+        + [m["iso3"] for m in C.BEYOND_SAMPLE.values()]
     )
     # Six dimensions: REF_AREA.FREQ.MEASURE.SEX.OCU.CUR — the trailing dots
     # are wildcards, filtered down after the pull.
@@ -122,7 +123,12 @@ EMP_ACCEPT = ACCEPT
 
 
 def _emp_url() -> str:
-    key = "+".join(m["iso3"] for m in C.MARKETS.values())
+    # The beyond-sample markets need the employed stock too; the origin-only
+    # baselines do not, because a wage is all Exhibit 3 subtracts.
+    key = "+".join(
+        [m["iso3"] for m in C.MARKETS.values()]
+        + [m["iso3"] for m in C.BEYOND_SAMPLE.values()]
+    )
     return f"{BASE},{C.ILO_EMP_DATAFLOW}/{key}....."
 
 

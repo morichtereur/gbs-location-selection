@@ -38,6 +38,9 @@ operators:
 excel:
 	$(PY) -m src.excel
 
+beyond:
+	$(PY) -m src.beyond
+
 baselines:
 	$(PY) -m src.baselines
 

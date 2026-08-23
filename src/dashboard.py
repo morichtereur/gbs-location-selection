@@ -18,6 +18,7 @@ from src import config as C
 from src.panel import Market, build, with_centres
 from src.fonts import face_css
 from src.baselines import load as baseline_load
+from src.beyond import load as beyond_load
 from src.operators import by_city as operators_by_city, title as operator_title
 from src.score import LOG_SCALED, LOWER_IS_BETTER, PILLARS
 from src.stability import run
@@ -84,7 +85,37 @@ FLAGS = {
           '<path d="M0 5.1h21v3.8H0z" fill="#007a4d" opacity="0"/>'
           '<path d="M8.4 5.1H21v3.8H8.4L4.5 7z" fill="#007a4d"/>',
 }
-FLAG_TITLES = {"in": "India", "pl": "Poland", "br": "Brazil", "za": "South Africa"}
+FLAGS.update({
+    "ph": '<rect width="21" height="14" fill="#0038a8"/>'
+          '<rect y="7" width="21" height="7" fill="#ce1126"/>'
+          '<path d="M0 0l12.1 7L0 14z" fill="#fff"/>'
+          '<circle cx="3.6" cy="7" r="1.6" fill="#fcd116"/>',
+    "my": '<rect width="21" height="14" fill="#fff"/>'
+          '<path d="M0 1h21v1.56H0zM0 4.1h21v1.57H0zM0 7.3h21v1.56H0zM0 10.4h21v1.57H0z" fill="#cc0001"/>'
+          '<path d="M0 12.44h21V14H0z" fill="#cc0001"/>'
+          '<rect width="11.7" height="7.8" fill="#010066"/>'
+          '<circle cx="5.2" cy="4" r="2.4" fill="#fc0"/>'
+          '<circle cx="6.2" cy="4" r="2.1" fill="#010066"/>'
+          '<path d="M8.8 2.3l.4 1.2 1.2.02-1 .75.37 1.2-.97-.72-.98.72.37-1.2-1-.75 1.2-.02z" fill="#fc0"/>',
+    "pt": '<rect width="21" height="14" fill="#f00"/>'
+          '<rect width="8.4" height="14" fill="#060"/>'
+          '<circle cx="8.4" cy="7" r="2.9" fill="none" stroke="#ff0" stroke-width="1"/>'
+          '<rect x="6.9" y="5.5" width="3" height="3" fill="#fff" stroke="#f00" stroke-width=".5"/>',
+    "ro": '<rect width="7" height="14" fill="#002b7f"/>'
+          '<rect x="7" width="7" height="14" fill="#fcd116"/>'
+          '<rect x="14" width="7" height="14" fill="#ce1126"/>',
+    "cz": '<rect width="21" height="7" fill="#fff"/>'
+          '<rect y="7" width="21" height="7" fill="#d7141a"/>'
+          '<path d="M0 0l10.5 7L0 14z" fill="#11457e"/>',
+    "hu": '<rect width="21" height="4.67" fill="#ce2939"/>'
+          '<rect y="4.67" width="21" height="4.66" fill="#fff"/>'
+          '<rect y="9.33" width="21" height="4.67" fill="#477050"/>',
+})
+FLAG_TITLES = {
+    "in": "India", "pl": "Poland", "br": "Brazil", "za": "South Africa",
+    "ph": "Philippines", "my": "Malaysia", "pt": "Portugal",
+    "ro": "Romania", "cz": "Czechia", "hu": "Hungary",
+}
 
 PILLAR_ICONS = {
     # Coin.
@@ -153,7 +184,7 @@ LIMITS = [
     # exhibit answers it than that the audience finds the hole.
     "Exhibit 3 subtracts a national baseline from cities that sometimes carry a regional index, so a capital-city premium sits on one side of it and not the other. Warsaw against a UK baseline is the clearest case: it reads as dearer than the UK, which is partly Mazowieckie against a British national mean rather than a wage fact.",
     "Exhibit 3 is a wage line, not a business case. It excludes facilities, technology, management overhead, transition and severance, and holds headcount one-for-one. Read it as the upper bound on one component of the saving.",
-    "Six established locations are absent because the postings feed does not reach them: Manila, Kuala Lumpur, Bucharest, Prague, Budapest and Lisbon. The ranking is therefore within the cities shown, not against every credible alternative.",
+    "Six established locations sit outside the ranking because the postings feed does not reach them: Manila, Kuala Lumpur, Bucharest, Prague, Budapest and Lisbon. Five pillars do reach them and are reported under 'Beyond the sample'; capability and employer depth are the two that cannot be, so these markets are never scored against the ranked cities.",
 ]
 
 
@@ -220,6 +251,7 @@ def payload() -> dict:
     }
     countries = build()
     baselines = baseline_load()
+    beyond = beyond_load()
     centres = with_centres(countries)
     data = {
         "pillars": list(PILLARS),
@@ -273,6 +305,7 @@ def payload() -> dict:
         "flags": FLAGS,
         "flagTitles": FLAG_TITLES,
         "baselines": baselines,
+        "beyond": beyond,
         "baselineDefault": C.BASELINE_DEFAULT,
         "fteDefault": C.FTE_DEFAULT,
         "asOf": ASOF,
@@ -609,6 +642,31 @@ select {
    which is where a reader looks last and a sceptic looks first. Public evidence
    running out is the finding here, so it is set beside the exhibits, in their
    register, rather than confessed at the bottom. */
+/* Reported, never ranked: no bar, no band, no rank number, and a rule above
+   that separates it from the exhibit rather than continuing it. Five of seven
+   pillars scored beside seven would read as the same measurement. */
+.beyond { margin-top: 26px; border-top: 1px solid var(--rule-strong); padding-top: 10px; }
+.beyond-head {
+  display: grid; grid-template-columns: 1fr 8.5rem repeat(4, 6.6rem);
+  gap: 8px; margin-top: 16px; padding-bottom: 5px;
+  border-bottom: 1px solid var(--rule-strong);
+}
+.beyond-head span {
+  font-family: var(--mono); font-size: 10px; text-transform: uppercase;
+  letter-spacing: .04em; color: var(--ink-3); text-align: right; line-height: 1.25;
+}
+.beyond-row {
+  display: grid; grid-template-columns: 1fr 8.5rem repeat(4, 6.6rem);
+  align-items: baseline; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--rule);
+}
+.beyond-row .cty { font-size: 13.5px; font-weight: 600; color: var(--ink); }
+.beyond-row .mkt { font-family: var(--mono); font-size: 10.5px; color: var(--ink-3); }
+.beyond-row .fig {
+  text-align: right; font-family: var(--mono); font-size: 12px;
+  font-variant-numeric: tabular-nums; color: var(--ink-2);
+}
+.beyond-row .fig.none { color: var(--ink-3); }
+
 .settles { margin-top: 26px; border-top: 1px solid var(--rule-strong); padding-top: 10px; }
 .settles-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 26px; margin-top: 10px; }
 .settles h4 {
@@ -811,7 +869,7 @@ select {
   .case-caveat { font-size: 6.7pt; line-height: 1.35; margin-top: 4px; max-width: none; }
   /* Print drops the long forms: the column header clipped to "REWEIGHTIN", and
      the caveat's last clause repeats the source note beneath it. */
-  .screen-only, .settles { display: none !important; }
+  .screen-only, .settles, .beyond { display: none !important; }
   .col-head { margin-bottom: 2px; }
   .case-bar { background: #146b54 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .case-bar.over { background: #b0374a !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -1065,6 +1123,18 @@ footer p { max-width: 78ch; }
     </div>
 
     <p class="exhibit-source" id="exhibit-source"></p>
+
+    <div class="beyond">
+      <p class="exhibit-label">Beyond the sample</p>
+      <h3 class="strip-title">Established locations the postings feed cannot reach</h3>
+      <div class="beyond-head">
+        <span></span><span></span>
+        <span class="ch-num">cost USD/mo</span><span class="ch-num">relevant workforce</span>
+        <span class="ch-num">governance</span><span class="ch-num">hours shared</span>
+      </div>
+      <div id="beyond"></div>
+      <p class="case-caveat" id="beyond-note"></p>
+    </div>
 
     <div class="settles">
       <p class="exhibit-label">The boundary of this evidence</p>
@@ -1464,6 +1534,7 @@ function render() {
   renderStrip(ranked, band);
   renderTable(ranked, stab);
   renderCase(ranked);
+  renderBeyond();
   renderSettles(ranked, band, rows);
   renderSource(rows);
   renderFoot(rows);
@@ -1643,6 +1714,31 @@ function hqLabel() {
 /* Both columns are built from the run on screen rather than written down once:
    a reader who moves a slider must see the boundary move with it, or it reads
    as boilerplate and gets skipped. */
+function renderBeyond() {
+  const n = (x, d) => x == null ? "\u2014"
+    : x >= 1e6 ? `${(x / 1e6).toFixed(1)}m`
+    : x.toLocaleString("en-US", { maximumFractionDigits: d ?? 0 });
+
+  $("#beyond").innerHTML = DATA.beyond.map((r) =>
+    `<div class="beyond-row">`
+    + `<span class="cty">${flag(r.key)}${r.city}</span>`
+    + `<span class="mkt">${r.market}</span>`
+    + `<span class="fig">${n(r.cost)}</span>`
+    + `<span class="fig">${n(r.talent)}</span>`
+    + `<span class="fig">${n(r.risk)}</span>`
+    + `<span class="fig">${r.overlap.toFixed(1)}h</span></div>`).join("");
+
+  const years = [...new Set(DATA.beyond.map((r) => r.costYear))].sort();
+  $("#beyond-note").innerHTML =
+    `Reported, not ranked. Five pillars reach these markets because ILOSTAT and the World `
+    + `Bank cover every country alike; <b>capability and employer depth do not</b>, and those `
+    + `are the two the postings carry. A second job board would not close it either \u2014 `
+    + `another feed's employer count is not comparable with this one's, so it would move `
+    + `Manila into the ranking on evidence unlike the rest. Cost is national, observed `
+    + `${years[0] === years[years.length - 1] ? years[0] : `${years[0]}\u2013${years[years.length - 1]}`}; `
+    + `the city named is the one a programme would consider, not a measured city figure.`;
+}
+
 function renderSettles(ranked, band, rows) {
   const lead = ranked.filter((r) => band.get(r.row.id) === 1);
   const bands = new Set([...band.values()]).size;
@@ -1667,8 +1763,9 @@ function renderSettles(ranked, band, rows) {
   ].filter(Boolean).map((x) => `<li>${x}</li>`).join("");
 
   $("#settles-no").innerHTML = [
-    `Anything about <b>Manila, Kuala Lumpur, Bucharest, Prague, Budapest or Lisbon</b>. The `
-      + `postings feed does not reach them, so they are absent, not rejected.`,
+    `Whether GBS work is actually <b>advertised</b> in Manila, Kuala Lumpur, Lisbon, `
+      + `Bucharest, Prague or Budapest. They are priced above on the five pillars that reach `
+      + `them; the two built from postings do not.`,
     `<b>Attrition, incentives, property and transition cost.</b> None are in this study, and `
       + `the first is the driver a GBS case usually turns on.`,
     `The <b>fully loaded</b> saving. Exhibit 3 is one line of a run-cost, and an upper bound `

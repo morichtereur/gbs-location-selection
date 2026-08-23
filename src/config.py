@@ -91,7 +91,27 @@ BASELINE_EXTRA = {
     "fi": {"name": "Finland", "iso3": "FIN"},
 }
 
+# The six established locations Adzuna has no endpoint for. Five of the seven
+# pillars reach them -- wages, employed stock, governance, overlap and wage
+# drift all come from sources that treat every country alike -- and the two
+# that do not are exactly the two the postings carry. They are reported here,
+# never scored and never ranked: a score on five of seven pillars would look
+# like the ranked cities' score and would not mean the same thing.
+#
+# Nor can a second job board close it. A different feed's employer count is
+# not comparable with Adzuna's, so splicing one in would move Manila into the
+# ranking on evidence that is not like the rest.
+BEYOND_SAMPLE = {
+    "ph": {"name": "Philippines", "iso3": "PHL", "city": "Manila", "utc": 8.0},
+    "my": {"name": "Malaysia", "iso3": "MYS", "city": "Kuala Lumpur", "utc": 8.0},
+    "pt": {"name": "Portugal", "iso3": "PRT", "city": "Lisbon", "utc": 1.0},
+    "ro": {"name": "Romania", "iso3": "ROU", "city": "Bucharest", "utc": 2.0},
+    "cz": {"name": "Czechia", "iso3": "CZE", "city": "Prague", "utc": 1.0},
+    "hu": {"name": "Hungary", "iso3": "HUN", "city": "Budapest", "utc": 1.0},
+}
+
 ISO3_TO_ISO2 = {m["iso3"]: k for k, m in MARKETS.items()}
+ISO3_TO_ISO2.update({m["iso3"]: k for k, m in BEYOND_SAMPLE.items()})
 ISO3_TO_ISO2.update({m["iso3"]: k for k, m in BASELINE_EXTRA.items()})
 
 # --- Cost -----------------------------------------------------------------
