@@ -190,6 +190,16 @@ Every declared judgement — weights, archetypes, thresholds, the staffing blend
 
 ---
 
+**The page closes on what would change it** — the three checks a phase-2
+shortlist validation would actually run, each replacing an input this analysis
+cannot source from public data: live wage and employer-charge quotes for the
+top band (its cost is mostly national and the loading factor is a uniform
+assumption), site visits against the advertised capability (a pillar resting on
+as few as four postings per city), and attrition and ramp data from the
+employers already operating there (the backfill uplift is the one Exhibit 3
+input that can reorder cities, and today it is a slider). Written from the run
+on screen, so the band, the counts and the rates are always the current ones.
+
 ## What it cannot tell you
 
 - **Tax and incentives are absent, and attrition is an assumption rather than a measurement.** Exhibit 3 carries an attrition/backfill uplift the reader sets, which is not the same as knowing what attrition costs in Pune against Kraków — no free public source gives comparable rates, and that difference is probably the most important thing still missing.

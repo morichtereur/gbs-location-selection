@@ -82,7 +82,8 @@ def test_the_finding_is_readable_without_script(html):
 
 def test_every_exhibit_has_content_before_script(slots):
     for key in ("rows", "case", "table", "beyond", "tzstrip", "corr",
-                "limits", "sources", "settles-yes", "settles-no", "sliders"):
+                "limits", "sources", "settles-yes", "settles-no", "sliders",
+                "next", "next-note"):
         assert slots[key].strip(), key
 
 
@@ -179,7 +180,7 @@ def test_the_fallback_and_the_page_say_the_same_thing(data, slots):
     live = _render_under_node(data)
     keys = ("headline", "takeaway", "board-title", "belief", "corr-why",
             "exhibit-source", "foot", "case-title", "beyond-note",
-            "beyond-more", "case-caveat", "corr-read")
+            "beyond-more", "case-caveat", "corr-read", "next", "next-note")
     missing = [k for k in keys if not live.get(k)]
     assert not missing, f"the page rendered nothing for {missing}"
     for key in keys:

@@ -1041,6 +1041,20 @@ select {
 .settles b { color: var(--ink); font-weight: 600; }
 @media (max-width: 700px) { .settles-cols { grid-template-columns: 1fr; gap: 16px; } }
 
+/* The close: not more analysis, the checks that would replace it. Numbered
+   because they are a sequence a phase 2 would actually schedule, not a list
+   of caveats to skim. */
+.next { margin-top: 26px; border-top: 1px solid var(--rule-strong); padding-top: 10px; }
+.next ol { margin: 12px 0 0; padding: 0 0 0 22px; display: grid; gap: 10px; }
+.next li {
+  font-size: 12.5px; line-height: 1.5; color: var(--ink-2); padding-left: 4px;
+}
+.next li::marker { font-family: var(--mono); font-size: 11px; color: var(--ink-3); }
+.next b { color: var(--ink); font-weight: 600; }
+/* Two sentences do not need the caveat's two-column flow; a break lands
+   mid-sentence and reads as a layout fault. */
+.next .case-caveat { columns: 1; max-width: 78ch; }
+
 /* 70ch left a third of the measure blank beside a table that used all of it.
    Dropping the cap alone would give a 105-character line, so the width is
    filled with two columns rather than one long one. */
@@ -1579,6 +1593,13 @@ footer p { max-width: 78ch; }
       </div>
     </div>
 
+    <div class="next">
+      <p class="exhibit-label">What would change this</p>
+      <h3 class="strip-title">Three checks a shortlist validation would run</h3>
+      <ol id="next"></ol>
+      <p class="case-caveat" id="next-note"></p>
+    </div>
+
     <div class="page-actions">
       <button type="button" id="one-pager">Print one-pager</button>
       <span class="hint">Finding, exhibit and sources on one page.</span>
@@ -2026,6 +2047,7 @@ function render() {
   renderBeyond();
   renderNotShown();
   renderSettles(ranked, band, rows);
+  renderNext(ranked, band);
   renderCorrelation(items, scaled);
   renderAdjustState();
   renderSource(rows);
@@ -2477,6 +2499,60 @@ function renderProvenance() {
           + `${c.postings.toLocaleString("en-US")} postings fetched ${c.dateLabel} `
           + `(${c.repo}).`
         : ``);
+}
+
+/* ---- what would change this ----
+   The page ends on the checks a phase-2 validation would actually run, framed
+   as what this analysis cannot settle: each one replaces an input no public
+   source supplies. Written from the run on screen — the band, the operators
+   and the assumption rates are the current ones, so the close stays true when
+   the reader moves something. */
+function renderNext(ranked, band) {
+  const top = ranked.filter((r) => band.get(r.row.id) === 1);
+  const names = top.map((r) => r.row.name);
+  const last = names.length > 1 ? names.pop() : null;
+  const bandLabel = last ? `${names.join(", ")} and ${last}` : names[0];
+  const national = top.filter((r) => !r.row.costResolved).length;
+  const minN = Math.min(...top.map((r) => r.row.postings ?? Infinity));
+  const ops = [...new Set(top.flatMap((r) => r.row.operators || []))];
+  const pct = (x) => `${Math.round(x * 100)}%`;
+
+  const wage = national > 0
+    ? `${national} of the ${top.length} carry ILOSTAT\u2019s national wage, and the `
+      + `${pct(state.loading)} employer loading is a uniform assumption where real `
+      + `schedules differ by country.`
+    : `Every city here carries a measured city wage, but the ${pct(state.loading)} `
+      + `employer loading is a uniform assumption where real schedules differ by country.`;
+  // A count, not a shortlist of names: the per-city lists lead with whoever
+  // posted most in a small sample, and opening the close of the page with an
+  // employer nobody recognises reads as noise. The table below already names
+  // every one of them, per city.
+  const attrition = ops.length
+    ? `The ${ops.length} employers named in this band\u2019s postings already run `
+      + `centres there<span class="screen-only"> \u2014 the table below lists them `
+      + `per city</span>. Their attrition, time-to-fill and ramp curves would replace `
+      + `the ${pct(state.attrition)} backfill assumption`
+    : `No operator is named in this band\u2019s postings, so provider benchmarks would `
+      + `have to replace the ${pct(state.attrition)} backfill assumption`;
+
+  $("#next").innerHTML = [
+    `<b>Live wage and employer-charge quotes for ${bandLabel}.</b> ${wage} `
+      + `A recruiter\u2019s per-role quote and a payroll provider\u2019s charge schedule `
+      + `replace both \u2014 the two figures on Exhibit 3 no public source supplies.`,
+    `<b>Site visits against the advertised capability.</b> The capability pillar is job `
+      + `postings \u2014 as few as ${minN} behind a city in this band. Postings say who is `
+      + `hiring; they cannot say whether the advertised work is the work done, or whether `
+      + `a centre could hire at programme rate. A provider RFI and days on the ground `
+      + `settle what postings cannot.`,
+    `<b>Attrition and ramp data from the operators already there.</b> ${attrition}, `
+      + `which is the one Exhibit 3 input that can reorder cities \u2014 and today it is `
+      + `a slider.`,
+  ].map((x) => `<li>${x}</li>`).join("");
+
+  $("#next-note").innerHTML =
+    `Checks, not refinements: each replaces an input this analysis cannot source from `
+    + `public data, which is why they close the page rather than extend it. A phase 2 `
+    + `that skips them is trusting a slider.`;
 }
 
 function renderSource(rows) {

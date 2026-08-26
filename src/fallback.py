@@ -470,6 +470,7 @@ def slots(data: dict) -> dict[str, str]:
     base = s.baseline()
     corr_table, corr_read, summ = _correlation(s)
     settles_yes, settles_no = _settles(s)
+    next_items, next_note = _next(s)
 
     resolved = sum(1 for r in s.rows if r["costResolved"])
     thin = sum(
@@ -556,6 +557,8 @@ def slots(data: dict) -> dict[str, str]:
         "beyond-more": _beyond_more(data),
         "settles-yes": settles_yes,
         "settles-no": settles_no,
+        "next": next_items,
+        "next-note": next_note,
         "table": _table(s),
         "floor-n": str(data["evidenceFloor"]),
         "sep-n": f"{round(data['separableAt'] * 100)}%",
@@ -759,6 +762,60 @@ def _beyond_more(data: dict) -> str:
         f"professionals report 1.06× clerical pay against 1.3–2.9× everywhere else, "
         f"which is a broken series rather than a cheap country."
     )
+
+
+def _next(s: Scenario) -> tuple[str, str]:
+    """The closing block: the checks a phase-2 validation would run."""
+    top = s.top or s.order[:1]
+    names = [esc(r["name"]) for r in top]
+    last = names.pop() if len(names) > 1 else None
+    band_label = f"{', '.join(names)} and {last}" if last else names[0]
+    national = sum(1 for r in top if not r["costResolved"])
+    min_n = min(
+        (r["postings"] for r in top if r["postings"] is not None), default=0
+    )
+    ops = list(dict.fromkeys(o for r in top for o in (r["operators"] or [])))
+    pct = lambda x: f"{round(x * 100)}%"  # noqa: E731
+    loading = pct(s.data["loadingDefault"])
+    attr = pct(s.data["attritionDefault"])
+
+    wage = (
+        f"{national} of the {len(top)} carry ILOSTAT’s national wage, and the "
+        f"{loading} employer loading is a uniform assumption where real schedules "
+        f"differ by country."
+        if national > 0 else
+        f"Every city here carries a measured city wage, but the {loading} employer "
+        f"loading is a uniform assumption where real schedules differ by country."
+    )
+    attrition = (
+        f"The {len(ops)} employers named in this band’s postings already run centres "
+        f'there<span class="screen-only"> — the table below lists them per city</span>. '
+        f"Their attrition, time-to-fill and ramp curves would replace the {attr} "
+        f"backfill assumption"
+        if ops else
+        f"No operator is named in this band’s postings, so provider benchmarks would "
+        f"have to replace the {attr} backfill assumption"
+    )
+
+    items = [
+        f"<b>Live wage and employer-charge quotes for {band_label}.</b> {wage} "
+        f"A recruiter’s per-role quote and a payroll provider’s charge schedule "
+        f"replace both — the two figures on Exhibit 3 no public source supplies.",
+        f"<b>Site visits against the advertised capability.</b> The capability pillar "
+        f"is job postings — as few as {min_n} behind a city in this band. Postings say "
+        f"who is hiring; they cannot say whether the advertised work is the work done, "
+        f"or whether a centre could hire at programme rate. A provider RFI and days on "
+        f"the ground settle what postings cannot.",
+        f"<b>Attrition and ramp data from the operators already there.</b> {attrition}, "
+        f"which is the one Exhibit 3 input that can reorder cities — and today it is "
+        f"a slider.",
+    ]
+    note = (
+        "Checks, not refinements: each replaces an input this analysis cannot source "
+        "from public data, which is why they close the page rather than extend it. "
+        "A phase 2 that skips them is trusting a slider."
+    )
+    return "".join(f"<li>{x}</li>" for x in items), note
 
 
 def _provenance(data: dict) -> str:
