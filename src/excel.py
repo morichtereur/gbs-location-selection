@@ -17,6 +17,7 @@ from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 
 from src import config as C
+from src import loaded
 from src.baselines import load as baseline_load
 from src.dashboard import (
     LIMITS, PILLAR_LABELS, PILLAR_NOTES, PILLARS, SOURCES, payload,
@@ -272,14 +273,69 @@ def _wage_gap(wb, data):
              [b["label"], b["monthly"], b["year"], "yes" if b["scored"] else "no"],
              formats={2: "#,##0"}, banded=i % 2 == 1)
 
-    _notes(ws, row + len(bases) + 2, [
+    row = row + len(bases) + 2
+    row = _loaded_block(ws, row, data, cities, bases)
+
+    _notes(ws, row + 1, [
         "A positive figure is the annual wage the move takes out per role; a negative one "
         "means the city is dearer than the origin.",
+        "The grid above is the gross wage line. The loaded figures are in the block beneath it, "
+        "and are not a fixed multiple of the grid: the attrition uplift applies to the "
+        "destination only, so it moves cheap and dear cities by different amounts.",
         "The origin is always a national figure while the Polish cities carry a regional index, "
         "so a capital-city premium sits on one side of the subtraction and not the other.",
+        "A city marked 'national wage' has no city-level earnings in any reachable source, so "
+        "neither side of its gap carries a city premium.",
         "Germany's earnings come from EU-SILC where the others come from labour force surveys, "
         "and Germany (2022) and Singapore (2021) are the oldest observations in the set.",
     ])
+
+
+def _loaded_block(ws, row, data, cities, bases):
+    """The same gap with employer charges and backfill on top of it.
+
+    The workbook and the dashboard have to agree about what a role costs, and
+    the dashboard now leads Exhibit 3 with the loaded figure. A workbook that
+    still showed only the wage line would be the deliverable that gets
+    forwarded and the one that understates the number.
+    """
+    a = loaded.Assumptions()
+    origin = next(
+        (b for b in bases if b["key"] == data["baselineDefault"]), bases[0]
+    )
+
+    ws.cell(row=row, column=1, value="Fully loaded, against the default origin").font = H2
+    row += 1
+    _notes(ws, row, [
+        f"Employer loading {a.loading:.0%} of gross wage, applied to origin and destination "
+        f"alike. Attrition backfill {a.attrition:.0%}, applied to the destination only, since "
+        f"the origin is not being stood up. Projection horizon {a.horizon} years, at each "
+        f"market's own measured wage drift.",
+        "The first two are assumptions, not measurements. No free source gives comparable "
+        "employer-charge schedules for all eleven markets, so the factor is uniform — which "
+        "scales every gap and cannot reorder them. Real charges differ sharply by country, and "
+        "pricing that difference is exactly what this study cannot do. Change the numbers in "
+        f"src/config.py to re-run on your own. Origin: {origin['label']}.",
+    ])
+    row += 3
+
+    _header(ws, row, ["City", "Loaded cost USD / month",
+                      f"Base gap vs {origin['label']}", f"Loaded gap vs {origin['label']}",
+                      "City-level wage?"],
+            [15, 20, 22, 22, 16])
+    rows = sorted(cities, key=lambda r: -(r["cost"] or 0))
+    for i, r in enumerate(rows):
+        drift = r["drift"] if r["driftMeasured"] else None
+        g = loaded.gap(origin["monthly"], origin["drift"], r["cost"], drift, a)
+        city_monthly = g["cityMonthly"]
+        _row(ws, row + 1 + i, [
+            r["name"],
+            city_monthly if city_monthly is not None else "not projectable",
+            g["basePerRole"],
+            g["loadedPerRole"] if g["loadedPerRole"] is not None else "not projectable",
+            "yes" if r["costResolved"] else "national wage",
+        ], formats={2: "#,##0", 3: "#,##0", 4: "#,##0"}, banded=i % 2 == 1)
+    return row + len(rows) + 1
 
 
 def _not_ranked(wb, data):

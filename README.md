@@ -78,6 +78,25 @@ tool had been refusing for no better reason than that France is not a
 candidate. ILOSTAT has no earnings in this dataflow for Canada, Australia or
 Japan.
 
+**The wage is not the cost, so the exhibit now loads it.** Three multipliers sit
+between a gross ILOSTAT wage and what a role costs, and all three are on the
+exhibit as controls: employer social charges, an attrition/backfill uplift, and
+a horizon. Base and loaded run side by side, so Zurich to Kraków is USD 54k per
+role on the wage line and about **USD 59k loaded** at the declared defaults; to
+the Indian cities, 95k becomes about **118k**. Two of the three are assumptions
+the reader sets and the page says so where they are set — no free source gives
+comparable employer-charge schedules for all eleven markets, so the factor is
+**uniform, which scales every gap and cannot reorder them**, while real charges
+differ sharply by country and pricing that difference is exactly what this
+cannot do. The attrition uplift applies to the destination only, since the
+origin is not being stood up, and it *can* reorder, because it scales with a
+city's own wage. The third is not an assumption at all: the horizon carries each
+market forward at its own **measured** drift, which is what makes the durability
+finding concrete — over five years the Kraków gap closes from USD 5.4m to 4.0m
+for 100 roles, because Poland's 8.5% outruns Switzerland's 2.2%. South Africa
+has too short a series to measure a drift, so Johannesburg reports as **not
+projectable** rather than being carried at the panel median.
+
 One asymmetry decides how far that comparison can be pushed: the baseline is
 always a national figure, while the Polish cities carry a regional index
 against their own country mean (Warsaw 1.81, Kraków 1.46). Against a UK
@@ -152,7 +171,7 @@ Every declared judgement — weights, archetypes, thresholds, the staffing blend
 
 ## What it cannot tell you
 
-- **Attrition, tax and incentives are absent.** No free public source. Probably the most important factor missing.
+- **Tax and incentives are absent, and attrition is an assumption rather than a measurement.** Exhibit 3 carries an attrition/backfill uplift the reader sets, which is not the same as knowing what attrition costs in Pune against Kraków — no free public source gives comparable rates, and that difference is probably the most important thing still missing.
 - **The Philippines, Romania, Czechia, Hungary, Portugal and Malaysia are missing.** Five of seven pillars are ready for all six; no permitted postings feed exists. Adzuna has no endpoint, EURES forbids automated extraction, Jooble blocks it at the edge.
 - **India has no city-level cost** in any reachable source, so its five cities separate on capability alone.
 - **The capability classifier is imperfect** — two clear failures in the last audited twenty, across five audits and a hundred postings. That error is modelled in the resampling, not just noted; doing so reversed which market is robust as a judgment location.

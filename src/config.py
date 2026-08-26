@@ -340,6 +340,59 @@ BASELINE_DEFAULT = "ch"
 # rather than buried, because it moves the answer more than the wage gap does.
 FTE_DEFAULT = 100
 
+# --- Fully loaded cost ----------------------------------------------------
+# ILOSTAT publishes the wage, and a wage is not what a role costs. Three things
+# sit between the two, and all three are *assumptions the reader sets* rather
+# than anything measured here. They are defaulted, labelled as assumptions on
+# the exhibit, and adjustable, on the same basis as WAGE_BLEND: a reader should
+# be able to disagree with a number instead of with the conclusion.
+#
+# What each one is:
+#
+#   LOADING_FACTOR      employer social charges, holiday and statutory benefit
+#                       accrual, as a share of gross wage. Applied to the origin
+#                       and the destination alike, because the panel carries no
+#                       country-specific employer-charge schedule. That is a
+#                       real limitation and the exhibit states it: a uniform
+#                       factor scales every gap and therefore cannot reorder
+#                       anything, while real charges differ by market — the
+#                       Brazilian schedule is far heavier than the Indian one —
+#                       and pricing that difference is exactly what this cannot
+#                       do. There is no free, comparable, per-country source for
+#                       all eleven markets; if one is found this becomes a
+#                       measured pillar rather than a slider.
+#
+#   ATTRITION_UPLIFT    the cost of holding target headcount in a market that
+#                       turns over: recruitment, onboarding, and the
+#                       productivity gap of a replacement, as a share of the
+#                       loaded wage bill. Applied to the destination only. The
+#                       retained organisation at the origin is not being stood
+#                       up, so it does not carry a ramp cost — that asymmetry is
+#                       a declared judgement, and it is the one input here that
+#                       can move the order of cities, because it scales with a
+#                       city's own wage.
+#
+#   HORIZON_YEARS       how far forward to carry both sides, each at its own
+#                       measured wage drift. This one is not an invented rate:
+#                       the drift is already measured per market for the vintage
+#                       adjustment, and it is what the durability pillar scores.
+#                       Default 0 — today — because a non-zero default would
+#                       apply a compounding projection the reader never asked
+#                       for. Pushing it out is how the durability finding stops
+#                       being abstract: Poland's gap closes and India's does
+#                       not.
+#
+# 0.25 and 0.15 are round mid-range placeholders, not findings. Nothing in this
+# repository measures either, and the page says so where they are set.
+LOADING_FACTOR_DEFAULT = 0.25
+ATTRITION_UPLIFT_DEFAULT = 0.15
+HORIZON_YEARS_DEFAULT = 0
+# Guard rails for the inputs, so a typo cannot produce a negative wage bill or
+# a projection past the point where compounding a measured rate means anything.
+LOADING_FACTOR_MAX = 1.0
+ATTRITION_UPLIFT_MAX = 1.0
+HORIZON_YEARS_MAX = 10
+
 HQ_LOCATIONS = {
     "Americas": {
         "san-francisco": ("San Francisco", -8.0),

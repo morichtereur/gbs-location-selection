@@ -346,6 +346,15 @@ def payload() -> dict:
         "unpriceable": C.UNPRICEABLE,
         "baselineDefault": C.BASELINE_DEFAULT,
         "fteDefault": C.FTE_DEFAULT,
+        # The three inputs that turn a gross wage into a loaded cost. Two are
+        # assumptions the reader sets and the exhibit labels as such; the third
+        # is a horizon over each market's own measured drift.
+        "loadingDefault": C.LOADING_FACTOR_DEFAULT,
+        "attritionDefault": C.ATTRITION_UPLIFT_DEFAULT,
+        "horizonDefault": C.HORIZON_YEARS_DEFAULT,
+        "loadingMax": C.LOADING_FACTOR_MAX,
+        "attritionMax": C.ATTRITION_UPLIFT_MAX,
+        "horizonMax": C.HORIZON_YEARS_MAX,
         "asOf": ASOF,
         "evidenceFloor": C.EVIDENCE_FLOOR,
         "separableAt": C.SEPARABLE_AT,
@@ -522,6 +531,49 @@ function correlationSummary(r) {
     strong: pairs.filter((x) => Math.abs(x.r) >= DATA.strongAt).length,
     nEff: frob > 0 ? (k * k) / frob : k,
     strongest: pairs.slice().sort((x, y) => Math.abs(y.r) - Math.abs(x.r)).slice(0, 3),
+  };
+}
+
+/* ---- fully loaded cost: mirrors src/loaded.py exactly ----
+   A wage is not what a role costs. Two of the three multipliers between them
+   are assumptions the reader sets; the third is a horizon over each market's
+   own measured drift, which the panel already carries. */
+function clampAssumptions(a) {
+  return {
+    loading: Math.min(Math.max(a.loading, 0), DATA.loadingMax),
+    attrition: Math.min(Math.max(a.attrition, 0), DATA.attritionMax),
+    horizon: Math.trunc(Math.min(Math.max(a.horizon, 0), DATA.horizonMax)),
+  };
+}
+
+/* Null where the drift was never measured: a panel median carried forward and
+   presented as a projection is exactly the quiet fill this study objects to. */
+function projectWage(wage, drift, years) {
+  if (years <= 0) return wage;
+  if (drift === null || drift === undefined) return null;
+  return wage * Math.pow(1 + drift, years);
+}
+
+function loadedMonthly(wage, drift, a, isDestination) {
+  const carried = projectWage(wage, drift, a.horizon);
+  if (carried === null) return null;
+  const loaded = carried * (1 + a.loading);
+  return isDestination ? loaded * (1 + a.attrition) : loaded;
+}
+
+function loadedGap(originWage, originDrift, cityWage, cityDrift, a, fte) {
+  a = clampAssumptions(a);
+  const basePerRole = (originWage - cityWage) * 12;
+  const o = loadedMonthly(originWage, originDrift, a, false);
+  const c = loadedMonthly(cityWage, cityDrift, a, true);
+  const missing = [];
+  if (o === null) missing.push("origin");
+  if (c === null) missing.push("city");
+  const loadedPerRole = missing.length ? null : (o - c) * 12;
+  return {
+    basePerRole, baseTotal: basePerRole * fte,
+    loadedPerRole, loadedTotal: loadedPerRole === null ? null : loadedPerRole * fte,
+    unprojectable: missing, originMonthly: o, cityMonthly: c,
   };
 }
 
@@ -746,10 +798,29 @@ select {
    question that follows it in every room. One hue for a saving, the warn tone
    for a city above the baseline — a magnitude chart that can go negative. */
 .case-row {
-  display: grid; grid-template-columns: 8.5rem 1fr 7.5rem;
+  display: grid; grid-template-columns: 9.6rem 1fr 5.4rem 7.3rem;
   align-items: center; gap: 10px; padding: 3px 0;
 }
 .case-row .cn { font-size: 12.5px; color: var(--ink-2); }
+/* The base column is the reference, not the answer, so it is set back a step. */
+.case-val.base-val { color: var(--ink-3); font-size: 11px; }
+.case-head {
+  display: grid; grid-template-columns: 9.6rem 1fr 5.4rem 7.3rem;
+  gap: 10px; padding-bottom: 4px; margin-bottom: 2px;
+  border-bottom: 1px solid var(--rule);
+  font-family: var(--mono); font-size: 9.5px; text-transform: uppercase;
+  letter-spacing: .08em; color: var(--ink-3);
+}
+.case-head .r { text-align: right; }
+/* Said once per row, quietly: this city has no city-level wage. Seven of the
+   eleven cities carry it, so a boxed chip made the common case look like the
+   exception and wrapped the longer names; muted text states it without
+   competing with the figures. */
+.natl, .na {
+  font-family: var(--mono); font-size: 9px; color: var(--ink-3);
+  margin-left: 5px; white-space: nowrap; cursor: help;
+}
+.na { font-size: 10px; font-style: italic; }
 .flag {
   width: 15px; height: 10px; margin-right: 7px; vertical-align: -1px;
   border: .5px solid var(--flag-edge); border-radius: 1px; flex: none;
@@ -760,6 +831,11 @@ select {
 .case-track { position: relative; height: 15px; }
 .case-bar { position: absolute; top: 0; bottom: 0; background: var(--accent); border-radius: 0 3px 3px 0; }
 .case-bar.over { background: var(--warn); border-radius: 3px 0 0 3px; }
+/* Two bars in one track: the loaded gap behind, the wage line in front. The
+   overhang is what the loading assumptions added, which is the comparison the
+   column pair exists to make. */
+.case-bar.loaded { opacity: .34; }
+.case-bar.base { opacity: 1; }
 .case-zero { position: absolute; top: -3px; bottom: -3px; width: 1px; background: var(--rule-strong); }
 .case-val {
   font-family: var(--mono); font-size: 11.5px; text-align: right;
@@ -831,10 +907,21 @@ select {
   color: var(--ink-3); margin: 9px 0 3px;
 }
 .card .fld:first-of-type { margin-top: 0; }
-#fte {
+.num {
   width: 100%; font: inherit; font-family: var(--mono); font-size: 12.5px;
   padding: 5px 7px; color: var(--ink);
   background: var(--panel-2); border: 1px solid var(--rule-strong); border-radius: 4px;
+}
+/* Three narrow boxes on one line: they are read together, and stacking them
+   made the card look like it held three unrelated decisions. */
+.assume { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 7px; }
+.assume .fld { margin-top: 0; font-size: 9.5px; letter-spacing: .03em; }
+.assume .num { padding: 5px 4px; text-align: center; }
+/* Named as assumptions in the control itself, not only in the caveat below the
+   exhibit — this is where a reader decides how much to trust the number. */
+.assume-head {
+  margin: 14px 0 5px; padding-top: 10px; border-top: 1px solid var(--rule);
+  color: var(--ink-2);
 }
 .tz { position: relative; height: 122px; }
 /* A vertical rule at the headquarters rather than a shaded window: the window
@@ -1010,7 +1097,8 @@ table.corr td.blank { border-color: transparent; }
   .case-wrap .strip-title { margin-bottom: 5px; }
   /* On screen the per-role figure sits under the total; in print that doubles
      every row and costs the page. Inline, it costs a column's width instead. */
-  .case-row { padding: 0; grid-template-columns: 6.6rem 1fr 10.4rem; gap: 8px; }
+  .case-row { padding: 0; grid-template-columns: 6.6rem 1fr 4.6rem 8.2rem; gap: 8px; }
+  .case-head { display: none; }
   .case-val .per { display: inline; }
   .case-val .per::before { content: "\00a0\00b7\00a0"; }
   .case-row .cn { font-size: 8.5pt; }
@@ -1240,9 +1328,29 @@ footer p { max-width: 78ch; }
       <label class="fld" for="baseline">Origin</label>
       <select id="baseline" aria-label="Market the work leaves"></select>
       <label class="fld" for="fte">Roles moved</label>
-      <input id="fte" type="number" min="1" max="5000" step="10" aria-label="Roles moved">
+      <input id="fte" class="num" type="number" min="1" max="5000" step="10" aria-label="Roles moved">
       <p class="slider-note">Sets Exhibit 3. Origins are markets ILOSTAT prices;
         most are not candidates and are never ranked.</p>
+
+      <p class="fld assume-head">On top of the wage — your assumptions</p>
+      <div class="assume">
+        <div>
+          <label class="fld" for="loading">Employer loading %</label>
+          <input id="loading" class="num" type="number" min="0" max="100" step="1"
+                 aria-label="Employer loading, percent of gross wage">
+        </div>
+        <div>
+          <label class="fld" for="attrition">Attrition backfill %</label>
+          <input id="attrition" class="num" type="number" min="0" max="100" step="1"
+                 aria-label="Attrition and backfill uplift, percent">
+        </div>
+        <div>
+          <label class="fld" for="horizon">Years forward</label>
+          <input id="horizon" class="num" type="number" min="0" max="10" step="1"
+                 aria-label="Years to project forward">
+        </div>
+      </div>
+      <p class="slider-note" id="assume-note"></p>
     </div>
 
     <div class="card">
@@ -1274,6 +1382,10 @@ footer p { max-width: 78ch; }
     <div class="strip-wrap case-wrap">
       <p class="exhibit-label">Exhibit 3</p>
       <h3 class="strip-title" id="case-title"></h3>
+      <div class="case-head">
+        <span></span><span></span>
+        <span class="r">base</span><span class="r">fully loaded</span>
+      </div>
       <div id="case"></div>
       <p class="case-caveat" id="case-caveat"></p>
     </div>
@@ -1362,6 +1474,9 @@ const state = {
   weights: { ...DATA.archetypes[Object.keys(DATA.archetypes)[0]].weights },
   baseline: DATA.baselineDefault,
   fte: DATA.fteDefault,
+  loading: DATA.loadingDefault,
+  attrition: DATA.attritionDefault,
+  horizon: DATA.horizonDefault,
 };
 
 const isDark = () => {
@@ -1886,34 +2001,74 @@ function money(usd) {
 function renderCase(ranked) {
   const base = baselineRow();
   const fte = state.fte;
+  const a = { loading: state.loading, attrition: state.attrition, horizon: state.horizon };
+
   const items = ranked
     .filter((r) => r.row.cost != null)
     .map((r) => {
-      const perFte = (base.monthly - r.row.cost) * 12;
-      return { name: r.row.name, market: r.row.parent, perFte, total: perFte * fte };
+      // The row's drift falls back to the panel median where a market's series
+      // is too short to measure one, which is right for ageing a stale
+      // observation by a year and wrong for projecting a decade. Only a
+      // measured rate is offered to the projection; the rest report as
+      // unavailable, which is what they are.
+      const drift = r.row.driftMeasured ? r.row.drift : null;
+      const g = loadedGap(base.monthly, base.drift, r.row.cost, drift, a, fte);
+      return {
+        name: r.row.name, market: r.row.parent, row: r.row,
+        base: g.baseTotal, basePerRole: g.basePerRole,
+        loaded: g.loadedTotal, loadedPerRole: g.loadedPerRole,
+        unprojectable: g.unprojectable,
+      };
     })
-    .sort((a, b) => b.total - a.total);
+    // Ordered on the loaded figure where there is one, since that is the column
+    // the exhibit now leads with; cities that cannot be projected keep their
+    // base position rather than being dropped to the bottom.
+    .sort((x, y) => (y.loaded ?? y.base) - (x.loaded ?? x.base));
 
-  const span = Math.max(...items.map((i) => Math.abs(i.total)), 1);
+  // The track holds both bars, so it has to span whichever reaches furthest.
+  const reach = items.flatMap((i) => [i.base, i.loaded].filter((v) => v != null));
+  const span = Math.max(...reach.map(Math.abs), 1);
   // Zero sits inside the track only when something lands above the baseline.
-  const worst = Math.min(...items.map((i) => i.total), 0);
-  const zero = (Math.abs(worst) / (span + Math.abs(worst))) * 100;
+  const worst = Math.min(...reach, 0);
+  const full = span + Math.abs(worst);
+  const zero = (Math.abs(worst) / full) * 100;
+  const bar = (v, cls) => {
+    const w = (Math.abs(v) / full) * 100;
+    return v < 0
+      ? `<div class="case-bar over ${cls}" style="right:${(100 - zero).toFixed(2)}%;width:${w.toFixed(2)}%"></div>`
+      : `<div class="case-bar ${cls}" style="left:${zero.toFixed(2)}%;width:${w.toFixed(2)}%"></div>`;
+  };
 
+  const horizonLabel = a.horizon > 0
+    ? ` in <strong>${a.horizon} year${a.horizon === 1 ? "" : "s"}</strong>` : ``;
   $("#case-title").innerHTML =
     `Annual wage gap for <strong>${fte.toLocaleString("en-US")} `
-    + `role${fte === 1 ? "" : "s"}</strong> leaving <strong>${base.label}</strong>`;
+    + `role${fte === 1 ? "" : "s"}</strong> leaving <strong>${base.label}</strong>${horizonLabel}`;
 
   $("#case").innerHTML = items.map((i) => {
-    const w = (Math.abs(i.total) / (span + Math.abs(worst))) * 100;
-    const over = i.total < 0;
-    const bar = over
-      ? `<div class="case-bar over" style="right:${(100 - zero).toFixed(2)}%;width:${w.toFixed(2)}%"></div>`
-      : `<div class="case-bar" style="left:${zero.toFixed(2)}%;width:${w.toFixed(2)}%"></div>`;
-    return `<div class="case-row"><span class="cn">${flag(i.market)}${i.name}</span>`
-      + `<div class="case-track"><div class="case-zero" style="left:${zero.toFixed(2)}%"></div>${bar}</div>`
-      + `<span class="case-val">${money(i.total)}`
-      + `<span class="per">${money(i.perFte)} per role</span></span></div>`;
+    // The loaded bar is drawn behind the base one, so the base reads as the
+    // part of the gap that is wage and the overhang as what loading added.
+    const bars = (i.loaded == null ? `` : bar(i.loaded, "loaded")) + bar(i.base, "base");
+    // A city whose cost is its country's carries no city premium, and saying so
+    // per row is the difference between a missing figure and a silent one.
+    const national = i.row.costResolved
+      ? ``
+      : `<span class="natl" title="No city-level wage for ${i.name}: this is `
+        + `${DATA.marketNames[i.market] || "its country"}'s national figure, so the gap `
+        + `carries no city premium either way.">national</span>`;
+    const loadedCell = i.loaded == null
+      ? `<span class="na" title="${DATA.marketNames[i.market] || "This market"} has too `
+        + `short a wage series to measure a drift, so it cannot be projected forward. `
+        + `The base figure stands.">not projectable</span>`
+      : `${money(i.loaded)}<span class="per">${money(i.loadedPerRole)} per role</span>`;
+    return `<div class="case-row"><span class="cn">${flag(i.market)}${i.name}${national}</span>`
+      + `<div class="case-track"><div class="case-zero" style="left:${zero.toFixed(2)}%"></div>${bars}</div>`
+      + `<span class="case-val base-val">${money(i.base)}</span>`
+      + `<span class="case-val">${loadedCell}</span></div>`;
   }).join("");
+
+  const unresolved = items.filter((i) => !i.row.costResolved).length;
+  const cannot = items.filter((i) => i.loaded == null);
 
   // Print keeps the bounds that change how the number is read and drops the
   // elaborations, because the page is decided by three lines here.
@@ -1922,7 +2077,7 @@ function renderCase(ranked) {
   // which is what makes Warsaw look dearer than a UK national mean.
   const tilted = ranked
     .filter((r) => r.row.regionIndex && r.row.regionIndex > 1)
-    .sort((a, b) => b.row.regionIndex - a.row.regionIndex);
+    .sort((a2, b2) => b2.row.regionIndex - a2.row.regionIndex);
   const tilt = tilted.length
     ? `The baseline is a national average, while `
       + tilted.slice(0, 2).map((r) =>
@@ -1931,8 +2086,39 @@ function renderCase(ranked) {
       + `subtraction and not the other. `
     : ``;
 
+  // What the loaded column is and is not. The uniform-factor point is the one
+  // that matters: a reader who sees a "fully loaded" column will assume it
+  // prices the difference between Brazilian and Indian employer charges, and it
+  // does not.
+  const loadPct = (x) => `${Math.round(x * 100)}%`;
+  const loadedNote =
+    `<b>Base</b> is the gross wage line. <b>Loaded</b> adds `
+    + `${loadPct(state.loading)} employer charges to both sides and `
+    + `${loadPct(state.attrition)} attrition backfill to the destination only, since the `
+    + `origin is not being stood up`
+    + (a.horizon > 0
+        ? `, then carries each market forward ${a.horizon} year${a.horizon === 1 ? "" : "s"} `
+          + `at its own measured wage drift`
+        : ``)
+    + `. Those first two are <b>assumptions you set, not measured here</b>: no free source `
+    + `gives comparable employer-charge schedules for all eleven markets, so the factor is `
+    + `uniform, which scales every gap and cannot reorder them — real charges differ sharply `
+    + `by country and pricing that difference is precisely what this cannot do. `
+    + (unresolved
+        ? `<span class="screen-only">${unresolved} of ${items.length} cities are marked `
+          + `<b>national</b>: no city-level wage exists for them, so neither side of their `
+          + `gap carries a city premium. </span>`
+        : ``)
+    + (cannot.length
+        ? `<span class="screen-only">${cannot.map((i) => i.name).join(", ")} `
+          + `cannot be projected forward — too short a wage series to measure a drift — so `
+          + `${cannot.length === 1 ? "it keeps its base figure" : "they keep their base figures"} `
+          + `rather than being carried at a panel median. </span>`
+        : ``);
+
   $("#case-caveat").innerHTML =
-    `Wage line only, at ${base.label}’s blended rate for professional and clerical `
+    loadedNote
+    + `Wage line only, at ${base.label}’s blended rate for professional and clerical `
     + `occupations. It excludes facilities, technology, management overhead, transition and `
     + `severance, so it is an upper bound on the wage component and not a savings case. `
     + tilt
@@ -2024,10 +2210,13 @@ function renderSettles(ranked, band, rows) {
     `Whether GBS work is actually <b>advertised</b> in Manila, Kuala Lumpur, Lisbon, `
       + `Bucharest, Prague or Budapest. They are priced above on the five pillars that reach `
       + `them; the two built from postings do not.`,
-    `<b>Attrition, incentives, property and transition cost.</b> None are in this study, and `
-      + `the first is the driver a GBS case usually turns on.`,
-    `The <b>fully loaded</b> saving. Exhibit 3 is one line of a run-cost, and an upper bound `
-      + `on that line.`,
+    `<b>What employer charges and attrition actually cost, per market.</b> Exhibit 3 loads `
+      + `the wage with both, but at a rate you set — no free source gives comparable `
+      + `employer-charge schedules or attrition rates for all ${rows.length} cities, so the `
+      + `factor is uniform where reality is not.`,
+    `<b>Incentives, property and transition cost.</b> None are in this study. Exhibit 3 loads `
+      + `the wage line and stops there, so it remains one line of a run-cost rather than a `
+      + `business case.`,
     `Whether a city suits <b>your</b> mandate. Nothing here is a recommendation.`,
   ].map((x) => `<li>${x}</li>`).join("");
 }
@@ -2114,7 +2303,24 @@ function buildControls() {
     render();
   });
 
-
+  // Percentages are typed as percentages and held as fractions: a reader thinks
+  // in "25", and every formula downstream wants 0.25.
+  const assume = (id, key, {pct = true, min = 0, max = 100} = {}) => {
+    const el = $(`#${id}`);
+    el.value = pct ? Math.round(state[key] * 100) : state[key];
+    el.addEventListener("input", (e) => {
+      const n = parseFloat(e.target.value);
+      if (!Number.isFinite(n) || n < min || n > max) return;
+      state[key] = pct ? n / 100 : n;
+      render();
+    });
+  };
+  assume("loading", "loading", {max: DATA.loadingMax * 100});
+  assume("attrition", "attrition", {max: DATA.attritionMax * 100});
+  assume("horizon", "horizon", {pct: false, max: DATA.horizonMax});
+  $("#assume-note").innerHTML =
+    `Employer charges and backfill are <b>assumptions you set</b>, not measured here. `
+    + `Years forward carries each market at its own measured wage drift.`;
 
   writeArchetypeCopy();
   $("#sources").innerHTML = DATA.sources.map((x) => `

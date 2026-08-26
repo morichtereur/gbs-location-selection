@@ -12,7 +12,7 @@ import subprocess
 import pytest
 
 from src import config as C
-from src import correlation, population
+from src import correlation, loaded, population
 from src.dashboard import SCORING_JS, payload
 from src.panel import build, with_centres
 from src.score import normalise, rank, raw_pillars, score
@@ -117,6 +117,90 @@ def test_javascript_correlation_matches_python(archetype):
     assert got["summary"]["meanAbs"] == pytest.approx(want_summary["mean_abs"], abs=1e-9)
     assert got["summary"]["nEff"] == pytest.approx(want_summary["n_eff"], abs=1e-9)
     assert got["national"] == correlation.national_pillars(panel, archetype)
+
+
+def _run_js_loaded(data: dict, cases: list[dict]) -> list[dict]:
+    """Loaded wage gaps, from the page's own JavaScript."""
+    script = f"""
+const DATA = {json.dumps(data)};
+{SCORING_JS}
+const cases = {json.dumps(cases)};
+console.log(JSON.stringify(cases.map((c) => loadedGap(
+  c.originWage, c.originDrift, c.cityWage, c.cityDrift,
+  {{loading: c.loading, attrition: c.attrition, horizon: c.horizon}}, c.fte))));
+"""
+    out = subprocess.run(
+        [node, "-e", script], capture_output=True, text=True, timeout=60
+    )
+    if out.returncode != 0:
+        raise AssertionError(out.stderr[:2000])
+    return json.loads(out.stdout.strip().splitlines()[-1])
+
+
+@needs_node
+@needs_postings
+def test_javascript_loaded_cost_matches_python():
+    """Exhibit 3 is the figure a reader quotes, so both implementations must agree.
+
+    The unmeasured-drift case is in the list deliberately: the page has to
+    refuse the projection in exactly the same place the module does, or one of
+    them is quietly filling a gap.
+    """
+    cases = [
+        # base case, then each assumption alone, then all three together
+        dict(originWage=6216, originDrift=0.0218, cityWage=500, cityDrift=0.0167,
+             loading=0.0, attrition=0.0, horizon=0, fte=100),
+        dict(originWage=6216, originDrift=0.0218, cityWage=500, cityDrift=0.0167,
+             loading=0.25, attrition=0.0, horizon=0, fte=100),
+        dict(originWage=6216, originDrift=0.0218, cityWage=500, cityDrift=0.0167,
+             loading=0.0, attrition=0.15, horizon=0, fte=100),
+        dict(originWage=6216, originDrift=0.0218, cityWage=2000, cityDrift=0.0849,
+             loading=0.25, attrition=0.15, horizon=5, fte=250),
+        # a city dearer than its origin, so the gap is negative
+        dict(originWage=1200, originDrift=0.02, cityWage=3000, cityDrift=0.01,
+             loading=0.25, attrition=0.15, horizon=3, fte=100),
+        # no measured drift on the destination, with and without a horizon
+        dict(originWage=6216, originDrift=0.0218, cityWage=900, cityDrift=None,
+             loading=0.25, attrition=0.15, horizon=4, fte=100),
+        dict(originWage=6216, originDrift=0.0218, cityWage=900, cityDrift=None,
+             loading=0.25, attrition=0.15, horizon=0, fte=100),
+        # out-of-range inputs, which both sides have to clamp identically
+        dict(originWage=6216, originDrift=0.0218, cityWage=500, cityDrift=0.0167,
+             loading=-1.0, attrition=99.0, horizon=999, fte=100),
+    ]
+    got = _run_js_loaded(payload(), cases)
+    assert len(got) == len(cases)
+    for c, have in zip(cases, got):
+        want = loaded.gap(
+            c["originWage"], c["originDrift"], c["cityWage"], c["cityDrift"],
+            loaded.Assumptions(c["loading"], c["attrition"], c["horizon"]),
+            fte=c["fte"],
+        )
+        assert have["unprojectable"] == want["unprojectable"], c
+        for key in ("basePerRole", "baseTotal", "loadedPerRole", "loadedTotal"):
+            if want[key] is None:
+                assert have[key] is None, (c, key)
+            else:
+                assert have[key] == pytest.approx(want[key], rel=1e-9), (c, key)
+
+
+@needs_postings
+def test_the_page_carries_the_declared_loading_assumptions():
+    data = payload()
+    assert data["loadingDefault"] == C.LOADING_FACTOR_DEFAULT
+    assert data["attritionDefault"] == C.ATTRITION_UPLIFT_DEFAULT
+    assert data["horizonDefault"] == C.HORIZON_YEARS_DEFAULT
+    assert data["loadingMax"] == C.LOADING_FACTOR_MAX
+    assert data["attritionMax"] == C.ATTRITION_UPLIFT_MAX
+    assert data["horizonMax"] == C.HORIZON_YEARS_MAX
+    # Every origin needs a drift for the projection, and every city row needs
+    # to say whether its own drift was measured or filled from the median.
+    for b in data["baselines"]:
+        assert "drift" in b and "driftMeasured" in b, b["label"]
+    for rows in data["views"]["city"].values():
+        for row in rows:
+            assert row["driftMeasured"] in (True, False), row["name"]
+            assert row["drift"] is not None, row["name"]
 
 
 @needs_node

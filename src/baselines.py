@@ -33,6 +33,12 @@ def load() -> list[dict]:
             out.append({
                 "key": key, "label": C.MARKETS[key]["name"],
                 "monthly": monthly, "year": m.cost_year, "scored": True,
+                # Carried so Exhibit 3 can project the origin forward at its own
+                # rate rather than at the destination's. `driftMeasured` is what
+                # lets the exhibit refuse to project rather than fall back to a
+                # median and call it a forecast.
+                "drift": m.wage_cagr,
+                "driftMeasured": m.wage_cagr is not None,
             })
 
     for key, meta in C.BASELINE_EXTRA.items():
@@ -52,6 +58,8 @@ def load() -> list[dict]:
             "monthly": age(blended, lag, drift if drift is not None else fallback)
                        if C.AGE_ADJUST else blended,
             "year": w["year"], "scored": False,
+            "drift": drift,
+            "driftMeasured": drift is not None,
         })
 
     return sorted(out, key=lambda b: -b["monthly"])
