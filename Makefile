@@ -1,4 +1,4 @@
-.PHONY: install fetch fetch-extra refresh run dashboard shot centres operators trend validate leverage correlation provenance test clean
+.PHONY: install fetch fetch-extra refresh run dashboard shot centres operators trend validate leverage correlation provenance og test clean
 
 install:
 	python3 -m venv .venv && .venv/bin/pip install -q -r requirements.txt
@@ -16,6 +16,7 @@ refresh:
 	@echo "== rebuilding analysis and dashboard =="
 	@$(MAKE) --no-print-directory run
 	@$(MAKE) --no-print-directory dashboard
+	@$(MAKE) --no-print-directory og
 	@echo
 	@echo "== direction since the last snapshot =="
 	@$(MAKE) --no-print-directory trend
@@ -58,6 +59,9 @@ correlation:
 
 provenance:
 	.venv/bin/python -m src.provenance
+
+og:
+	.venv/bin/python -m src.og
 
 test:
 	.venv/bin/python -m pytest tests -q

@@ -151,6 +151,18 @@ ranking, both built from the run on screen so they move when the weighting
 does. The tool covers eleven cities and one function on public data alone;
 saying where that stops is the finding, not a disclaimer.
 
+**The document says what the page says, before any script runs.** Every figure
+on the exhibit is written by JavaScript, which used to leave the shipped file as
+empty tags and half-finished sentences — that is what a crawler indexes and
+what reader mode extracts. The declared scenario is now rendered in Python
+(`src/fallback.py`) and baked into the document at build time; the script
+overwrites it on load with the same content, and a test runs the page's own
+JavaScript under a DOM shim and requires the two renderings to agree word for
+word on every claim, and city for city on the ranking. The page also carries a
+meta description stating the finding rather than the subject, and a link-preview
+card (`make og`, `data/og.png`) drawing Exhibit 1 at the declared weights — both
+built from the run, not written down.
+
 **A workbook** (`make excel`) carries the same study for readers who will not
 open a browser: what it does and does not claim, the seven criteria with their
 sources and both starting weightings, the ranking with band and stability, and

@@ -16,6 +16,7 @@ import json
 
 from src import config as C
 from src import correlation
+from src import fallback
 from src import provenance
 from src.panel import Market, build, with_centres
 from src.fonts import face_css
@@ -172,6 +173,12 @@ PILLAR_NOTES = {
     "depth": "Favours markets where more employers hire",
 }
 
+
+TITLE = "GBS Location Selection"
+OG_ALT = (
+    "Exhibit 1 at the declared starting weights: eleven GBS and GCC cities ranked "
+    "in bands, with the cities the evidence cannot separate sharing a band."
+)
 
 # Shown in the interface, not only in the repository. A reader in a review
 # should be able to see where every pillar comes from without leaving the page.
@@ -426,16 +433,66 @@ def payload() -> dict:
         data["reference"][archetype] = {
             k: round(v, 4) for k, v in stability.frequency.items()
         }
+        # The same run, kept whole. The pre-JS fallback needs the bands and the
+        # verdicts as well as the frequencies, and re-running 10,000 draws to
+        # recover what this pass already computed would be absurd.
+        data.setdefault("defaults", {})[archetype] = {
+            "frequency": {k: round(v, 4) for k, v in stability.frequency.items()},
+            "band": dict(stability.band),
+            "verdict": {k: stability.verdict(k) for k in stability.frequency},
+        }
     return data
 
 
 def build_html() -> str:
-    data = json.dumps(payload(), separators=(",", ":"))
-    return (
+    data = payload()
+    html = (
         TEMPLATE.replace("__FONTS__", face_css())
-        .replace("__DATA__", data)
+        .replace("__DATA__", json.dumps(data, separators=(",", ":")))
         .replace("__SCORING__", SCORING_JS)
+        .replace("__META__", _meta(data))
     )
+    # The declared scenario, written into the document rather than left for the
+    # script to fill. Everything the page says is then true of the file as
+    # shipped, not only of the file as executed.
+    return fallback.inject(html, data)
+
+
+def _meta(data: dict) -> str:
+    """Description and card tags, built from the run rather than written down."""
+    s = fallback.Scenario(data)
+    snap = data["provenance"]["postings"]
+    top = [r["name"] for r in s.top]
+    if len(top) > 1:
+        finding = (
+            f"{', '.join(top[:-1])} and {top[-1]} finish level at the top; the draws "
+            f"cannot separate them."
+        )
+    else:
+        finding = f"{s.order[0]['name']} leads outright."
+    description = (
+        f"{len(s.rows)} cities where GBS and GCC roles are genuinely advertised, scored "
+        f"on {len(PILLARS)} pillars of public data and re-ranked across 2,000 defensible "
+        f"weightings. At the {s.arch['short']}'s starting weights, {finding}"
+        + (f" One snapshot, {snap['dateLabel']}." if snap else "")
+    )
+    esc = fallback.esc
+    tags = [
+        f'<meta name="description" content="{esc(description)}">',
+        f'<meta property="og:title" content="{esc(TITLE)}">',
+        f'<meta property="og:description" content="{esc(description)}">',
+        '<meta property="og:type" content="website">',
+        f'<meta property="og:url" content="{esc(C.PUBLISHED_URL)}">',
+        f'<meta property="og:image" content="{esc(C.OG_IMAGE_URL)}">',
+        '<meta property="og:image:width" content="1200">',
+        '<meta property="og:image:height" content="630">',
+        f'<meta property="og:image:alt" content="{esc(OG_ALT)}">',
+        '<meta name="twitter:card" content="summary_large_image">',
+        f'<meta name="twitter:title" content="{esc(TITLE)}">',
+        f'<meta name="twitter:description" content="{esc(description)}">',
+        f'<meta name="twitter:image" content="{esc(C.OG_IMAGE_URL)}">',
+    ]
+    return "\n".join(tags)
 
 
 def build_artifact() -> str:
@@ -646,6 +703,7 @@ TEMPLATE = r"""<!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>GBS Location Selection</title>
+__META__
 <style>
 __FONTS__
 
