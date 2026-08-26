@@ -1,4 +1,4 @@
-.PHONY: install fetch fetch-extra refresh run dashboard shot centres operators trend validate leverage correlation test clean
+.PHONY: install fetch fetch-extra refresh run dashboard shot centres operators trend validate leverage correlation provenance test clean
 
 install:
 	python3 -m venv .venv && .venv/bin/pip install -q -r requirements.txt
@@ -55,6 +55,9 @@ leverage:
 
 correlation:
 	.venv/bin/python -m src.correlation
+
+provenance:
+	.venv/bin/python -m src.provenance
 
 test:
 	.venv/bin/python -m pytest tests -q

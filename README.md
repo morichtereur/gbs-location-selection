@@ -191,7 +191,13 @@ Every declared judgement — weights, archetypes, thresholds, the staffing blend
   explore substantially less of the decision space than the count suggests. This is
   measured and reported on the exhibit rather than caveated; it is also the mechanism
   behind finding 1 above.
-- **One snapshot.** `make trend` compares snapshots and says so until a second exists.
+- **One snapshot, 22 August 2026.** `make trend` compares snapshots and says so until a
+  second exists. The date, the board, the five search terms, the page depth and the
+  markets covered are read back out of the fetch's own record and shown on the page
+  (`make provenance`) rather than typed into it, so a refetch moves the provenance line
+  instead of leaving it confidently stale.
+
+---
 
 ## Run it
 
@@ -205,6 +211,6 @@ make test
 
 `make refresh` does the whole cycle. Monthly is the right cadence — the postings feed turns over faster than that, the statistical series update annually.
 
-Also available: `make validate` (is the measured subset representative?), `make leverage` (which pillars decide the answer?), `make correlation` (how independent are the pillars, and what does that do to the reweighting claim?), `make centres` (what qualifies as a city, and what the thresholds exclude), `make shot` (render the tool to PNG).
+Also available: `make validate` (is the measured subset representative?), `make leverage` (which pillars decide the answer?), `make correlation` (how independent are the pillars, and what does that do to the reweighting claim?), `make provenance` (what was scraped, when, and how old is each series?), `make centres` (what qualifies as a city, and what the thresholds exclude), `make shot` (render the tool to PNG).
 
 Full numbers in [RESULTS.md](RESULTS.md). Classifier audits in [eval/precision_audit.md](eval/precision_audit.md).

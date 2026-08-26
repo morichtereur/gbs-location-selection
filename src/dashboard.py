@@ -16,6 +16,7 @@ import json
 
 from src import config as C
 from src import correlation
+from src import provenance
 from src.panel import Market, build, with_centres
 from src.fonts import face_css
 from src.baselines import load as baseline_load
@@ -174,23 +175,60 @@ PILLAR_NOTES = {
 
 # Shown in the interface, not only in the repository. A reader in a review
 # should be able to see where every pillar comes from without leaving the page.
-ASOF = "August 2026"
+#
+# The name and the description of a source are written here because they are
+# descriptions. The *vintage* is not: it is a property of the data and is read
+# back out of it by `src/provenance.py`, so a refetch cannot leave the page
+# claiming a year the observations no longer have. `vintage` below is the
+# fallback used only when the panel carries no year to read.
 SOURCES = [
     {"pillar": "Cost", "name": "ILOSTAT earnings by occupation",
-     "detail": "ISCO-08 2/3/4, USD, aged to a common year", "vintage": "2020–2025"},
+     "detail": "ISCO-08 2/3/4, USD, aged to a common year", "vintage": None},
     {"pillar": "Talent", "name": "ILOSTAT employment by occupation",
-     "detail": "same three ISCO groups", "vintage": "2025"},
+     "detail": "same three ISCO groups", "vintage": None},
     {"pillar": "Governance", "name": "World Bank Worldwide Governance Indicators",
-     "detail": "five dimensions with their 90% intervals", "vintage": "2024"},
+     "detail": "five dimensions with their 90% intervals", "vintage": None},
     {"pillar": "Capability", "name": "Adzuna job postings",
-     "detail": "GBS/GCC roles only", "vintage": "Aug 2026"},
+     "detail": "GBS/GCC roles only", "vintage": None},
     {"pillar": "Overlap", "name": "computed",
      "detail": "hours shared with headquarters", "vintage": "—"},
     {"pillar": "Durability", "name": "ILOSTAT, derived",
-     "detail": "wage drift, split from currency", "vintage": "2015–2025"},
+     "detail": "wage drift, split from currency", "vintage": None},
     {"pillar": "Employer depth", "name": "Adzuna job postings",
-     "detail": "distinct employers hiring", "vintage": "Aug 2026"},
+     "detail": "distinct employers hiring", "vintage": None},
+    # Not a pillar — a modifier on cost, and the one that decides which cities
+    # carry a city-level wage and which are marked national on Exhibit 3. It
+    # was named in the exhibit source line and nowhere a reader would look for
+    # a source.
+    {"pillar": "City cost", "name": "Eurostat regional accounts",
+     "detail": "NUTS-2 index against the country mean; European cities only",
+     "vintage": None},
 ]
+
+
+def _sources(panel: dict, snapshot: dict | None) -> list[dict]:
+    """SOURCES with each vintage filled from the data it describes.
+
+    A source with no recoverable year says so. Printing a remembered date
+    beside an unfetched sample is the failure this replaces.
+    """
+    years = provenance.vintages(panel)
+    unknown = "unavailable"
+    sample = snapshot["dateLabel"] if snapshot else unknown
+    derived = {
+        "Cost": years["Cost"],
+        "Talent": years["Talent"],
+        "Governance": years["Governance"],
+        "Capability": sample,
+        "Durability": years["Durability"],
+        "Employer depth": sample,
+        "City cost": years["Region"],
+    }
+    out = []
+    for s in SOURCES:
+        v = derived.get(s["pillar"], s["vintage"]) or s["vintage"] or unknown
+        out.append({**s, "vintage": v})
+    return out
 
 # Each line has to change what a reader would do with the tool. Anything that
 # only explains the tool to itself was cut.
@@ -198,7 +236,7 @@ LIMITS = [
     "Only Polish cities have city-level cost. The rest use their country's, so cities within them differ on capability alone — treat that order as undetermined.",
     "Capability comes from few postings, as low as five per city. The stability column already accounts for this; the ranking below the top few is not meaningful.",
     "The GBS/GCC classifier was audited five times over a hundred postings; two of the last twenty were clearly wrong. That error rate is modelled in the stability column, not just noted.",
-    "One snapshot. A city hiring quietly during the fetch is under-represented; absence is weak evidence, not a verdict.",
+
     # The first question any GBS room asks is where Manila is. Better that the
     # exhibit answers it than that the audience finds the hole.
     "A second job board would not close the coverage gap. Employer depth counts distinct employers within one feed, so another feed\u2019s count is not comparable, and splicing one in would move Manila into the ranking on evidence unlike the rest.",
@@ -280,6 +318,7 @@ def payload() -> dict:
     # threshold exists to reject.
     near = sorted(below, key=lambda c: (-c.employers, -c.postings))[:6]
     centres = with_centres(countries)
+    snapshot = provenance.postings_snapshot()
     data = {
         "pillars": list(PILLARS),
         "pillarLabels": PILLAR_LABELS,
@@ -331,7 +370,13 @@ def payload() -> dict:
         # the module that defines it so the page and `make correlation` cannot
         # report different counts from the same matrix.
         "strongAt": correlation.STRONG_AT,
-        "sources": SOURCES,
+        "sources": _sources(centres, snapshot),
+        # Read out of the fetch's own record, never typed: the date, what was
+        # scraped to get it, and whether there is more than one point in time.
+        "provenance": {
+            "postings": snapshot,
+            "contaminant": provenance.contaminant_sample(),
+        },
         "limits": LIMITS,
         "flags": FLAGS,
         "flagTitles": FLAG_TITLES,
@@ -355,7 +400,7 @@ def payload() -> dict:
         "loadingMax": C.LOADING_FACTOR_MAX,
         "attritionMax": C.ATTRITION_UPLIFT_MAX,
         "horizonMax": C.HORIZON_YEARS_MAX,
-        "asOf": ASOF,
+        "asOf": snapshot["dateLabel"] if snapshot else "sample not fetched",
         "evidenceFloor": C.EVIDENCE_FLOOR,
         "separableAt": C.SEPARABLE_AT,
         "auditCorrect": C.AUDIT_CORRECT,
@@ -1026,6 +1071,11 @@ select {
 .row.band-start { border-top: 1px solid var(--rule-strong); }
 .row.band-start:first-child { border-top: 0; }
 
+.prov {
+  margin: 12px 0 0; padding-top: 10px; border-top: 1px solid var(--rule);
+  font-size: 11px; line-height: 1.55; color: var(--ink-3);
+}
+.prov b { color: var(--ink-2); }
 .sources { margin: 0; display: grid; gap: 9px; }
 .sources div { display: grid; gap: 1px; }
 .sources dt {
@@ -1356,6 +1406,7 @@ footer p { max-width: 78ch; }
     <div class="card">
       <h2>Sources</h2>
       <dl class="sources" id="sources"></dl>
+      <p class="prov" id="provenance"></p>
     </div>
   </aside>
 
@@ -1787,7 +1838,12 @@ function render() {
       `<div class="who"><span class="nm">${flag(r.row.parent)}${r.row.name}</span>`
       + `<span class="sub">${sub}</span></div>` +
       `<div class="bar-cell">${bar}</div>` +
-      `<div class="evidence" title="postings behind the capability pillar">${evidence}</div>` +
+      `<div class="evidence" title="${n == null ? "No postings sample for this city."
+          : `${r.row.name}: ${n} posting${n === 1 ? "" : "s"} the work-family classifier `
+            + `could decide, out of ${r.row.postingsSeen} that qualified the city. The `
+            + `capability pillar rests on those ${n}` + (thin
+              ? `, below the floor of ${DATA.evidenceFloor} needed to call a place robust.`
+              : `.`)}">${evidence}</div>` +
       `<div class="stab"><span class="pct">${(f * 100).toFixed(0)}%</span>` +
       `<span class="tag ${v}">${v}</span></div>`;
     host.appendChild(el);
@@ -1878,8 +1934,21 @@ function renderCorrelation(items, scaled) {
       + `less of the decision space than their count suggests — a top-three place that `
       + `survives them has survived less than the number sounds like. The matrix is above.`
     : null;
-  $("#limits").innerHTML = (limit ? [limit, ...DATA.limits] : DATA.limits)
-    .map((x) => `<li>${x}</li>`).join("");
+  // Counted, not asserted: a second fetch has to change this sentence rather
+  // than leave it claiming a single point in time the data no longer is.
+  const snap = DATA.provenance.postings;
+  const sample = snap
+    ? (snap.isSnapshot
+        ? `<b>One snapshot, ${snap.dateLabel}.</b> A city hiring quietly during the fetch `
+          + `is under-represented; absence is weak evidence, not a verdict. Nothing here `
+          + `can show a trend, because there is only one point in time to compare.`
+        : `<b>${snap.count} snapshots</b>, the most recent ${snap.dateLabel}. A city hiring `
+          + `quietly during a fetch is under-represented; absence is weak evidence, not a `
+          + `verdict.`)
+    : `<b>No postings sample has been fetched</b>, so capability and employer depth are `
+      + `unavailable and no city can be ranked.`;
+  $("#limits").innerHTML = [limit, sample, ...DATA.limits]
+    .filter(Boolean).map((x) => `<li>${x}</li>`).join("");
 
   const national = nationalPillars(items);
   const names = national.map((p) => DATA.pillarLabels[p].toLowerCase());
@@ -2221,6 +2290,41 @@ function renderSettles(ranked, band, rows) {
   ].map((x) => `<li>${x}</li>`).join("");
 }
 
+/* What was scraped, when, and whether there is more than one point in time.
+   Every figure here is read out of the fetch's own record rather than written
+   down, so a refetch moves the page instead of leaving it confidently wrong. */
+function renderProvenance() {
+  const p = DATA.provenance.postings;
+  const c = DATA.provenance.contaminant;
+  const el = $("#provenance");
+  if (!p) {
+    el.innerHTML =
+      `<b>No postings sample has been fetched.</b> Capability and employer depth `
+      + `cannot be computed without one, so no city is ranked.`;
+    return;
+  }
+  const terms = p.terms.map((t) => `\u201c${t}\u201d`).join(", ");
+  const local = Object.entries(p.localTerms || {})
+    .map(([m, ts]) => `${DATA.marketNames[m] || m} (${ts.length})`).join(", ");
+  el.innerHTML =
+    `<b>${p.isSnapshot ? "One snapshot" : `${p.count} snapshots`}, ${p.dateLabel}.</b> `
+    + `${p.postingsFetched.toLocaleString("en-US")} postings from ${p.board} across `
+    + `${p.marketCount} markets, ${p.termCount} search terms paged to ${p.maxPages}: `
+    + `${terms}`
+    + (local ? `, plus local-language terms in ${local}` : ``)
+    + `. The terms are the sample: this is what those phrases returned, not GBS `
+    + `hiring in the abstract. `
+    + (p.isSnapshot
+        ? `A single point in time — a city hiring quietly during the fetch is `
+          + `under-represented, and nothing here can show a trend. `
+        : ``)
+    + (c
+        ? `Classification error is modelled against a broader finance sample of `
+          + `${c.postings.toLocaleString("en-US")} postings fetched ${c.dateLabel} `
+          + `(${c.repo}).`
+        : ``);
+}
+
 function renderSource(rows) {
   const resolved = rows.filter((r) => r.costResolved).length;
   const thin = rows.filter((r) => r.postings != null && r.postings < DATA.evidenceFloor).length;
@@ -2328,7 +2432,13 @@ function buildControls() {
       <dt>${x.pillar}</dt>
       <dd>${x.name}<br><span class="vint">${x.detail} · ${x.vintage}</span></dd>
     </div>`).join("");
-  $("#asof").textContent = `${DATA.pillars.length} pillars · ${DATA.asOf}`;
+  const snap = DATA.provenance.postings;
+  $("#asof").textContent =
+    `${DATA.pillars.length} pillars · `
+    + (snap
+        ? `${snap.isSnapshot ? "one snapshot" : `${snap.count} snapshots`}, ${snap.dateLabel}`
+        : `sample not fetched`);
+  renderProvenance();
   $("#floor-n").textContent = DATA.evidenceFloor;
   $("#sep-n").textContent = Math.round(DATA.separableAt * 100) + "%";
 

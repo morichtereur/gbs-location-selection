@@ -30,6 +30,9 @@ class Market:
     cost_year: int | None = None
     wage_components_usd: dict[str, float] = field(default_factory=dict)
     wage_cagr: float | None = None
+    # The years the drift was measured across, so its vintage can be reported
+    # from the measurement rather than from the cost observation.
+    drift_window: tuple[int, int] | None = None
     wage_cagr_lcu: float | None = None
     fx_drift: float | None = None
     depth: float | None = None
@@ -150,6 +153,29 @@ def _cagr(hist: dict[int, float], base_year: int) -> float | None:
     return (hist[end] / hist[start]) ** (1 / span) - 1
 
 
+def drift_window(hist: dict[int, float]) -> tuple[int, int] | None:
+    """The years `_cagr` actually measures a drift over.
+
+    The rate is taken across a window ending at the latest observation and
+    reaching up to ten years back, so it is measured over more history than the
+    cost observation year alone suggests. The page reports the vintage of every
+    other pillar from the data; reporting this one from the cost years would
+    label a decade of history as five, so the window is returned rather than
+    discarded.
+    """
+    years = sorted(hist)
+    if len(years) < 3:
+        return None
+    end = max(years)
+    candidates = [y for y in years if 3 <= end - y <= 10]
+    if not candidates:
+        return None
+    start = min(candidates)
+    if hist[start] <= 0 or end - start <= 0:
+        return None
+    return start, end
+
+
 def median_drift(panel: dict[str, Market]) -> float:
     """Median measured wage drift across markets that have enough history."""
     rates = sorted(m.wage_cagr for m in panel.values() if m.wage_cagr is not None)
@@ -193,6 +219,7 @@ def build() -> dict[str, Market]:
             )
             if iso2 in history:
                 m.wage_cagr = _cagr(history[iso2], w["year"])
+                m.drift_window = drift_window(history[iso2])
             if iso2 in history_lcu:
                 m.wage_cagr_lcu = _cagr(history_lcu[iso2], w["year"])
             if m.wage_cagr is not None and m.wage_cagr_lcu is not None:
