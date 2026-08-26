@@ -136,6 +136,15 @@ rest. The Muse API was tested and rejected for a different reason: its
 location filter is inert, and "Atlantis, Nowhere" returns the same 110 jobs
 as Manila.
 
+**The finding is stated before anything is asked of the reader.** The page opens
+with the top band named and called indistinguishable, at the weighting the study
+declares — and says whose weighting it is reporting, so it cannot read as the
+study's conclusion once a reader has moved a slider. One control stays in the
+open, the centre type, because it is the choice the whole argument turns on.
+Weights, headquarters and the cost inputs sit behind an *adjust assumptions*
+disclosure: an exhibit that has to be configured before it says anything is a
+tool, not an exhibit.
+
 **The boundary is stated on the exhibit, not in a footnote.** What public
 evidence settles here and what it cannot are set side by side beneath the
 ranking, both built from the run on screen so they move when the weighting

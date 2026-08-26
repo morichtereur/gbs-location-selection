@@ -750,7 +750,6 @@ h1 {
 .deck p:last-child { margin-bottom: 0; }
 
 .layout { display: grid; grid-template-columns: 310px minmax(0,1fr); gap: 32px; align-items: start; }
-@media (max-width: 940px) { .layout { grid-template-columns: minmax(0,1fr); } }
 
 .rail { position: sticky; top: 20px; display: flex; flex-direction: column; gap: 20px; }
 @media (max-width: 940px) { .rail { position: static; } }
@@ -761,6 +760,52 @@ h1 {
   color: var(--ink-3); margin: 0 0 12px; font-weight: 500;
 }
 .rail { gap: 22px; }
+
+/* Stacked, the rail sits between the finding and the exhibit. Centre type and
+   the disclosure are short and belong there; the sources card is neither, and
+   pushed Exhibit 1 two screens down a phone. `display: contents` dissolves the
+   rail so its children can be ordered against main directly, which moves
+   provenance below the exhibit without hiding it. */
+@media (max-width: 940px) {
+  .layout { display: flex; flex-direction: column; gap: 26px; }
+  .rail { display: contents; }
+  .rail > .card, .rail > .adjust { order: 1; }
+  main { order: 2; }
+  .rail > .sources-card { order: 3; }
+}
+
+/* One question is asked in the open — what kind of centre — and every other
+   input waits behind this. The page used to present five cards of controls
+   before it had said anything, which is the wrong order for an exhibit: a
+   reader should be given the finding and then offered the means to attack it. */
+.adjust { margin: 0; border-top: 1px solid var(--rule-strong); padding-top: 13px; }
+/* Two lines, not one row: at rail width a title, a state and a marker on one
+   baseline wrapped into each other. */
+.adjust > summary {
+  cursor: pointer; list-style: none; display: block; position: relative;
+  padding-right: 16px;
+  font-family: var(--mono); font-size: 10.5px; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--ink-3); font-weight: 500;
+}
+.adjust > summary::-webkit-details-marker { display: none; }
+.adjust > summary::after {
+  content: "+"; position: absolute; right: 0; top: -1px;
+  font-size: 14px; line-height: 1; color: var(--ink-3);
+}
+.adjust[open] > summary::after { content: "\2212"; }
+.adjust > summary:hover, .adjust[open] > summary { color: var(--ink-2); }
+.adjust > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.adjust-title { display: block; }
+/* What is behind the fold when it is shut, and what has been moved when it is
+   not at its starting position. A disclosure that hides a changed setting is
+   worse than one that hides a default. */
+.adjust-state {
+  display: block; margin-top: 5px; letter-spacing: .04em;
+  text-transform: none; font-size: 10.5px; line-height: 1.4;
+}
+.adjust-state b { color: var(--accent); font-weight: 500; }
+.adjust-body { display: flex; flex-direction: column; gap: 22px; margin-top: 18px; }
+.adjust-body > .card:first-child { border-top: 0; padding-top: 0; }
 
 .seg { display: flex; border: 1px solid var(--rule-strong); }
 .seg button {
@@ -1340,8 +1385,10 @@ footer p { max-width: 78ch; }
     <div class="deck">
       <p>Cities where GBS and GCC roles are genuinely advertised, scored on seven pillars of
          public data and re-ranked across 2,000 defensible weightings.</p>
-      <p>Set what you are buying. The exhibit shows what survives the change — and groups the
-         cities the evidence cannot separate rather than ranking them.</p>
+      <p>The finding is stated first, at the weighting the study declares. Change what you
+         are buying, or open <em>adjust assumptions</em>, and the exhibit re-ranks: what
+         survives is the answer, and cities the evidence cannot separate share a band
+         rather than a rank.</p>
     </div>
   </div>
 </header>
@@ -1355,6 +1402,13 @@ footer p { max-width: 78ch; }
       <div class="seg" id="archetype" role="group" aria-label="Centre type"></div>
       <p class="blurb" id="archetype-blurb"></p>
     </div>
+
+    <details class="adjust" id="adjust">
+      <summary>
+        <span class="adjust-title">Adjust assumptions</span>
+        <span class="adjust-state" id="adjust-state"></span>
+      </summary>
+      <div class="adjust-body">
 
     <div class="card">
       <h2>Weights</h2>
@@ -1403,7 +1457,10 @@ footer p { max-width: 78ch; }
       <p class="slider-note" id="assume-note"></p>
     </div>
 
-    <div class="card">
+      </div>
+    </details>
+
+    <div class="card sources-card">
       <h2>Sources</h2>
       <dl class="sources" id="sources"></dl>
       <p class="prov" id="provenance"></p>
@@ -1724,15 +1781,53 @@ function writeHeadline(ranked, stab, band) {
     const names = top.map((r) => r.row.name);
     const last = names.pop();
     $("#takeaway").innerHTML =
-      `<strong>${names.join(", ")} and ${last}</strong> finish level. The draws `
-      + `cannot separate them; treat the order within that group as undetermined.`;
+      `${weightingLabel()}, <strong>${names.join(", ")} and ${last}</strong> finish level `
+      + `at the top: the draws cannot separate them, so the order within that group is `
+      + `not a finding.`;
   } else {
     const pct = ((stab.get(lead.row.id) ?? 0) * 100).toFixed(0);
     const where = DATA.marketNames[lead.row.parent] || "";
     $("#takeaway").innerHTML =
-      `<strong>${lead.row.name}</strong> (${where}) leads outright, holding a top-three `
-      + `place in ${pct}% of 2,000 nearby weightings.`;
+      `${weightingLabel()}, <strong>${lead.row.name}</strong> (${where}) leads outright, `
+      + `holding a top-three place in ${pct}% of 2,000 nearby weightings.`;
   }
+}
+
+/* Which inputs the reader has moved off the study's declared starting point.
+   Two callers want different subsets: the headline cares only about what can
+   change the ranking (weights and the headquarters clock), while the
+   disclosure label reports everything it hides. */
+function moved() {
+  const declared = DATA.archetypes[state.archetype].weights;
+  return {
+    weights: DATA.pillars.some(
+      (p) => Math.abs(state.weights[p] - declared[p]) > 1e-9),
+    hq: state.hq !== DATA.hq,
+    cost: state.baseline !== DATA.baselineDefault
+      || state.fte !== DATA.fteDefault
+      || state.loading !== DATA.loadingDefault
+      || state.attrition !== DATA.attritionDefault
+      || state.horizon !== DATA.horizonDefault,
+  };
+}
+
+/* The finding at the top has to say whose weighting it is the finding for.
+   Unqualified, it reads as the study's conclusion even after a reader has
+   dialled cost to sixty per cent. */
+function weightingLabel() {
+  const m = moved();
+  if (m.weights || m.hq) return "At your weighting";
+  return `At the ${DATA.archetypes[state.archetype].short}\u2019s starting weights`;
+}
+
+function renderAdjustState() {
+  const m = moved();
+  const changed = [
+    m.weights && "weights", m.hq && "headquarters", m.cost && "cost inputs",
+  ].filter(Boolean);
+  $("#adjust-state").innerHTML = changed.length
+    ? `<b>${changed.join(", ")} changed</b>`
+    : `weights \u00b7 headquarters \u00b7 cost`;
 }
 
 /* ---- what your weighting believes ---- */
@@ -1874,6 +1969,7 @@ function render() {
   renderNotShown();
   renderSettles(ranked, band, rows);
   renderCorrelation(items, scaled);
+  renderAdjustState();
   renderSource(rows);
   renderFoot(rows);
 }
