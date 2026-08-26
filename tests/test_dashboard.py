@@ -12,7 +12,7 @@ import subprocess
 import pytest
 
 from src import config as C
-from src import population
+from src import correlation, population
 from src.dashboard import SCORING_JS, payload
 from src.panel import build, with_centres
 from src.score import normalise, rank, raw_pillars, score
@@ -64,6 +64,66 @@ def test_javascript_ranking_matches_python(archetype):
     panel = _city_panel()
     expected = rank(score(normalise(raw_pillars(panel, archetype)), weights))
     assert _run_js(data, archetype, weights) == expected
+
+
+def _run_js_correlation(data: dict, archetype: str) -> dict:
+    """Correlation, its summary and the national pillars, from the page's own JS."""
+    script = f"""
+const DATA = {json.dumps(data)};
+const state = {{ hq: DATA.hq }};
+{SCORING_JS}
+const items = pillarValues(DATA.views.city[{json.dumps(archetype)}]);
+const scaled = normalise(items);
+const r = correlationMatrix(scaled);
+console.log(JSON.stringify({{
+  r, summary: correlationSummary(r), national: nationalPillars(items),
+}}));
+"""
+    out = subprocess.run(
+        [node, "-e", script], capture_output=True, text=True, timeout=60
+    )
+    if out.returncode != 0:
+        raise AssertionError(out.stderr[:2000])
+    return json.loads(out.stdout.strip().splitlines()[-1])
+
+
+@needs_node
+@needs_postings
+@pytest.mark.parametrize("archetype", list(C.ARCHETYPES))
+def test_javascript_correlation_matches_python(archetype):
+    """The page states the correlation as a limit on its own headline claim.
+
+    That claim is only as good as the matrix behind it, and the matrix is
+    computed on screen so it can follow the headquarters selector. Two
+    implementations again, so the same guard applies.
+    """
+    data = payload()
+    panel = _city_panel()
+    got = _run_js_correlation(data, archetype)
+
+    expected = correlation.matrix(panel, archetype)
+    for i, row in enumerate(expected):
+        for j, want in enumerate(row):
+            have = got["r"][i][j]
+            if want is None:
+                assert have is None, (i, j)
+            else:
+                assert have == pytest.approx(want, abs=1e-9), (i, j)
+
+    want_summary = correlation.summary(expected)
+    assert got["summary"]["pairs"] == want_summary["pairs"]
+    assert got["summary"]["pillars"] == want_summary["pillars"]
+    assert got["summary"]["strong"] == want_summary["strong"]
+    assert got["summary"]["meanAbs"] == pytest.approx(want_summary["mean_abs"], abs=1e-9)
+    assert got["summary"]["nEff"] == pytest.approx(want_summary["n_eff"], abs=1e-9)
+    assert got["national"] == correlation.national_pillars(panel, archetype)
+
+
+@needs_node
+@needs_postings
+def test_the_page_and_the_module_agree_on_what_counts_as_strong():
+    """A threshold read from two places is a threshold that ends up different."""
+    assert payload()["strongAt"] == correlation.STRONG_AT
 
 
 @needs_node

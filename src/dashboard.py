@@ -15,6 +15,7 @@ from __future__ import annotations
 import json
 
 from src import config as C
+from src import correlation
 from src.panel import Market, build, with_centres
 from src.fonts import face_css
 from src.baselines import load as baseline_load
@@ -326,6 +327,10 @@ def payload() -> dict:
         "auditCorrect": C.AUDIT_CORRECT,
         "auditTotal": C.AUDIT_TOTAL,
         "modelClassificationError": C.MODEL_CLASSIFICATION_ERROR,
+        # What counts as a strongly correlated pair on the exhibit. Read from
+        # the module that defines it so the page and `make correlation` cannot
+        # report different counts from the same matrix.
+        "strongAt": correlation.STRONG_AT,
         "sources": SOURCES,
         "limits": LIMITS,
         "flags": FLAGS,
@@ -457,6 +462,85 @@ function scoreAll(scaled, weights) {
     return { row: it.row, score: sum, parts, scaled: it.s };
   }).sort((a, b) => b.score - a.score || a.row.name.localeCompare(b.row.name));
 }
+
+/* ---- pillar correlation: mirrors src/correlation.py exactly ----
+   Recomputed on screen rather than baked into the payload, because the overlap
+   pillar depends on the headquarters the reader picks: moving the clock changes
+   how independent the pillars are, and a figure that stayed still while the
+   matrix underneath it moved would be the sort of stale claim this study exists
+   to object to. Observation order does not affect a correlation, so the array
+   order here and the sorted keys in Python give the same numbers. */
+function pearson(xs, ys) {
+  const n = xs.length;
+  if (n < 2) return null;
+  let mx = 0, my = 0;
+  for (let i = 0; i < n; i++) { mx += xs[i]; my += ys[i]; }
+  mx /= n; my /= n;
+  let sxx = 0, syy = 0, sxy = 0;
+  for (let i = 0; i < n; i++) {
+    const dx = xs[i] - mx, dy = ys[i] - my;
+    sxx += dx * dx; syy += dy * dy; sxy += dx * dy;
+  }
+  // A pillar that does not vary decides nothing, and its correlation is 0/0.
+  // Null keeps that visible rather than imputing an "independent" zero.
+  if (sxx <= 0 || syy <= 0) return null;
+  return sxy / Math.sqrt(sxx * syy);
+}
+
+function correlationMatrix(scaled) {
+  const cols = {};
+  for (const p of DATA.pillars) cols[p] = scaled.map((it) => it.s[p]);
+  return DATA.pillars.map((a) => DATA.pillars.map((b) => pearson(cols[a], cols[b])));
+}
+
+function correlationSummary(r) {
+  const P = DATA.pillars;
+  const varying = P.map((_, i) => i).filter((i) => r[i][i] !== null);
+  const k = varying.length;
+  const pairs = [];
+  for (let a = 0; a < varying.length; a++) {
+    for (let b = a + 1; b < varying.length; b++) {
+      const i = varying[a], j = varying[b];
+      if (r[i][j] !== null) pairs.push({ r: r[i][j], a: P[i], b: P[j] });
+    }
+  }
+  if (!pairs.length) {
+    return { pillars: k, pairs: 0, meanAbs: null, maxAbs: null,
+             strong: 0, nEff: k, strongest: [] };
+  }
+  // n_eff = k^2 / ||R||_F^2 -- the participation ratio of the eigenvalues,
+  // reached without an eigensolver. See src/correlation.py.
+  let frob = 0;
+  for (const i of varying) {
+    for (const j of varying) if (r[i][j] !== null) frob += r[i][j] * r[i][j];
+  }
+  return {
+    pillars: k,
+    pairs: pairs.length,
+    meanAbs: pairs.reduce((a, x) => a + Math.abs(x.r), 0) / pairs.length,
+    maxAbs: Math.max(...pairs.map((x) => Math.abs(x.r))),
+    strong: pairs.filter((x) => Math.abs(x.r) >= DATA.strongAt).length,
+    nEff: frob > 0 ? (k * k) / frob : k,
+    strongest: pairs.slice().sort((x, y) => Math.abs(y.r) - Math.abs(x.r)).slice(0, 3),
+  };
+}
+
+/* Pillars that take one value per country: the reason the matrix looks the way
+   it does. A pillar in this list cannot separate two cities in the same
+   country whatever weight it is given. */
+function nationalPillars(items) {
+  const groups = new Map();
+  for (const it of items) {
+    const key = it.row.parent || it.row.id;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(it);
+  }
+  return DATA.pillars.filter((p) => [...groups.values()].every((g) => {
+    const vals = g.map((it) => it.v[p]);
+    const hi = Math.max(...vals), lo = Math.min(...vals);
+    return (hi - lo) <= 1e-9 * Math.max(1, Math.abs(hi));
+  }));
+}
 """
 
 TEMPLATE = r"""<!doctype html>
@@ -492,6 +576,10 @@ __FONTS__
   --warn: #b0374a;
   --shadow: 0 1px 2px rgba(18,26,23,.06);
   --flag-edge: rgba(18,26,23,.22);
+  /* Correlation matrix tint: hue carries the sign, alpha the magnitude.
+     Kept as raw channels so the cell can scale its own alpha inline. */
+  --corr-pos: 20 107 84;
+  --corr-neg: 176 55 74;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
@@ -508,6 +596,8 @@ __FONTS__
     --warn: #d97186;
     --shadow: none;
     --flag-edge: rgba(238,241,238,.30);
+    --corr-pos: 63 165 133;
+    --corr-neg: 217 113 134;
   }
 }
 :root[data-theme="dark"] {
@@ -517,6 +607,7 @@ __FONTS__
   --rule: #2e343a; --rule-strong: #454d54;
   --accent: #3fa585; --warn: #d97186; --shadow: none;
   --flag-edge: rgba(238,241,238,.30);
+  --corr-pos: 63 165 133; --corr-neg: 217 113 134;
 }
 * { box-sizing: border-box; }
 body {
@@ -880,6 +971,23 @@ select {
 }
 .method ol, .method ul { margin: 0; padding-left: 18px; display: grid; gap: 7px; }
 .method li { color: var(--ink-2); }
+.method-note { color: var(--ink-3); margin: 0 0 2px; max-width: 74ch; }
+
+/* Lower triangle only: the matrix is symmetric, and printing both halves
+   doubles the ink without adding a number. */
+.corr-wrap { overflow-x: auto; margin: 9px 0 8px; }
+table.corr { border-collapse: collapse; font-family: var(--mono); font-size: 11px; }
+table.corr th {
+  font-weight: 500; color: var(--ink-3); font-size: 10px; letter-spacing: .04em;
+  padding: 3px 7px; white-space: nowrap; text-align: right;
+}
+table.corr thead th { text-align: center; padding-bottom: 5px; }
+table.corr td {
+  min-width: 44px; height: 24px; text-align: center; color: var(--ink);
+  border: 1px solid var(--panel); font-variant-numeric: tabular-nums;
+}
+table.corr td.blank { border-color: transparent; }
+.corr-read { color: var(--ink); margin: 0 0 4px; max-width: 74ch; }
 
 .page-actions { display: flex; align-items: center; gap: 12px; margin-top: 18px; }
 .page-actions button {
@@ -1222,6 +1330,14 @@ footer p { max-width: 78ch; }
               <span id="sep-n"></span> of runs — so cities sharing a band have no established
               order between them.</li>
         </ul>
+        <h3>How independent the pillars are</h3>
+        <p class="method-note">Pearson correlation of the normalised pillar scores across
+          the <span id="corr-n"></span> cities on screen — the same values the weighting
+          takes its mean over, so a weight acts on exactly this. Positive means the two
+          pillars favour the same cities.</p>
+        <div class="corr-wrap"><table class="corr" id="corr"></table></div>
+        <p class="corr-read" id="corr-read"></p>
+        <p class="method-note" id="corr-why"></p>
         <h3>Limits</h3>
         <ul id="limits"></ul>
       </div>
@@ -1586,8 +1702,80 @@ function render() {
   renderBeyond();
   renderNotShown();
   renderSettles(ranked, band, rows);
+  renderCorrelation(items, scaled);
   renderSource(rows);
   renderFoot(rows);
+}
+
+/* ---- how independent the pillars are ----
+   The robustness column is worth what the independence of the pillars is
+   worth, so the page measures it rather than leaving the reader to assume it.
+   Columns are numbered rather than labelled: at this width a header row of
+   seven pillar names is unreadable, and the row labels already carry them. */
+function renderCorrelation(items, scaled) {
+  const P = DATA.pillars;
+  const r = correlationMatrix(scaled);
+  const s = correlationSummary(r);
+  const num = (v) => v.toFixed(2).replace("-", "−");
+
+  $("#corr-n").textContent = scaled.length;
+
+  const head = `<thead><tr><th></th>${
+    P.slice(0, -1).map((_, j) => `<th>${j + 1}</th>`).join("")
+  }</tr></thead>`;
+  const body = P.map((p, i) => {
+    const cells = P.slice(0, -1).map((_, j) => {
+      if (j >= i) return `<td class="blank"></td>`;
+      const v = r[i][j];
+      if (v === null) return `<td title="does not vary">—</td>`;
+      const hue = v >= 0 ? "--corr-pos" : "--corr-neg";
+      const tint = `background:rgb(var(${hue}) / ${(Math.abs(v) * 0.32).toFixed(3)})`;
+      return `<td style="${tint}" title="${DATA.pillarLabels[p]} and `
+        + `${DATA.pillarLabels[P[j]]}: ${num(v)}">${num(v)}</td>`;
+    }).join("");
+    return `<tr><th>${i + 1} ${DATA.pillarLabels[p]}</th>${cells}</tr>`;
+  }).join("");
+  $("#corr").innerHTML = head + `<tbody>${body}</tbody>`;
+
+  if (s.pairs) {
+    $("#corr-read").innerHTML =
+      `<strong>${s.strong} of the ${s.pairs} pairs</strong> correlate at `
+      + `${DATA.strongAt} or above, and the average pair sits at ${num(s.meanAbs)}. `
+      + `These ${s.pillars} pillars therefore carry about `
+      + `<strong>${s.nEff.toFixed(1)} independent directions</strong> between them, so the `
+      + `${DRAWS.toLocaleString("en-US")} reweightings explore correspondingly less of the `
+      + `decision space than their count suggests.`;
+  } else {
+    $("#corr-read").textContent =
+      "Too few varying pillars on screen to measure a correlation.";
+  }
+
+  // The limits list leads with this rather than mentioning it, because it
+  // qualifies the robustness column the whole exhibit is read through. Written
+  // on every render, not once at startup: the overlap pillar moves with the
+  // headquarters, and so does the figure.
+  const limit = s.pairs
+    ? `The ${P.length} pillars are <strong>not independent</strong>: the average pair `
+      + `correlates at ${num(s.meanAbs)} and they carry about ${s.nEff.toFixed(1)} `
+      + `independent directions between them, because ${nationalPillars(items).length} `
+      + `of the ${P.length} are national series shared by every city in a country. `
+      + `The ${DRAWS.toLocaleString("en-US")} reweightings therefore explore substantially `
+      + `less of the decision space than their count suggests — a top-three place that `
+      + `survives them has survived less than the number sounds like. The matrix is above.`
+    : null;
+  $("#limits").innerHTML = (limit ? [limit, ...DATA.limits] : DATA.limits)
+    .map((x) => `<li>${x}</li>`).join("");
+
+  const national = nationalPillars(items);
+  const names = national.map((p) => DATA.pillarLabels[p].toLowerCase());
+  const last = names.pop();
+  $("#corr-why").innerHTML = national.length
+    ? `Why: ${national.length} of the ${P.length} pillars — `
+      + `${names.length ? names.join(", ") + " and " : ""}${last} — are national series `
+      + `that take one value per country across these cities. They cannot separate two `
+      + `cities in the same country whatever weight they are given, and the countries `
+      + `themselves line up on close to one axis.`
+    : `Every pillar varies within at least one country here.`;
 }
 
 function renderTable(ranked, stab) {
@@ -1738,13 +1926,13 @@ function renderCase(ranked) {
   const tilt = tilted.length
     ? `The baseline is a national average, while `
       + tilted.slice(0, 2).map((r) =>
-          `${r.row.name} carries ${r.row.regionIndex.toFixed(2)}\u00d7`).join(" and ")
+          `${r.row.name} carries ${r.row.regionIndex.toFixed(2)}×`).join(" and ")
       + ` its own country mean, so a capital-city premium sits on one side of the `
       + `subtraction and not the other. `
     : ``;
 
   $("#case-caveat").innerHTML =
-    `Wage line only, at ${base.label}\u2019s blended rate for professional and clerical `
+    `Wage line only, at ${base.label}’s blended rate for professional and clerical `
     + `occupations. It excludes facilities, technology, management overhead, transition and `
     + `severance, so it is an upper bound on the wage component and not a savings case. `
     + tilt
@@ -1926,13 +2114,14 @@ function buildControls() {
     render();
   });
 
+
+
   writeArchetypeCopy();
   $("#sources").innerHTML = DATA.sources.map((x) => `
     <div>
       <dt>${x.pillar}</dt>
       <dd>${x.name}<br><span class="vint">${x.detail} · ${x.vintage}</span></dd>
     </div>`).join("");
-  $("#limits").innerHTML = DATA.limits.map((x) => `<li>${x}</li>`).join("");
   $("#asof").textContent = `${DATA.pillars.length} pillars · ${DATA.asOf}`;
   $("#floor-n").textContent = DATA.evidenceFloor;
   $("#sep-n").textContent = Math.round(DATA.separableAt * 100) + "%";

@@ -160,9 +160,19 @@ Every declared judgement — weights, archetypes, thresholds, the staffing blend
   OpenFlights covers 9 of the 11 cities — but its routes file has not been
   updated since 2017, which is staler than anything else in the panel. Left out
   rather than caveated harder than the six-year-old wage figures.
+- **The seven pillars are not independent, and that weakens the reweighting claim.** The
+  average pair of pillars correlates at 0.58, nine of the twenty-one pairs sit at 0.7 or
+  above, and the panel carries about **two independent directions, not seven**
+  (`make correlation`). Five of the seven pillars — talent, governance, overlap,
+  durability and employer depth — are national series that take one value per country
+  across these cities, so they cannot separate two cities in the same country however
+  they are weighted, and the four countries then line up on close to a single axis:
+  the cheaper markets sit further from a European working day, score lower on
+  governance, and have had flatter dollar wage drift. The 2,000 reweightings therefore
+  explore substantially less of the decision space than the count suggests. This is
+  measured and reported on the exhibit rather than caveated; it is also the mechanism
+  behind finding 1 above.
 - **One snapshot.** `make trend` compares snapshots and says so until a second exists.
-
----
 
 ## Run it
 
@@ -176,6 +186,6 @@ make test
 
 `make refresh` does the whole cycle. Monthly is the right cadence — the postings feed turns over faster than that, the statistical series update annually.
 
-Also available: `make validate` (is the measured subset representative?), `make leverage` (which pillars decide the answer?), `make centres` (what qualifies as a city, and what the thresholds exclude), `make shot` (render the tool to PNG).
+Also available: `make validate` (is the measured subset representative?), `make leverage` (which pillars decide the answer?), `make correlation` (how independent are the pillars, and what does that do to the reweighting claim?), `make centres` (what qualifies as a city, and what the thresholds exclude), `make shot` (render the tool to PNG).
 
 Full numbers in [RESULTS.md](RESULTS.md). Classifier audits in [eval/precision_audit.md](eval/precision_audit.md).
