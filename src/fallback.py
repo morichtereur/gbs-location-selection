@@ -510,6 +510,16 @@ def slots(data: dict) -> dict[str, str]:
         "scenario-list": '<option value="">— saved on this device —</option>',
         "scenario-note": "Stored in this browser only. “Copy link” under the "
                          "exhibits hands this view to someone else.",
+        # Client figures are runtime state; the static document ships the entry
+        # points with the city list filled and the tier explained.
+        "ovr-city": "".join(
+            f'<option value="{esc(r["id"])}">{esc(r["name"])}</option>'
+            for r in sorted(s.rows, key=lambda r: r["name"])
+        ),
+        "ovr-state": "none yet",
+        "ovr-note": "At least one figure and a source. A quoted wage enters the "
+                    "ranking as given — a quote is current and role-specific, so "
+                    "it is not aged and not resampled.",
         "assume-note": "Employer charges and backfill are <b>assumptions you set</b>, "
                        "not measured here. Years forward carries each market at its own "
                        "measured wage drift.",
@@ -813,8 +823,8 @@ def _next(s: Scenario) -> tuple[str, str]:
         f"or whether a centre could hire at programme rate. A provider RFI and days on "
         f"the ground settle what postings cannot.",
         f"<b>Attrition and ramp data from the operators already there.</b> {attrition}, "
-        f"which is the one Exhibit 3 input that can reorder cities — and today it is "
-        f"a slider.",
+        f"which is the one Exhibit 3 input that can reorder cities — and until one is "
+        f"entered under “Your figures”, it is a slider.",
     ]
     note = (
         "Checks, not refinements: each replaces an input this analysis cannot source "

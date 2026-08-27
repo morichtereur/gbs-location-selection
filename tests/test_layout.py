@@ -28,7 +28,12 @@ def html() -> str:
 
 
 def _disclosure(html: str) -> str:
-    start = html.index('<details class="adjust"')
+    start = html.index('<details class="adjust" id="adjust">')
+    return html[start:html.index("</details>", start)]
+
+
+def _own_figures(html: str) -> str:
+    start = html.index('<details class="adjust" id="own-figures">')
     return html[start:html.index("</details>", start)]
 
 
@@ -58,11 +63,22 @@ def test_every_other_input_is_behind_the_disclosure(html):
         assert control in inside, control
 
 
-def test_the_disclosure_starts_closed(html):
+def test_the_disclosures_start_closed(html):
     """Open by default would put the wall of controls straight back."""
-    tag = html[html.index('<details class="adjust"'):]
-    tag = tag[:tag.index(">") + 1]
-    assert " open" not in tag, tag
+    for anchor in ('<details class="adjust" id="adjust">',
+                   '<details class="adjust" id="own-figures">'):
+        assert anchor in html, anchor
+        assert " open" not in anchor
+
+
+def test_client_figures_have_their_own_disclosure(html):
+    """Evidence entry is not an assumption: it gets its own fold, with the
+    entry points inside it and the tier named in its summary."""
+    inside = _own_figures(html)
+    for control in ('id="ovr-city"', 'id="ovr-wage"', 'id="ovr-source"',
+                    'id="ovr-date"', 'id="ovr-add"', 'id="ovr-list"'):
+        assert control in inside, control
+    assert 'id="ovr-city"' not in _disclosure(html)
 
 
 def test_the_disclosure_reports_what_it_is_hiding(html):

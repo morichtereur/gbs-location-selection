@@ -136,12 +136,25 @@ rest. The Muse API was tested and rejected for a different reason: its
 location filter is inert, and "Atlantis, Nowhere" returns the same 110 jobs
 as Manila.
 
+**A figure you can stand behind replaces the public one.** Phase-2 evidence —
+a recruiter's wage quote, a payroll provider's charge schedule, attrition from
+an operator — can be entered per city under *Your figures*, with a mandatory
+source and date. The quoted wage enters the ranking (as given: a quote is
+current and role-specific, so it is neither aged nor resampled); loading and
+attrition replace the uniform assumptions in Exhibit 3 for that city only.
+Every surface marks the tier — the row says *client wage*, Exhibit 3 says
+*client figure*, and the sources print under the exhibit, because a source
+that only survives as a tooltip would quietly downgrade the one thing that
+separates this tier from an assumption. Figures ride in the link and in saved
+scenarios, so a shared view carries its evidence with it, and the closing
+block stops calling the attrition input a slider once one is entered.
+
 **A view can be named, kept, and handed over.** The URL always carries the
 complete state — weights, centre type, headquarters and every cost input — so a
 link reproduces exactly the view it was copied from, on any machine, and an
 untouched page keeps a clean address. Scenarios can be saved under a name in
 the reader's own browser; the active name rides in the page header and onto
-the one-pager, and a view that has drifted from its saved name says
+the printed brief, and a view that has drifted from its saved name says
 "(edited)" rather than still claiming to be the stand it no longer shows. A
 shared link is treated as untrusted input: every field is validated on the way
 in, and an invalid piece costs that field its default and nothing else

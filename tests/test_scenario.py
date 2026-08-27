@@ -144,3 +144,95 @@ def test_the_page_ships_the_scenario_controls(data):
     # The paste-into-an-open-page path reads the event's own URL: a render
     # between the change and the handler replaceStates the old fragment back.
     assert "e.newURL" in html
+
+
+# ---- client figures in the fragment ---------------------------------------
+
+def city_id(data: dict) -> str:
+    return data["views"]["city"][next(iter(data["archetypes"]))][0]["id"]
+
+
+def test_overrides_survive_the_round_trip(data):
+    """Two cities, three fields, a unicode source — everything comes back."""
+    got = run_js(data, """
+const rows = DATA.views.city[Object.keys(DATA.archetypes)[0]];
+const s = defaultScenarioState();
+s.overrides = {
+  [rows[0].id]: {
+    w: {v: 4200, source: "Recruiter – Hays Kraków", date: "2026-08-27"},
+    t: {v: 22, source: "Provider RFI", date: "2026-08-26"},
+  },
+  [rows[1].id]: {l: {v: 34, source: "Payroll schedule", date: "2026-08-20"}},
+};
+console.log(JSON.stringify(decodeScenario(encodeScenario(s)).overrides));
+""")
+    rows = data["views"]["city"][next(iter(data["archetypes"]))]
+    a, b = rows[0]["id"], rows[1]["id"]
+    assert got[a]["w"] == {"v": 4200, "source": "Recruiter – Hays Kraków", "date": "2026-08-27"}
+    assert got[a]["t"]["v"] == 22
+    assert got[b]["l"] == {"v": 34, "source": "Payroll schedule", "date": "2026-08-20"}
+
+
+def test_a_figure_without_a_source_is_dropped(data):
+    """The source is the tier: without one it is an assumption, not a figure."""
+    cid = city_id(data)
+    frag = f"v=1&x={cid}~w~4200~2026-08-27~%20%20"
+    assert "overrides" not in decode(data, frag)
+
+
+def test_each_invalid_override_is_dropped_alone(data):
+    cid = city_id(data)
+    frag = ("v=1"
+            f"&x=nowhere:Utopia~w~4200~2026-08-27~src"      # unknown city
+            f"&x={cid}~z~4200~2026-08-27~src"                # unknown field
+            f"&x={cid}~w~0~2026-08-27~src"                   # wage floor
+            f"&x={cid}~w~abc~2026-08-27~src"                 # not a number
+            f"&x={cid}~w~4200~yesterday~src"                 # not a date
+            f"&x={cid}~t~22~2026-08-27~ok")                  # the one valid entry
+    got = decode(data, frag)
+    assert got["overrides"] == {cid: {"t": {"v": 22, "source": "ok", "date": "2026-08-27"}}}
+
+
+def test_override_ceilings_clamp_and_tildes_cannot_break_the_format(data):
+    cid = city_id(data)
+    got = decode(data, f"v=1&x={cid}~w~999999~2026-08-27~src&x={cid}~l~400~2026-08-27~src")
+    assert got["overrides"][cid]["w"]["v"] == 99999
+    assert got["overrides"][cid]["l"]["v"] == round(C.LOADING_FACTOR_MAX * 100)
+    # A tilde in the source would shift every later field; encoding strips it.
+    enc = run_js(data, f"""
+const s = defaultScenarioState();
+s.overrides = {{{json.dumps(city_id(data))}: {{w: {{v: 4200, source: "a~b~c", date: "2026-08-27"}}}}}};
+console.log(JSON.stringify(decodeScenario(encodeScenario(s)).overrides));
+""")
+    assert enc[cid]["w"]["source"] == "a b c"
+
+
+def test_a_view_with_figures_is_never_the_default_view(data):
+    got = run_js(data, f"""
+const s = defaultScenarioState();
+s.overrides = {{{json.dumps(city_id(data))}: {{w: {{v: 4200, source: "x", date: "2026-08-27"}}}}}};
+console.log(JSON.stringify(isDefaultScenario(s)));
+""")
+    assert got is False
+
+
+def test_the_quoted_wage_reaches_the_ranking(data):
+    """pillarValues reads the override, so scoring, bands and the MC all see it."""
+    from src.dashboard import SCORING_JS
+
+    cid = city_id(data)
+    script = f"""
+const DATA = {json.dumps(data)};
+const state = {{hq: DATA.hq, overrides: {{{json.dumps(cid)}: {{w: {{v: 123, source: "s", date: "2026-08-27"}}}}}}}};
+{SCORING_JS}
+const rows = DATA.views.city[Object.keys(DATA.archetypes)[0]];
+const items = pillarValues(rows);
+const hit = items.find((it) => it.row.id === {json.dumps(cid)});
+const other = items.find((it) => it.row.id !== {json.dumps(cid)});
+console.log(JSON.stringify({{cost: hit.v.cost, otherUntouched: other.v.cost === other.row.cost}}));
+"""
+    out = subprocess.run([node, "-e", script], capture_output=True, text=True, timeout=60)
+    assert out.returncode == 0, out.stderr[:1500]
+    got = json.loads(out.stdout.strip().splitlines()[-1])
+    assert got["cost"] == 123
+    assert got["otherUntouched"] is True

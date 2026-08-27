@@ -544,6 +544,11 @@ function pillarValues(rows) {
     const v = {};
     for (const p of DATA.pillars) v[p] = r[p];
     v.timezone = tz === null ? r.timezone : tz;
+    // A quoted wage replaces the public figure everywhere the public figure
+    // would be read — the ranking included, which shifts the normalisation
+    // for every city, as new evidence should.
+    const ovr = (typeof state !== "undefined" && state.overrides) || {};
+    if (ovr[r.id] && ovr[r.id].w) v.cost = ovr[r.id].w.v;
     return { row: r, v };
   });
 }
@@ -718,6 +723,7 @@ function defaultScenarioState() {
     attrition: DATA.attritionDefault,
     horizon: DATA.horizonDefault,
     scenario: null,
+    overrides: {},
   };
 }
 
@@ -733,6 +739,7 @@ function encodeScenario(s, {includeName = true} = {}) {
   p.set("t", String(Math.round(s.attrition * 100)));
   p.set("y", String(s.horizon));
   if (includeName && s.scenario) p.set("n", s.scenario);
+  encodeOverrides(p, s.overrides);
   return p.toString();
 }
 
@@ -790,7 +797,50 @@ function decodeScenario(str) {
 
   const n = (p.get("n") || "").trim().slice(0, 60);
   if (n) out.name = n;
+
+  /* Client-supplied figures. Each entry is id~field~value~date~source, and the
+     source is REQUIRED: a figure nobody will stand behind is an assumption
+     wearing a number, and this tier exists to be the opposite of that. An
+     entry that fails any check is dropped alone. */
+  const ids = new Set(
+    DATA.views.city[Object.keys(DATA.archetypes)[0]].map((r) => r.id));
+  const overrides = {};
+  let kept = 0;
+  for (const raw of p.getAll("x")) {
+    if (kept >= 50) break;
+    const parts = raw.split("~");
+    if (parts.length !== 5) continue;
+    const [id, field, valueStr, date, sourceRaw] = parts;
+    if (!ids.has(id)) continue;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) continue;
+    const source = sourceRaw.trim().slice(0, 80);
+    if (!source) continue;
+    const value = parseInt(valueStr, 10);
+    let v;
+    if (field === "w") {
+      if (!Number.isInteger(value) || value < 1) continue;
+      v = Math.min(value, 99999);
+    } else if (field === "l" || field === "t") {
+      if (!Number.isInteger(value) || value < 0) continue;
+      const cap = Math.round((field === "l" ? DATA.loadingMax : DATA.attritionMax) * 100);
+      v = Math.min(value, cap);
+    } else continue;
+    (overrides[id] = overrides[id] || {})[field] = {v, source, date};
+    kept++;
+  }
+  if (Object.keys(overrides).length) out.overrides = overrides;
   return out;
+}
+
+function encodeOverrides(p, overrides) {
+  for (const id of Object.keys(overrides || {}).sort()) {
+    for (const field of ["w", "l", "t"]) {
+      const o = overrides[id][field];
+      if (!o) continue;
+      const source = String(o.source).replace(/~/g, " ").trim().slice(0, 80);
+      p.append("x", `${id}~${field}~${o.v}~${o.date}~${source}`);
+    }
+  }
 }
 """
 
@@ -1022,6 +1072,29 @@ select {
 /* The scenario's name rides in the eyebrow — and therefore onto the one-pager,
    which is where "which stand was this" actually gets asked. */
 .scn-tag { color: var(--ink-2); }
+
+/* Client figures: the middle tier between a measurement and an assumption,
+   marked in the accent so the exhibit shows where private evidence entered. */
+.ovr-actions { grid-template-columns: auto; justify-content: start; }
+#ovr-source, #ovr-date {
+  width: 100%; font: inherit; font-size: 12.5px; padding: 5px 7px; color: var(--ink);
+  background: var(--panel-2); border: 1px solid var(--rule-strong); border-radius: 4px;
+}
+.ovr-list { margin: 10px 0 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.ovr-list li {
+  font-size: 11.5px; line-height: 1.4; color: var(--ink-2);
+  display: flex; align-items: baseline; gap: 7px;
+}
+.ovr-list .src { color: var(--ink-3); }
+.ovr-list button {
+  font: inherit; font-size: 10.5px; padding: 1px 6px; cursor: pointer; margin-left: auto;
+  background: transparent; color: var(--ink-3); border: 1px solid var(--rule-strong);
+}
+.ovr-list button:hover { border-color: var(--warn); color: var(--warn); }
+.natl.ovr, .ovr-mark { color: var(--accent); border: 0; font-style: normal; }
+.ovr-sources { columns: 1; max-width: 78ch; }
+.ovr-sources b { color: var(--accent); }
+.ovr-sources:empty { display: none; margin: 0; padding: 0; }
 #reset-weights {
   font: inherit; font-size: 12px; padding: 4px 10px; cursor: pointer;
   background: var(--panel-2); color: var(--ink); border: 1px solid var(--rule-strong);
@@ -1603,6 +1676,47 @@ footer p { max-width: 78ch; }
       <p class="slider-note" id="scenario-note"></p>
     </div>
 
+    <details class="adjust" id="own-figures">
+      <summary>
+        <span class="adjust-title">Your figures</span>
+        <span class="adjust-state" id="ovr-state"></span>
+      </summary>
+      <div class="adjust-body">
+        <div class="card">
+          <p class="panel-note">A figure you can stand behind replaces the public one and is
+            marked as yours — on the exhibit, the one-pager and in the link. The wage enters
+            the ranking; loading and attrition enter Exhibit 3 for that city.</p>
+          <label class="fld" for="ovr-city">City</label>
+          <select id="ovr-city" aria-label="City the figure is for"></select>
+          <div class="assume">
+            <div>
+              <label class="fld" for="ovr-wage">Wage USD/mo</label>
+              <input id="ovr-wage" class="num" type="number" min="1" max="99999"
+                     aria-label="Quoted monthly wage in USD">
+            </div>
+            <div>
+              <label class="fld" for="ovr-loading">Loading %</label>
+              <input id="ovr-loading" class="num" type="number" min="0" max="100"
+                     aria-label="Employer loading for this city, percent">
+            </div>
+            <div>
+              <label class="fld" for="ovr-attrition">Attrition %</label>
+              <input id="ovr-attrition" class="num" type="number" min="0" max="100"
+                     aria-label="Attrition backfill for this city, percent">
+            </div>
+          </div>
+          <label class="fld" for="ovr-source">Source — required</label>
+          <input id="ovr-source" type="text" maxlength="80"
+                 placeholder="e.g. recruiter quote, provider RFI" aria-label="Source of the figure">
+          <label class="fld" for="ovr-date">As of</label>
+          <input id="ovr-date" type="date" aria-label="Date of the figure">
+          <div class="scn-row ovr-actions"><button type="button" id="ovr-add">Add figure</button></div>
+          <ul class="ovr-list" id="ovr-list"></ul>
+          <p class="slider-note" id="ovr-note"></p>
+        </div>
+      </div>
+    </details>
+
     <details class="adjust" id="adjust">
       <summary>
         <span class="adjust-title">Adjust assumptions</span>
@@ -1695,6 +1809,7 @@ footer p { max-width: 78ch; }
         <span class="r">base</span><span class="r">fully loaded</span>
       </div>
       <div id="case"></div>
+      <p class="case-caveat ovr-sources" id="override-note"></p>
       <p class="case-caveat" id="case-caveat"></p>
     </div>
 
@@ -1729,8 +1844,8 @@ footer p { max-width: 78ch; }
     </div>
 
     <div class="page-actions">
-      <button type="button" id="one-pager">Print one-pager</button>
-      <span class="hint">Finding, exhibit and sources on one page.</span>
+      <button type="button" id="one-pager">Print the brief</button>
+      <span class="hint">Finding, both exhibits and every source — two pages.</span>
       <button type="button" id="copy-link">Copy link to this view</button>
       <span class="copy-status" id="link-status" role="status"></span>
     </div>
@@ -1794,6 +1909,10 @@ const state = {
   loading: DATA.loadingDefault,
   attrition: DATA.attritionDefault,
   horizon: DATA.horizonDefault,
+  // Client-supplied figures, keyed by city id then field (w/l/t). Each carries
+  // its value, its source and its date — the middle tier between a public
+  // measurement and an assumption.
+  overrides: {},
 };
 
 const isDark = () => {
@@ -2100,9 +2219,12 @@ function render() {
     // The country first: a reader should not have to know where Poznań is to
     // read the ranking.
     const where = DATA.marketNames[r.row.parent] || "";
-    const costNote = r.row.costResolved
-      ? `${(r.row.regionIndex).toFixed(2)}× national cost`
-      : "national cost";
+    const ovrW = (state.overrides[r.row.id] || {}).w;
+    const costNote = ovrW
+      ? `<span class="ovr-mark" title="${escHtml(ovrW.source)}, ${ovrW.date}">client wage</span>`
+      : r.row.costResolved
+        ? `${(r.row.regionIndex).toFixed(2)}× national cost`
+        : "national cost";
     // Languages and local purchasing power are facts a reader asks for and
     // neither is scored: more languages helps only if you need them, and PPP
     // does not reorder anything because the cheapest market is cheapest on
@@ -2181,6 +2303,7 @@ function render() {
   renderNext(ranked, band);
   renderCorrelation(items, scaled);
   renderAdjustState();
+  renderOverrideNote();
   renderSource(rows);
   renderFoot(rows);
   syncUrl();
@@ -2390,9 +2513,19 @@ function renderCase(ranked) {
       // measured rate is offered to the projection; the rest report as
       // unavailable, which is what they are.
       const drift = r.row.driftMeasured ? r.row.drift : null;
-      const g = loadedGap(base.monthly, base.drift, r.row.cost, drift, a, fte);
+      // Client figures replace their public counterparts for this city only:
+      // the quoted wage stands in for ILOSTAT, and a quoted loading or
+      // attrition replaces the uniform assumption on the destination side.
+      const ovr = state.overrides[r.row.id] || {};
+      const wage = ovr.w ? ovr.w.v : r.row.cost;
+      const ca = {
+        loading: ovr.l ? ovr.l.v / 100 : a.loading,
+        attrition: ovr.t ? ovr.t.v / 100 : a.attrition,
+        horizon: a.horizon,
+      };
+      const g = loadedGap(base.monthly, base.drift, wage, drift, ca, fte);
       return {
-        name: r.row.name, market: r.row.parent, row: r.row,
+        name: r.row.name, market: r.row.parent, row: r.row, ovr,
         base: g.baseTotal, basePerRole: g.basePerRole,
         loaded: g.loadedTotal, loadedPerRole: g.loadedPerRole,
         unprojectable: g.unprojectable,
@@ -2429,11 +2562,14 @@ function renderCase(ranked) {
     const bars = (i.loaded == null ? `` : bar(i.loaded, "loaded")) + bar(i.base, "base");
     // A city whose cost is its country's carries no city premium, and saying so
     // per row is the difference between a missing figure and a silent one.
-    const national = i.row.costResolved
-      ? ``
-      : `<span class="natl" title="No city-level wage for ${i.name}: this is `
-        + `${DATA.marketNames[i.market] || "its country"}'s national figure, so the gap `
-        + `carries no city premium either way.">national</span>`;
+    const ovrFields = Object.keys(i.ovr || {});
+    const national = ovrFields.length
+      ? `<span class="natl ovr" title="${escHtml(overrideTitle(i.row.id))}">client figure</span>`
+      : i.row.costResolved
+        ? ``
+        : `<span class="natl" title="No city-level wage for ${i.name}: this is `
+          + `${DATA.marketNames[i.market] || "its country"}'s national figure, so the gap `
+          + `carries no city premium either way.">national</span>`;
     const loadedCell = i.loaded == null
       ? `<span class="na" title="${DATA.marketNames[i.market] || "This market"} has too `
         + `short a wage series to measure a drift, so it cannot be projected forward. `
@@ -2668,6 +2804,10 @@ function renderNext(ranked, band) {
     : `No operator is named in this band\u2019s postings, so provider benchmarks would `
       + `have to replace the ${pct(state.attrition)} backfill assumption`;
 
+  const ovrTail = overrideCount()
+    ? `today ${overrideCount()} client figure${overrideCount() === 1 ? " has" : "s have"} `
+      + `been entered under \u201cYour figures\u201d`
+    : `until one is entered under \u201cYour figures\u201d, it is a slider`;
   $("#next").innerHTML = [
     `<b>Live wage and employer-charge quotes for ${bandLabel}.</b> ${wage} `
       + `A recruiter\u2019s per-role quote and a payroll provider\u2019s charge schedule `
@@ -2678,8 +2818,7 @@ function renderNext(ranked, band) {
       + `a centre could hire at programme rate. A provider RFI and days on the ground `
       + `settle what postings cannot.`,
     `<b>Attrition and ramp data from the operators already there.</b> ${attrition}, `
-      + `which is the one Exhibit 3 input that can reorder cities \u2014 and today it is `
-      + `a slider.`,
+      + `which is the one Exhibit 3 input that can reorder cities \u2014 and ${ovrTail}.`,
   ].map((x) => `<li>${x}</li>`).join("");
 
   $("#next-note").innerHTML =
@@ -2696,7 +2835,11 @@ function renderSource(rows) {
     `Indicators; Eurostat regional accounts; ${rows.length} cities from a GBS/GCC job-posting ` +
     `sample, ${DATA.asOf}. ` +
     `Note: ${resolved} of ${rows.length} cities carry city-level cost, the remainder their ` +
-    `country's; ${thin} rest on fewer than ${DATA.evidenceFloor} postings and cannot be called robust.`;
+    `country's; ${thin} rest on fewer than ${DATA.evidenceFloor} postings and cannot be called robust.` +
+    (overrideCount()
+      ? ` ${overrideCount()} figure${overrideCount() === 1 ? " is" : "s are"} client-supplied — `
+        + `sources under Exhibit 3.`
+      : ``);
 }
 
 function renderFoot(rows) {
@@ -2886,8 +3029,10 @@ function applyScenario(dec, name) {
   state.loading = dec.loading ?? base.loading;
   state.attrition = dec.attrition ?? base.attrition;
   state.horizon = dec.horizon ?? base.horizon;
+  state.overrides = dec.overrides ?? {};
   state.scenario = name ?? dec.name ?? null;
   reflectControls();
+  refreshOverrideList();
   render();
 }
 
@@ -2941,6 +3086,123 @@ function buildScenarioControls() {
     if (state.scenario === name) state.scenario = null;
     $("#scenario-name").value = "";
     refreshScenarioList();
+    render();
+  });
+}
+
+/* ---- client figures: the middle tier ----
+   A reader with a real quote should not have to argue with a slider. Each
+   figure carries a mandatory source and date, is marked on the exhibit and the
+   one-pager, and rides in the link and in saved scenarios — so a shared view
+   carries its evidence with it. */
+const OVR_FIELDS = {
+  w: {label: "wage", fmt: (v) => `$${v.toLocaleString("en-US")}/mo`},
+  l: {label: "loading", fmt: (v) => `${v}%`},
+  t: {label: "attrition", fmt: (v) => `${v}%`},
+};
+
+function overrideCount() {
+  return Object.values(state.overrides)
+    .reduce((n, m) => n + Object.keys(m).length, 0);
+}
+
+function cityName(id) {
+  const r = DATA.views.city[state.archetype].find((x) => x.id === id);
+  return r ? r.name : id;
+}
+
+function overrideTitle(id) {
+  const m = state.overrides[id] || {};
+  return Object.keys(OVR_FIELDS).filter((f) => m[f]).map((f) =>
+    `${OVR_FIELDS[f].label} ${OVR_FIELDS[f].fmt(m[f].v)} — ${m[f].source}, ${m[f].date}`
+  ).join("; ");
+}
+
+/* The sources print. Tooltips do not survive paper, and a client figure whose
+   source is only a hover away from missing would be a quiet downgrade of the
+   one thing that makes this tier different from an assumption. */
+function renderOverrideNote() {
+  const lines = [];
+  for (const id of Object.keys(state.overrides).sort()) {
+    const m = state.overrides[id];
+    for (const f of Object.keys(OVR_FIELDS)) {
+      if (!m[f]) continue;
+      lines.push(`${escHtml(cityName(id))} ${OVR_FIELDS[f].label} `
+        + `${OVR_FIELDS[f].fmt(m[f].v)} (${escHtml(m[f].source)}, ${m[f].date})`);
+    }
+  }
+  $("#override-note").innerHTML = lines.length
+    ? `<b>Client figures:</b> ${lines.join("; ")}. Each replaces its public `
+      + `counterpart for that city only; everything unmarked is public data or `
+      + `a stated assumption.`
+    : "";
+  $("#ovr-state").textContent = overrideCount()
+    ? `${overrideCount()} figure${overrideCount() === 1 ? "" : "s"}`
+    : "none yet";
+}
+
+function refreshOverrideList() {
+  const host = $("#ovr-list");
+  const rows = [];
+  for (const id of Object.keys(state.overrides).sort()) {
+    const m = state.overrides[id];
+    for (const f of Object.keys(OVR_FIELDS)) {
+      if (!m[f]) continue;
+      rows.push(`<li><b>${escHtml(cityName(id))}</b> ${OVR_FIELDS[f].label} `
+        + `${OVR_FIELDS[f].fmt(m[f].v)}<span class="src"> — ${escHtml(m[f].source)}, `
+        + `${m[f].date}</span><button type="button" data-id="${escHtml(id)}" `
+        + `data-f="${f}">remove</button></li>`);
+    }
+  }
+  host.innerHTML = rows.join("");
+}
+
+function buildOverrideControls() {
+  const sel = $("#ovr-city");
+  sel.innerHTML = DATA.views.city[state.archetype]
+    .slice()
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .map((r) => `<option value="${escHtml(r.id)}">${escHtml(r.name)}</option>`)
+    .join("");
+  $("#ovr-date").value = new Date().toISOString().slice(0, 10);
+  $("#ovr-note").textContent =
+    "At least one figure and a source. A quoted wage enters the ranking as "
+    + "given — a quote is current and role-specific, so it is not aged and "
+    + "not resampled.";
+  refreshOverrideList();
+
+  $("#ovr-add").addEventListener("click", () => {
+    const source = $("#ovr-source").value.replace(/~/g, " ").trim().slice(0, 80);
+    if (!source) { $("#ovr-source").focus(); return; }
+    const date = $("#ovr-date").value;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { $("#ovr-date").focus(); return; }
+    const id = sel.value;
+    const entries = [];
+    const wage = parseInt($("#ovr-wage").value, 10);
+    if (Number.isInteger(wage) && wage >= 1) entries.push(["w", Math.min(wage, 99999)]);
+    const l = parseInt($("#ovr-loading").value, 10);
+    if (Number.isInteger(l) && l >= 0)
+      entries.push(["l", Math.min(l, Math.round(DATA.loadingMax * 100))]);
+    const t = parseInt($("#ovr-attrition").value, 10);
+    if (Number.isInteger(t) && t >= 0)
+      entries.push(["t", Math.min(t, Math.round(DATA.attritionMax * 100))]);
+    if (!entries.length) { $("#ovr-wage").focus(); return; }
+    if (overrideCount() + entries.length > 50) return;
+    const m = state.overrides[id] = state.overrides[id] || {};
+    for (const [f, v] of entries) m[f] = {v, source, date};
+    for (const el of ["#ovr-wage", "#ovr-loading", "#ovr-attrition"]) $(el).value = "";
+    refreshOverrideList();
+    render();
+  });
+
+  $("#ovr-list").addEventListener("click", (e) => {
+    const b = e.target.closest("button"); if (!b) return;
+    const m = state.overrides[b.dataset.id];
+    if (m) {
+      delete m[b.dataset.f];
+      if (!Object.keys(m).length) delete state.overrides[b.dataset.id];
+    }
+    refreshOverrideList();
     render();
   });
 }
@@ -3077,11 +3339,13 @@ new MutationObserver(render).observe(document.documentElement, {
   if (dec.loading !== undefined) state.loading = dec.loading;
   if (dec.attrition !== undefined) state.attrition = dec.attrition;
   if (dec.horizon !== undefined) state.horizon = dec.horizon;
+  if (dec.overrides) state.overrides = dec.overrides;
   state.scenario = dec.name || null;
 }
 
 buildControls();
 buildScenarioControls();
+buildOverrideControls();
 render();
 
 /* A pasted link must work on a page that is already open: the browser treats a

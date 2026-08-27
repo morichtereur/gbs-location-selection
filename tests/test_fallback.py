@@ -60,7 +60,8 @@ def test_no_slot_ships_empty(html):
     """The original defect: 'at least ___ postings behind it' in the shipped file."""
     # The scenario tag is empty by design at the default view — it carries a
     # name only once the reader has given the view one.
-    allowed_empty = {"scenario-tag"}
+    # ovr-list and override-note fill only once a reader enters a figure.
+    allowed_empty = {"scenario-tag", "ovr-list", "override-note"}
     empties = re.findall(
         r'id="([a-z-]+)"\s*>\s*</(?:span|div|p|ul|dl|table|h2|h3|select)>', html
     )
