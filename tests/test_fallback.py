@@ -24,7 +24,7 @@ import pytest
 
 from src import config as C
 from src import fallback, population
-from src.dashboard import SCORING_JS, TEMPLATE, build_html, payload
+from src.dashboard import SCENARIO_JS, SCORING_JS, TEMPLATE, build_html, payload
 
 node = shutil.which("node")
 needs_node = pytest.mark.skipif(node is None, reason="node not available")
@@ -58,10 +58,13 @@ def text(markup: str) -> str:
 
 def test_no_slot_ships_empty(html):
     """The original defect: 'at least ___ postings behind it' in the shipped file."""
+    # The scenario tag is empty by design at the default view — it carries a
+    # name only once the reader has given the view one.
+    allowed_empty = {"scenario-tag"}
     empties = re.findall(
         r'id="([a-z-]+)"\s*>\s*</(?:span|div|p|ul|dl|table|h2|h3|select)>', html
     )
-    assert empties == [], empties
+    assert [e for e in empties if e not in allowed_empty] == [], empties
 
 
 def test_the_broken_sentences_are_complete(html):
@@ -115,9 +118,9 @@ def _render_under_node(data: dict) -> dict:
     """
     script = TEMPLATE[TEMPLATE.rindex("<script>") + len("<script>"):]
     script = script[:script.rindex("</script>")]
-    script = script.replace("__DATA__", json.dumps(data)).replace(
-        "__SCORING__", SCORING_JS
-    )
+    script = (script.replace("__DATA__", json.dumps(data))
+              .replace("__SCORING__", SCORING_JS)
+              .replace("__SCENARIO__", SCENARIO_JS))
     harness = """
 const sink = {};
 // Exhibit 1 is built by creating elements and appending them, not by setting
@@ -148,6 +151,9 @@ globalThis.document = {
 };
 globalThis.matchMedia = () => ({matches: false, addEventListener() {}});
 globalThis.window = {addEventListener() {}, print() {}, scrollY: 0};
+// The scenario layer reads the URL at load and writes it on every render.
+globalThis.location = {hash: "", pathname: "/", search: "", href: "http://local/"};
+globalThis.history = {replaceState() {}};
 // Never fired: the row animation schedules work through it, and calling it
 // synchronously re-enters the render it was scheduled from.
 globalThis.requestAnimationFrame = () => 0;
@@ -165,12 +171,14 @@ console.log("@@" + JSON.stringify(out));
         [node, "-e", harness + script + tail],
         capture_output=True, text=True, timeout=180,
     )
-    if out.returncode != 0:
-        pytest.skip(f"page script needs more of the DOM than the shim provides: "
-                    f"{out.stderr.strip().splitlines()[-1][:200]}")
+    # A failure here, never a skip: the shim is ours to maintain, and a skip
+    # once hid a page-script regression behind a green run.
+    assert out.returncode == 0, (
+        "page script failed under the DOM shim — extend the shim in this file:\n"
+        + out.stderr.strip()[-1500:]
+    )
     line = [x for x in out.stdout.splitlines() if x.startswith("@@")]
-    if not line:
-        pytest.skip("render() produced no slots under the shim")
+    assert line, "render() produced no slots under the shim"
     return json.loads(line[-1][2:])
 
 

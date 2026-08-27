@@ -136,6 +136,17 @@ rest. The Muse API was tested and rejected for a different reason: its
 location filter is inert, and "Atlantis, Nowhere" returns the same 110 jobs
 as Manila.
 
+**A view can be named, kept, and handed over.** The URL always carries the
+complete state — weights, centre type, headquarters and every cost input — so a
+link reproduces exactly the view it was copied from, on any machine, and an
+untouched page keeps a clean address. Scenarios can be saved under a name in
+the reader's own browser; the active name rides in the page header and onto
+the one-pager, and a view that has drifted from its saved name says
+"(edited)" rather than still claiming to be the stand it no longer shows. A
+shared link is treated as untrusted input: every field is validated on the way
+in, and an invalid piece costs that field its default and nothing else
+(`tests/test_scenario.py`).
+
 **The finding is stated before anything is asked of the reader.** The page opens
 with the top band named and called indistinguishable, at the weighting the study
 declares — and says whose weighting it is reporting, so it cannot read as the

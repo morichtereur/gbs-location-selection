@@ -88,6 +88,14 @@ def test_the_sources_card_is_reordered_below_the_exhibit_when_stacked(html):
     assert html.index(".rail { gap: 22px; }") < html.index(".rail { display: contents; }")
 
 
+def test_scenario_controls_stay_outside_the_disclosure(html):
+    """Naming or sharing a view is not an assumption — it must not hide with them."""
+    inside = _disclosure(html)
+    assert 'id="scenario-list"' not in inside
+    assert 'id="scenario-list"' in html
+    assert 'id="copy-link"' in html
+
+
 def test_the_headline_names_whose_weighting_it_is_reporting(html):
     """Unqualified, the finding reads as the study's after a reader has moved a slider."""
     assert "weightingLabel" in html

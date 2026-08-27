@@ -504,6 +504,12 @@ def slots(data: dict) -> dict[str, str]:
         "sliders": _sliders(s),
         "weight-sum": "Tick marks show this centre type’s starting position.",
         "adjust-state": "weights · headquarters · cost",
+        # Saved views live in the reader's browser, which the build cannot see;
+        # the static form says where they would appear rather than pretending
+        # there are none anywhere.
+        "scenario-list": '<option value="">— saved on this device —</option>',
+        "scenario-note": "Stored in this browser only. “Copy link” under the "
+                         "exhibits hands this view to someone else.",
         "assume-note": "Employer charges and backfill are <b>assumptions you set</b>, "
                        "not measured here. Years forward carries each market at its own "
                        "measured wage drift.",
