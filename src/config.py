@@ -570,12 +570,8 @@ SEPARABLE_AT = 0.65
 # image. The dashboard is a single self-contained file vendored into the
 # personal site, so the image cannot ride along inside it: a data: URI is
 # rejected by every crawler that matters, and og:image has to be an absolute
-# https URL. The raw URL of this repository is used because it is the repository
-# that owns the image and it works with no cross-repo step. Point it at
-# `PUBLISHED_URL + "og.png"` once the site's sync copies the file alongside
-# index.html.
+# https URL. The personal site's sync copies data/og.png alongside index.html,
+# so the URL points at the published copy rather than this repository's raw
+# file.
 PUBLISHED_URL = "https://morichtereur.github.io/location-dashboard/"
-OG_IMAGE_URL = (
-    "https://raw.githubusercontent.com/morichtereur/"
-    "gbs-location-selection/main/data/og.png"
-)
+OG_IMAGE_URL = PUBLISHED_URL + "og.png"
