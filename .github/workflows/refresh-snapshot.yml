@@ -1,0 +1,116 @@
+name: Refresh snapshot
+
+# The update button. Actions -> "Refresh snapshot" -> "Run workflow" fetches a
+# new posting sample, re-runs the analysis, rebuilds dashboard.html and the
+# social card, and commits whatever moved. The site then picks it up with its
+# own "Sync dashboards" button.
+#
+# Requires two repository secrets, added under Settings -> Secrets and
+# variables -> Actions:
+#   ADZUNA_APP_ID, ADZUNA_APP_KEY   free registration at developer.adzuna.com
+#   JOOBLE_API_KEY                  optional, adds the second postings feed
+#
+# To make it automatic instead, add a `schedule:` block below — the fetch keys
+# a snapshot by date and writes with INSERT OR REPLACE, so a repeat run on the
+# same day replaces that day rather than double-counting it.
+on:
+  workflow_dispatch:
+    inputs:
+      max_pages:
+        description: "Adzuna pages per market (lower = faster, thinner sample)"
+        required: false
+        default: "42"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: refresh-snapshot
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - run: pip install -r requirements.txt
+
+      # The posting store is gitignored — it is 14 MB of binary that changes on
+      # every run, which does not belong in the history. Carrying it in the
+      # cache instead is what lets snapshots accumulate, so `trend` has a
+      # previous run to compare against. A cold cache still produces a valid
+      # single-snapshot dashboard; it just has nothing to compare to.
+      - name: Restore the posting store
+        uses: actions/cache/restore@v4
+        with:
+          path: data/gbs_postings.duckdb
+          key: postings-${{ github.run_id }}
+          restore-keys: postings-
+
+      - name: Check the credentials are present
+        env:
+          ADZUNA_APP_ID: ${{ secrets.ADZUNA_APP_ID }}
+          ADZUNA_APP_KEY: ${{ secrets.ADZUNA_APP_KEY }}
+        run: |
+          if [ -z "$ADZUNA_APP_ID" ] || [ -z "$ADZUNA_APP_KEY" ]; then
+            echo "::error::ADZUNA_APP_ID and ADZUNA_APP_KEY are not set. Add them" \
+                 "under Settings -> Secrets and variables -> Actions." \
+                 "Register free at developer.adzuna.com."
+            exit 1
+          fi
+
+      - name: Fetch a new snapshot
+        env:
+          ADZUNA_APP_ID: ${{ secrets.ADZUNA_APP_ID }}
+          ADZUNA_APP_KEY: ${{ secrets.ADZUNA_APP_KEY }}
+          JOOBLE_API_KEY: ${{ secrets.JOOBLE_API_KEY }}
+          GBSLOC_MAX_PAGES: ${{ github.event.inputs.max_pages }}
+        run: python -m src.gbs_fetch
+
+      - name: Re-run the analysis and rebuild
+        run: |
+          python -m src.analyze
+          python -m src.dashboard
+          python -m src.og
+
+      # Reported, not gated: with one snapshot in the store there is nothing to
+      # compare against, and that is not a failure.
+      - name: Direction since the last snapshot
+        continue-on-error: true
+        run: python -m src.trend
+
+      - name: Save the posting store
+        uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: data/gbs_postings.duckdb
+          key: postings-${{ github.run_id }}
+
+      # A build that produced a stub would otherwise be committed and published.
+      - name: Check the dashboard actually built
+        run: |
+          size=$(wc -c < dashboard.html)
+          echo "dashboard.html is $size bytes"
+          if [ "$size" -lt 200000 ]; then
+            echo "::error::dashboard.html is $size bytes, far below the ~350 kB" \
+                 "a real build produces. Refusing to commit it."
+            exit 1
+          fi
+
+      - name: Commit and push if anything changed
+        run: |
+          if [ -z "$(git status --porcelain dashboard.html RESULTS.md data)" ]; then
+            echo "Nothing moved: the new snapshot produced the same figures."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add dashboard.html RESULTS.md data
+          git commit -m "Refresh snapshot: $(date -u +%Y-%m-%d)"
+          git push

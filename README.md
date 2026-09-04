@@ -266,6 +266,19 @@ make test
 
 `make refresh` does the whole cycle. Monthly is the right cadence — the postings feed turns over faster than that, the statistical series update annually.
 
+### Refreshing without a terminal
+
+**Actions → Refresh snapshot → Run workflow** does the same cycle on GitHub and commits what moved. It needs two repository secrets, under *Settings → Secrets and variables → Actions*:
+
+| Secret | |
+|---|---|
+| `ADZUNA_APP_ID`, `ADZUNA_APP_KEY` | required — free registration at [developer.adzuna.com](https://developer.adzuna.com/) |
+| `JOOBLE_API_KEY` | optional, adds the second postings feed |
+
+The published page is a static file with the figures baked in, so nothing in the browser can refresh it: the wage and posting series come from APIs that need those credentials, and a public page cannot carry them. Rebuilding here and re-serving the file is the whole mechanism. The site then picks it up with its own **Actions → Sync dashboards** button.
+
+A snapshot is keyed by date and written with `INSERT OR REPLACE`, so running it twice in a day replaces that day rather than double-counting it. The posting store is gitignored — 14 MB of binary that changes every run does not belong in the history — so the workflow carries it between runs in the Actions cache. That is what gives `make trend` a previous snapshot to compare against; on a cold cache the run still produces a valid dashboard, just with nothing to compare to.
+
 Also available: `make validate` (is the measured subset representative?), `make leverage` (which pillars decide the answer?), `make correlation` (how independent are the pillars, and what does that do to the reweighting claim?), `make provenance` (what was scraped, when, and how old is each series?), `make centres` (what qualifies as a city, and what the thresholds exclude), `make shot` (render the tool to PNG).
 
 Full numbers in [RESULTS.md](RESULTS.md). Classifier audits in [eval/precision_audit.md](eval/precision_audit.md).

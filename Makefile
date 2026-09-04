@@ -1,13 +1,17 @@
+# Three targets reached for an undefined $(PY) and failed with "-m: command
+# not found". One variable, used everywhere, so the next target cannot.
+PY := .venv/bin/python
+
 .PHONY: install fetch fetch-extra refresh run dashboard shot centres operators trend validate leverage correlation provenance og test clean
 
 install:
 	python3 -m venv .venv && .venv/bin/pip install -q -r requirements.txt
 
 fetch:
-	.venv/bin/python -m src.gbs_fetch
+	$(PY) -m src.gbs_fetch
 
 fetch-extra:
-	.venv/bin/python -m src.gbs_fetch --jooble
+	$(PY) -m src.gbs_fetch --jooble
 
 refresh:
 	@echo "== fetching a new snapshot =="
@@ -22,19 +26,19 @@ refresh:
 	@$(MAKE) --no-print-directory trend
 
 run:
-	.venv/bin/python -m src.analyze
+	$(PY) -m src.analyze
 
 dashboard:
-	.venv/bin/python -m src.dashboard
+	$(PY) -m src.dashboard
 
 shot:
 	./scripts/shoot.sh
 
 centres:
-	.venv/bin/python -m src.centres
+	$(PY) -m src.centres
 
 operators:
-	.venv/bin/python -m src.operators
+	$(PY) -m src.operators
 
 excel:
 	$(PY) -m src.excel
@@ -46,25 +50,25 @@ baselines:
 	$(PY) -m src.baselines
 
 trend:
-	.venv/bin/python -m src.trend
+	$(PY) -m src.trend
 
 validate:
-	.venv/bin/python -m src.validate
+	$(PY) -m src.validate
 
 leverage:
-	.venv/bin/python -m src.leverage
+	$(PY) -m src.leverage
 
 correlation:
-	.venv/bin/python -m src.correlation
+	$(PY) -m src.correlation
 
 provenance:
-	.venv/bin/python -m src.provenance
+	$(PY) -m src.provenance
 
 og:
-	.venv/bin/python -m src.og
+	$(PY) -m src.og
 
 test:
-	.venv/bin/python -m pytest tests -q
+	$(PY) -m pytest tests -q
 
 clean:
 	rm -rf data/cache data/chart_stability.png dashboard.html
