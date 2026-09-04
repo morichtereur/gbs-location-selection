@@ -452,6 +452,7 @@ def build_html() -> str:
         .replace("__SCORING__", SCORING_JS)
         .replace("__SCENARIO__", SCENARIO_JS)
         .replace("__META__", _meta(data))
+        .replace("__REFRESH_URL__", C.REFRESH_URL)
     )
     # The declared scenario, written into the document rather than left for the
     # script to fill. Everything the page says is then true of the file as
@@ -1651,8 +1652,19 @@ table.corr td.blank { border-color: transparent; }
 /* The action glyphs carry no data, so they take the ink colour rather than a
    pillar's — a coloured icon here would imply a key that does not exist. */
 .ico.act { width: 14px; height: 14px; flex: none; stroke: currentColor; }
-.page-actions button:hover { border-color: var(--accent); color: var(--accent); }
-.page-actions button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* Matches the buttons beside it: the row is one set of controls, and which of
+   them happen to be links is not a distinction the reader has to care about. */
+.page-actions .act-link {
+  font-size: 12.5px; padding: 6px 12px; text-decoration: none;
+  display: inline-flex; align-items: center; gap: 7px; white-space: nowrap;
+  background: var(--panel); color: var(--ink); border: 1px solid var(--rule-strong);
+}
+.page-actions button:hover, .page-actions .act-link:hover {
+  border-color: var(--accent); color: var(--accent);
+}
+.page-actions button:focus-visible, .page-actions .act-link:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 2px;
+}
 
 /* One-pager: the finding, the exhibit, and where the numbers came from. The
    controls are the instrument and do not belong in a document; the appendices
@@ -2094,6 +2106,16 @@ footer p { max-width: 78ch; }
         aria-hidden="true"><path d="M6.8 9.2a2.6 2.6 0 003.8 0l2-2a2.7 2.7 0 00-3.8-3.8l-.9.9"/>
         <path d="M9.2 6.8a2.6 2.6 0 00-3.8 0l-2 2a2.7 2.7 0 003.8 3.8l.9-.9"/></svg>Copy link to this view</button>
       <span class="copy-status" id="link-status" role="status"></span>
+      <!-- A link, not a button, and it says where it goes: the refresh runs on
+           GitHub because the fetch needs credentials a public page cannot
+           carry. Naming it "Run the refresh on GitHub" rather than "Refresh"
+           keeps the label honest about what pressing it does. -->
+      <a class="act-link" href="__REFRESH_URL__" target="_blank" rel="noopener">
+        <svg class="ico act" viewBox="0 0 16 16" aria-hidden="true">
+        <path d="M13.5 8a5.5 5.5 0 01-9.4 3.9M2.5 8a5.5 5.5 0 019.4-3.9"/>
+        <path d="M11.9 1.6v2.5h-2.5M4.1 14.4v-2.5h2.5"/></svg>Run the refresh on GitHub</a>
+      <span class="hint">Refetches the postings and rebuilds this page. About
+        fifteen minutes, and it needs repository access.</span>
     </div>
 
     <details>

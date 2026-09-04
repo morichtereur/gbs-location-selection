@@ -574,4 +574,10 @@ SEPARABLE_AT = 0.65
 # so the URL points at the published copy rather than this repository's raw
 # file.
 PUBLISHED_URL = "https://morichtereur.github.io/location-dashboard/"
+# The repository, and the one page in it that refreshes this study. The data
+# cannot be refetched from the browser — the fetch needs credentials that
+# cannot ship in a public page — so the page's refresh control is a link to
+# the workflow's own Run button rather than a control that does the work.
+REPO_URL = "https://github.com/morichtereur/gbs-location-selection"
+REFRESH_URL = REPO_URL + "/actions/workflows/refresh-snapshot.yml"
 OG_IMAGE_URL = PUBLISHED_URL + "og.png"
