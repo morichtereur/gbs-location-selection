@@ -94,6 +94,39 @@ jobs:
             exit 1
           fi
 
+      # The sibling study supplies more than classifiers: its own posting sample
+      # is what the classification-error correction is drawn from, and that
+      # correction is what the "top-3 across reweightings" column reports. The
+      # sample is gitignored in that repository, so a checkout does not carry
+      # it, and src/population.py returns {} rather than raising when it is
+      # missing — which means the build SUCCEEDS with the correction silently
+      # switched off. Measured difference on the current snapshot: Poznań 1.4%
+      # against 0.4%, Warsaw 0.3% against 0.03%. Those are the study's headline
+      # robustness figures, understated by a factor of three to ten.
+      #
+      # A refresh that quietly publishes uncorrected figures is worse than a
+      # refresh that does not run, so this stops here and says why.
+      - name: Refuse to run without the sample the correction is drawn from
+        run: |
+          python - <<'EOF'
+          import sys
+          from src import config as C
+          if C.POSTINGS_DB.exists():
+              print(f"broad sample present at {C.POSTINGS_DB}")
+              sys.exit(0)
+          print(
+              "::error::The sibling study's posting sample is not on this runner "
+              f"({C.POSTINGS_DB}). It is gitignored in gbs-agentic-shift, so the "
+              "checkout cannot carry it. Without it the contaminant shares are "
+              "empty and the stability column is computed with no "
+              "classification-error correction — the build would succeed and the "
+              "figures would be wrong. Publish that duckdb as a release asset on "
+              "gbs-agentic-shift and download it here, or run `make refresh` "
+              "locally where both studies live."
+          )
+          sys.exit(1)
+          EOF
+
       - name: Fetch a new snapshot
         env:
           ADZUNA_APP_ID: ${{ secrets.ADZUNA_APP_ID }}

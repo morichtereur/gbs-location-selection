@@ -230,6 +230,13 @@ def _broad_shares() -> dict:
 
     from src.delivery import _org_type
 
+    # The sibling study's own sample, which is gitignored there and so is
+    # absent anywhere but a machine that has run both studies — a CI runner
+    # included. `population.market_shares` and `provenance` already return
+    # empty rather than raising when it is missing; this was the one reader
+    # that did not, and it took the whole refresh down with it.
+    if not C.POSTINGS_DB.exists():
+        return {}
     org_type = _org_type()
     con = duckdb.connect(str(C.POSTINGS_DB), read_only=True)
     rows = con.execute(
@@ -307,7 +314,18 @@ def main() -> None:
     C.DATA.mkdir(exist_ok=True)
     chart(panel, results, C.DATA / "chart_stability.png")
     centres_chart(with_centres(panel), C.DATA / "chart_centres.png")
-    filter_chart(_broad_shares(), _focused_shares(), C.DATA / "chart_filter.png")
+    # chart_filter compares the original broad sample to the GBS-only one, so
+    # it needs both. Without the broad side there is no comparison to draw, and
+    # a one-sided "comparison" would be a worse artefact than none. It is a
+    # README figure; the dashboard and RESULTS.md do not read it.
+    broad = _broad_shares()
+    if broad:
+        filter_chart(broad, _focused_shares(), C.DATA / "chart_filter.png")
+    else:
+        print(
+            f"  skipped chart_filter.png: {C.POSTINGS_DB} not present, so the "
+            "broad sample it compares against cannot be read"
+        )
     coverage_chart(C.DATA / "chart_coverage.png")
     (C.ROOT / "RESULTS.md").write_text(results_md(panel, results, variants))
     print("wrote data/chart_stability.png and RESULTS.md")
