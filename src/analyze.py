@@ -18,7 +18,7 @@ from src.stability import run
 # of labelling excuses that one. Blue against orange clears every gate.
 TRANSACTIONAL_COLOR = "#3b6ea5"
 JUDGMENT_COLOR = "#c65b2e"
-ROBUST_COLOR = "#146b54"
+ROBUST_COLOR = "#0f7a5c"
 NEVER_COLOR = "#b9b9b4"
 
 
@@ -512,7 +512,7 @@ def filter_chart(broad, focused, path):
         ax.scatter(b, row, s=62, color=TRANSACTIONAL_COLOR, zorder=3)
         ax.annotate(f"n={focused[market]['n']}", (max(a, b), row),
                     textcoords="offset points", xytext=(11, 0), ha="left",
-                    va="center", fontsize=9, color="#7d857e")
+                    va="center", fontsize=9, color="#676f68")
 
     ax.set_yticks(range(len(markets)))
     ax.set_yticklabels([C.MARKETS[m]["name"] for m in markets], fontsize=11)

@@ -866,17 +866,33 @@ __FONTS__
   --sans: Archivo, "Helvetica Neue", Arial, sans-serif;
   --serif: "Source Serif 4", Georgia, "Times New Roman", serif;
   --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
-  --bg: #e9eae4;
-  --panel: #f4f4f0;
-  --panel-2: #fbfbf8;
-  --ink: #121a17;
-  --ink-2: #4d554f;
-  --ink-3: #7d857e;
-  --rule: #d3d5cc;
-  --rule-strong: #b6b9ae;
-  --accent: #146b54;
+  /* White, and precise. The ground was a sage grey (#e9eae4) that put a cast
+     over every colour on the page and held --ink-3 at 3.14:1, under the floor
+     for the 10.5px mono this page labels everything in. A consulting exhibit
+     is set on white: the structure has to come from alignment and hairlines,
+     which means the rules get lighter and the ink gets darker, not the reverse.
+     Every ink here clears 4.5:1 on all three light surfaces. */
+  --bg: #ffffff;
+  /* One step of grey, used for grouping and hover only — never for decoration.
+     A second, fainter step exists for the inputs that sit on the grey. */
+  --panel: #f7f8f7;
+  --panel-2: #fbfcfb;
+  --ink: #0d1211;
+  --ink-2: #414a46;
+  --ink-3: #666f6a;
+  /* Hairlines. The whole grid of the page is these two weights: --rule between
+     rows of the same kind, --rule-strong where one kind of thing ends. */
+  --rule: #e6e8e5;
+  --rule-strong: #cdd2ce;
+  --accent: #0f7a5c;
+  /* The accent at low saturation, for the band a finding rests on. */
+  --accent-soft: #eaf3ef;
+  /* Bars below the leading band were a sage grey that read as dirt next to
+     seven saturated pillar hues. In the accent's own hue instead, so the
+     exhibit is one colour story, and light enough to sit on white. */
+  --bar-rest: #a9cfc2;
   --warn: #b0374a;
-  --shadow: 0 1px 2px rgba(18,26,23,.06);
+  --shadow: 0 1px 2px rgba(13,18,17,.05);
   --flag-edge: rgba(18,26,23,.22);
   /* Correlation matrix tint: hue carries the sign, alpha the magnitude.
      Kept as raw channels so the cell can scale its own alpha inline. */
@@ -891,10 +907,12 @@ __FONTS__
     --panel-2: #232830;
     --ink: #eef1ee;
     --ink-2: #b3bab4;
-    --ink-3: #848d86;
+    --ink-3: #949d96;
     --rule: #2e343a;
     --rule-strong: #454d54;
     --accent: #3fa585;
+    --accent-soft: #17302a;
+    --bar-rest: #255045;
     --warn: #d97186;
     --shadow: none;
     --flag-edge: rgba(238,241,238,.30);
@@ -905,9 +923,10 @@ __FONTS__
 :root[data-theme="dark"] {
   color-scheme: dark;
   --bg: #14171a; --panel: #1c2024; --panel-2: #232830;
-  --ink: #eef1ee; --ink-2: #b3bab4; --ink-3: #848d86;
+  --ink: #eef1ee; --ink-2: #b3bab4; --ink-3: #949d96;
   --rule: #2e343a; --rule-strong: #454d54;
-  --accent: #3fa585; --warn: #d97186; --shadow: none;
+  --accent: #3fa585; --accent-soft: #17302a; --bar-rest: #255045;
+  --warn: #d97186; --shadow: none;
   --flag-edge: rgba(238,241,238,.30);
   --corr-pos: 63 165 133; --corr-neg: 217 113 134;
 }
@@ -953,6 +972,8 @@ h1 {
   max-width: 52ch;
 }
 .deck p:last-child { margin-bottom: 0; }
+.deck .deck-lede { color: var(--ink-2); }
+.deck .fold { margin-top: 10px; }
 
 .layout { display: grid; grid-template-columns: 310px minmax(0,1fr); gap: 32px; align-items: start; }
 
@@ -1109,6 +1130,19 @@ select {
   font-size: 15.5px; line-height: 1.5; color: var(--ink-2);
 }
 .belief b { font-weight: 600; color: var(--ink); }
+/* The line that states what you are buying is also the way to change it. The
+   weights live behind a disclosure on purpose — an exhibit should say something
+   before it offers five cards of controls — but the reader who has just been
+   told what they are buying is exactly the one looking for that control. */
+.belief-row .belief-edit {
+  font-family: var(--mono); font-size: 10px; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--ink-3);
+  background: none; border: 0; padding: 0; cursor: pointer;
+  margin: 6px 0 0 16px; white-space: nowrap;
+}
+.belief-row .belief-edit:hover { color: var(--accent); }
+.belief-row .belief-edit:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+@media print { .belief-row .belief-edit { display: none; } }
 
 /* Exhibit framing: a label, a title that states the reading rather than naming
    the chart, and a source line under the body. */
@@ -1185,8 +1219,12 @@ select {
    that separates it from the exhibit rather than continuing it. Five of seven
    pillars scored beside seven would read as the same measurement. */
 .beyond { margin-top: 26px; border-top: 1px solid var(--rule-strong); padding-top: 10px; }
+/* Wide content scrolls in its own box; the page never scrolls sideways. Head
+   and rows share the scroller so a scrolled column keeps its label. */
+.beyond-scroll { overflow-x: auto; }
+.beyond-head, .beyond-row { min-width: 468px; }
 .beyond-head {
-  display: grid; grid-template-columns: 1fr 8.5rem repeat(4, 6.6rem);
+  display: grid; grid-template-columns: minmax(0,1fr) 7rem repeat(4, 5.4rem);
   gap: 8px; margin-top: 16px; padding-bottom: 5px;
   border-bottom: 1px solid var(--rule-strong);
 }
@@ -1195,9 +1233,10 @@ select {
   letter-spacing: .04em; color: var(--ink-3); text-align: right; line-height: 1.25;
 }
 .beyond-row {
-  display: grid; grid-template-columns: 1fr 8.5rem repeat(4, 6.6rem);
+  display: grid; grid-template-columns: minmax(0,1fr) 7rem repeat(4, 5.4rem);
   align-items: baseline; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--rule);
 }
+.beyond-row:hover { background: var(--panel); }
 .beyond-row .cty { font-size: 13.5px; font-weight: 600; color: var(--ink); }
 .beyond-row .mkt { font-family: var(--mono); font-size: 10.5px; color: var(--ink-3); }
 .beyond-row .fig {
@@ -1218,13 +1257,26 @@ select {
   font-size: 12.5px; line-height: 1.45; color: var(--ink-2);
   padding: 0 0 7px 15px; position: relative;
 }
+/* A tick and a cross. The markers were a dot and a dash, which needed the
+   column heading to be read first to mean anything; these two say settled and
+   not settled on their own, which is what a reader skimming one column needs. */
+.settles li { padding-left: 19px; }
 .settles li::before {
-  content: ""; position: absolute; left: 0; top: 7px;
-  width: 6px; height: 6px; border-radius: 50%; background: var(--accent);
+  content: ""; position: absolute; left: 1px; top: 4px;
+  width: 5px; height: 9px; border-radius: 0; background: none;
+  border: solid var(--accent); border-width: 0 1.7px 1.7px 0;
+  transform: rotate(42deg);
 }
 .settles .not li::before {
-  background: none; border-top: 1.5px solid var(--warn); height: 0; top: 9px;
+  left: 0; top: 6px; width: 10px; height: 10px; border: 0; transform: rotate(45deg);
+  background:
+    linear-gradient(var(--warn), var(--warn)) 50% 50%/10px 1.7px no-repeat,
+    linear-gradient(var(--warn), var(--warn)) 50% 50%/1.7px 10px no-repeat;
 }
+/* The two columns are a claim and its limit, so the limit is set off rather
+   than merely placed beside it. */
+.settles .not { border-left: 1px solid var(--rule); padding-left: 24px; }
+@media (max-width: 700px) { .settles .not { border-left: 0; padding-left: 0; } }
 .settles b { color: var(--ink); font-weight: 600; }
 @media (max-width: 700px) { .settles-cols { grid-template-columns: 1fr; gap: 16px; } }
 
@@ -1318,10 +1370,14 @@ select {
 }
 @media (max-width: 860px) { .exhibit-source { columns: 1; } }
 
+/* The header stays while eleven rows scroll under it: at the foot of the list
+   the two right-hand columns are a bare number and a word, and a reader who has
+   scrolled past the header has no way to know which is which. */
 .col-head {
   display: grid; grid-template-columns: 26px minmax(150px, 215px) minmax(0,1fr) 58px 88px;
-  gap: 12px; margin-top: 18px; padding-bottom: 5px;
+  gap: 12px; margin-top: 18px; padding: 0 0 5px;
   border-bottom: 1px solid var(--rule-strong);
+  position: sticky; top: 0; z-index: 4; background: var(--bg);
 }
 .ch-band {
   font-family: var(--mono); font-size: 10px; text-transform: uppercase;
@@ -1355,22 +1411,127 @@ select {
    the accent, everything below it recedes to a neutral — so the answer the
    headline states is visible in the exhibit without reading a number. */
 .bar-wrap { width: 100%; }
-.bar { height: 15px; border-radius: 0 1px 1px 0; }
+.bar { height: 15px; border-radius: 0 3px 3px 0; }
 .bar.lead { background: var(--accent); }
-.bar.rest { background: var(--rule-strong); }
-/* Secondary: composition, at a third the height and muted, so it informs on
-   inspection instead of competing for the first glance. */
-.mix { display: flex; height: 4px; margin-top: 2px; opacity: .5; }
-.mix .seg-fill { height: 100%; border-right: 1px solid var(--panel); }
+.bar.rest { background: var(--bar-rest); }
+/* Secondary: composition. It sat at 4px and 50% opacity, which put the one
+   validated categorical palette on the page below the threshold of being read
+   at all — and half-opacity is also what pushed three of the seven hues under
+   3:1 against the surface. At 6px and .92 the strip is legible enough to aim a
+   cursor at, which is what the click target needs it to be. */
+.mix { display: flex; height: 6px; margin-top: 2px; opacity: .92; }
+/* A surface gap, not a hairline: the separator is the ground showing through,
+   so segments read as separate fills. 1px rather than the 2px the spec prefers
+   because a pillar at a low weight can be a couple of pixels wide, and a 2px
+   border on a 2px segment is not a segment. */
+.mix .seg-fill { height: 100%; border-right: 1px solid var(--bg); }
 .mix .seg-fill:last-child { border-right: 0; }
-.row:hover .mix { opacity: 1; }
+
+/* ---- the row as a control ---------------------------------------------
+   Every figure behind a bar is in the payload already; until now the only way
+   to reach it was the table at the foot of the page, which costs the reader
+   the comparison they were looking at. The row opens in place instead. */
+.rows .row { cursor: pointer; }
+.row:hover, .row.open { background: var(--panel); }
+/* The disclosure marker earns its place by pointing at the thing it opens. */
+.who .nm .caret {
+  display: inline-block; margin-left: 7px; font-family: var(--mono);
+  font-size: 9px; color: var(--ink-3); vertical-align: 1px;
+  opacity: 0; transition: opacity .12s;
+}
+.row:hover .caret, .row.open .caret, .row:focus-visible .caret { opacity: 1; }
+.row.open .caret { color: var(--accent); }
+.row:focus-visible { outline: 2px solid var(--ink); outline-offset: -2px; }
+
+/* ---- the opened detail ------------------------------------------------ */
+/* A sibling of the row, not a child: the row carries role="button", and a
+   button with a button inside it is not a thing a screen reader can offer. */
+.detail {
+  background: var(--panel); border-bottom: 1px solid var(--rule);
+  box-shadow: inset 3px 0 0 var(--accent);
+  padding: 14px 18px 16px; margin-bottom: 0; cursor: default;
+}
+.detail-head {
+  display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: baseline;
+  margin-bottom: 12px;
+}
+.detail-head .dh-t {
+  font-family: var(--mono); font-size: 10px; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--ink-3);
+}
+.detail-head .dh-v { font-family: var(--mono); font-size: 11.5px; color: var(--ink-2); }
+/* The contribution ledger. Seven rows that add to the score, so a reader can
+   see which pillar actually put the city where it is — the question the bar
+   raises and could not answer. */
+/* Six columns of mono numbers have a floor a phone is under. The table
+   scrolls inside its own box rather than pushing the page sideways. */
+.ledger-scroll { overflow-x: auto; }
+.ledger { width: 100%; min-width: 380px; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.ledger th {
+  font-family: var(--mono); font-size: 9.5px; letter-spacing: .07em;
+  text-transform: uppercase; color: var(--ink-3); font-weight: 500;
+  text-align: right; padding: 0 0 5px; border-bottom: 1px solid var(--rule);
+}
+.ledger th.l, .ledger td.l { text-align: left; }
+.ledger td {
+  font-family: var(--mono); font-size: 11.5px; color: var(--ink-2);
+  text-align: right; padding: 4px 0; border-bottom: 1px solid var(--rule);
+}
+.ledger td.l { color: var(--ink); }
+.ledger tr:last-child td { border-bottom: 0; }
+.ledger td.l { white-space: nowrap; }
+.ledger td.l .ico { width: 13px; height: 13px; margin-right: 7px; vertical-align: -2px; }
+.ledger td.off { color: var(--ink-3); }
+/* The contribution column, drawn as well as numbered: the whole point is which
+   pillar is carrying the score, and a bar answers that faster than seven
+   decimals do. Shares the row's own colour key. */
+.ledger .contrib { width: 96px; padding-left: 12px; }
+.ledger .cbar { height: 7px; border-radius: 0 2px 2px 0; min-width: 1px; }
+.ledger tfoot td {
+  border-top: 1px solid var(--rule-strong); border-bottom: 0;
+  padding-top: 6px; color: var(--ink); font-weight: 600;
+}
+/* Facts a weighting cannot change, and that the ledger has no column for. */
+.detail-notes {
+  margin: 12px 0 0; display: grid; gap: 10px 26px;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+}
+.detail-notes div { min-width: 0; }
+.detail-notes dt {
+  font-family: var(--mono); font-size: 9.5px; letter-spacing: .09em;
+  text-transform: uppercase; color: var(--ink-3); margin-bottom: 2px;
+}
+.detail-notes dd { margin: 0; font-size: 12.5px; line-height: 1.45; color: var(--ink-2); }
+.detail-notes dd .warnmark { color: var(--warn); }
+.detail-close {
+  margin-top: 12px; background: none; border: 0; padding: 0; cursor: pointer;
+  font-family: var(--mono); font-size: 10px; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--ink-3);
+}
+.detail-close:hover { color: var(--accent); }
+@media (max-width: 560px) {
+  .detail { padding: 12px 12px 14px; }
+  /* The bar restates the contribution column it sits beside. On a narrow
+     screen the number is the one that has to survive. */
+  .ledger .contrib { display: none; }
+  .ledger { min-width: 300px; }
+  .detail-head { gap: 4px 14px; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .detail { animation: detail-in .18s ease-out; }
+  @keyframes detail-in { from { opacity: 0; transform: translateY(-3px); } }
+}
 .stab { text-align: right; font-family: var(--mono); font-size: 12px; font-variant-numeric: tabular-nums; }
 .stab .pct { display: block; }
 .stab .tag { display: block; font-size: 10px; letter-spacing: .06em; text-transform: uppercase; }
 .tag.robust { color: var(--accent); }
 .tag.contingent { color: var(--ink-3); }
 .tag.never { color: var(--warn); }
-.in-top { box-shadow: inset 3px 0 0 var(--accent); }
+/* The band the finding rests on, tinted rather than edged. An exhibit marks
+   the group it is making a claim about; the 3px inset rule it had before was a
+   marker a reader has to be told how to read. */
+.in-top { background: var(--accent-soft); box-shadow: inset 2px 0 0 var(--accent); }
+.rows .in-top:hover, .rows .in-top.open { background: var(--accent-soft); filter: brightness(.985); }
 /* A band is a group the draws cannot separate; the rule marks where one ends. */
 .row.band-start { border-top: 1px solid var(--rule-strong); }
 .row.band-start:first-child { border-top: 0; }
@@ -1389,11 +1550,21 @@ select {
 .sources dd { margin: 0; font-size: 12.5px; line-height: 1.35; }
 .sources .vint { color: var(--ink-3); font-size: 11.5px; }
 
-.legend { display: flex; flex-wrap: wrap; gap: 11px; margin-top: 14px; font-size: 11px; color: var(--ink-3); }
-.legend .swatch { opacity: .5; }
-.legend span { display: inline-flex; align-items: center; gap: 5px; }
-.legend-lede { color: var(--ink-3); font-family: var(--mono); font-size: 10px;
-  text-transform: uppercase; letter-spacing: .07em; }
+.legend {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px;
+  margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--rule);
+  font-size: 11.5px; color: var(--ink-2);
+}
+.legend span { display: inline-flex; align-items: center; gap: 5px; cursor: help; }
+.legend .ico { width: 13px; height: 13px; }
+.legend-lede {
+  color: var(--ink-3); font-family: var(--mono); font-size: 9.5px;
+  text-transform: uppercase; letter-spacing: .14em; margin-right: 2px;
+}
+/* The fill the strip actually uses, next to the glyph that names it: the glyph
+   is stroked, and a stroke and a fill of one hue do not read as the same key
+   until they are side by side once. */
+.chip { width: 8px; height: 8px; flex: none; border-radius: 1px; }
 
 .table-actions { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
 .table-actions button {
@@ -1404,6 +1575,43 @@ select {
 .table-actions button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .copy-status { font-size: 12px; color: var(--ink-3); }
 .table-scroll { overflow-x: auto; }
+
+/* ---- fold ---------------------------------------------------------------
+   This page argues by qualification: nine tenths of its prose is the reasons a
+   figure should not be trusted further than it goes. Deleting that would make
+   the tool cheaper to read and worthless to rely on, so none of it is deleted —
+   it is folded. What stays open is the one line a reader needs to know the
+   qualification exists; the rest opens on request, and prints regardless. */
+.fold { margin: 10px 0 0; border-top: 1px solid var(--rule); padding-top: 8px; }
+.fold > summary {
+  cursor: pointer; list-style: none; display: flex; align-items: baseline; gap: 8px;
+  font-family: var(--mono); font-size: 10px; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--ink-3);
+}
+.fold > summary::-webkit-details-marker { display: none; }
+.fold > summary:hover { color: var(--accent); }
+.fold > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+/* A caret that turns, drawn rather than typed so it sits on the baseline at any
+   size. It is the only ornament in the component. */
+.fold > summary::before {
+  content: ""; flex: none; width: 0; height: 0; margin-bottom: 1px;
+  border-left: 4px solid currentColor;
+  border-top: 3.5px solid transparent; border-bottom: 3.5px solid transparent;
+  transition: transform .15s;
+}
+.fold[open] > summary::before { transform: rotate(90deg); }
+@media (prefers-reduced-motion: reduce) { .fold > summary::before { transition: none; } }
+.fold > summary .fold-count {
+  margin-left: auto; font-size: 9.5px; letter-spacing: .08em; opacity: .8;
+}
+.fold > :not(summary) { margin-top: 9px; }
+/* The printed brief carries every source, so a fold is a screen affordance
+   only: in print it is open and its handle is gone. */
+@media print {
+  .fold { display: block !important; border-top: 0; padding-top: 0; }
+  .fold > summary { display: none !important; }
+  .fold > :not(summary) { display: block !important; margin-top: 6px; }
+}
 
 .method { font-size: 13.5px; line-height: 1.55; max-width: 90ch; }
 .method h3 {
@@ -1432,9 +1640,17 @@ table.corr td.blank { border-color: transparent; }
 
 .page-actions { display: flex; align-items: center; gap: 12px; margin-top: 18px; }
 .page-actions button {
-  font: inherit; font-size: 12.5px; padding: 5px 11px; cursor: pointer;
+  font: inherit; font-size: 12.5px; padding: 6px 12px; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 7px; white-space: nowrap;
   background: var(--panel); color: var(--ink); border: 1px solid var(--rule-strong);
 }
+/* The row wraps as a whole on a narrow screen; a button does not wrap inside
+   itself, which turned "Copy link to this view" into two ragged lines. */
+.page-actions { flex-wrap: wrap; }
+.page-actions .hint { flex: 1 1 14ch; }
+/* The action glyphs carry no data, so they take the ink colour rather than a
+   pillar's — a coloured icon here would imply a key that does not exist. */
+.ico.act { width: 14px; height: 14px; flex: none; stroke: currentColor; }
 .page-actions button:hover { border-color: var(--accent); color: var(--accent); }
 .page-actions button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
@@ -1467,7 +1683,7 @@ table.corr td.blank { border-color: transparent; }
      the caveat's last clause repeats the source note beneath it. */
   .screen-only, .settles, .beyond { display: none !important; }
   .col-head { margin-bottom: 2px; }
-  .case-bar { background: #146b54 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .case-bar { background: #0f7a5c !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .case-bar.over { background: #b0374a !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .layout { grid-template-columns: minmax(0,1fr); gap: 0; }
   .wrap { max-width: none; padding: 0; }
@@ -1551,9 +1767,13 @@ table.corr td.blank { border-color: transparent; }
 }
 
 .exhibit-source { margin-top: 8px; padding-top: 6px; }
-  .bar.lead { background: #146b54 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  .bar.rest { background: #b6b9ae !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .bar.lead { background: #0f7a5c !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .bar.rest { background: #96c1b2 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .mix { display: none; }
+  /* The brief is two pages of finding, not of one city's ledger: whatever the
+     reader had open on screen is a detour in print. */
+  .detail { display: none !important; }
+  .row.open, .row:hover { background: none !important; }
   /* The overlap pillar is geographic and was invisible: a number in a column.
    Placing the cities on a clock relative to the headquarters shows why India is
    a handover and Poland is a shared day — which is the pillar, drawn. */
@@ -1626,6 +1846,13 @@ footer p { max-width: 78ch; }
   transition: opacity .1s; font-family: var(--mono);
 }
 .tooltip.on { opacity: 1; }
+/* The hover says what it knows and then hands over: a tooltip cannot hold a
+   seven-row ledger, so it names the way to one. */
+.tooltip .tip-cta {
+  display: block; margin-top: 5px; padding-top: 5px;
+  border-top: 1px solid rgba(255,255,255,.2);
+  font-size: 10px; letter-spacing: .06em; text-transform: uppercase; opacity: .75;
+}
 
 @media (prefers-reduced-motion: no-preference) {
   .row { transition: transform .42s cubic-bezier(.22,.61,.36,1); }
@@ -1642,12 +1869,15 @@ footer p { max-width: 78ch; }
       <p class="standfirst" id="takeaway"></p>
     </div>
     <div class="deck">
-      <p>Cities where GBS and GCC roles are genuinely advertised, scored on seven pillars of
-         public data and re-ranked across 2,000 defensible weightings.</p>
-      <p>The finding is stated first, at the weighting the study declares. Change what you
-         are buying, or open <em>adjust assumptions</em>, and the exhibit re-ranks: what
-         survives is the answer, and cities the evidence cannot separate share a band
-         rather than a rank.</p>
+      <p class="deck-lede">Cities where GBS and GCC roles are genuinely advertised, scored on
+         seven pillars of public data and re-ranked across 2,000 defensible weightings.</p>
+      <details class="fold">
+        <summary>How to read it</summary>
+        <p>The finding is stated first, at the weighting the study declares. Change what you
+           are buying, or open <em>adjust assumptions</em>, and the exhibit re-ranks: what
+           survives is the answer, and cities the evidence cannot separate share a band
+           rather than a rank. Click any city for the figures behind its score.</p>
+      </details>
     </div>
   </div>
 </header>
@@ -1656,16 +1886,14 @@ footer p { max-width: 78ch; }
   <aside class="rail">
     <div class="card">
       <h2>Centre type</h2>
-      <p class="panel-note">Which work moves determines what you are buying,
-        and therefore where each weighting starts.</p>
+      <p class="panel-note">What you move sets where the weighting starts.</p>
       <div class="seg" id="archetype" role="group" aria-label="Centre type"></div>
       <p class="blurb" id="archetype-blurb"></p>
     </div>
 
     <div class="card">
       <h2>Scenarios</h2>
-      <p class="panel-note">Every control on this page under one name, so a view can be
-        put down and picked up again.</p>
+      <p class="panel-note">Save the whole view under a name.</p>
       <select id="scenario-list" aria-label="Saved scenarios"></select>
       <div class="scn-row">
         <input id="scenario-name" type="text" maxlength="60"
@@ -1787,7 +2015,7 @@ footer p { max-width: 78ch; }
       <h2 id="board-title"></h2>
       <p class="hint">Bar length is the score; the strip beneath it is the composition.</p>
     </div>
-    <div class="belief" id="belief"></div>
+    <div class="belief-row"><div class="belief" id="belief"></div></div>
     <div class="col-head">
       <span class="ch-band">band</span><span></span><span></span>
       <span class="ch-num">postings</span><span class="ch-num">top-3<span class="screen-only"> across reweightings</span></span>
@@ -1810,22 +2038,33 @@ footer p { max-width: 78ch; }
       </div>
       <div id="case"></div>
       <p class="case-caveat ovr-sources" id="override-note"></p>
-      <p class="case-caveat" id="case-caveat"></p>
+      <details class="fold">
+        <summary>How base and loaded are built<span class="fold-count">2 figures you set</span></summary>
+        <p class="case-caveat" id="case-caveat"></p>
+      </details>
     </div>
 
-    <p class="exhibit-source" id="exhibit-source"></p>
+    <details class="fold">
+      <summary>Sources and coverage<span class="fold-count">ILOSTAT · World Bank · Eurostat · postings</span></summary>
+      <p class="exhibit-source" id="exhibit-source"></p>
+    </details>
 
     <div class="beyond">
       <p class="exhibit-label">Beyond the sample</p>
       <h3 class="strip-title">Established locations the postings feed cannot reach</h3>
-      <div class="beyond-head">
-        <span></span><span></span>
-        <span class="ch-num">cost USD/mo</span><span class="ch-num">relevant workforce</span>
-        <span class="ch-num">governance</span><span class="ch-num">hours shared</span>
+      <div class="beyond-scroll">
+        <div class="beyond-head">
+          <span></span><span></span>
+          <span class="ch-num">cost USD/mo</span><span class="ch-num">relevant workforce</span>
+          <span class="ch-num">governance</span><span class="ch-num">hours shared</span>
+        </div>
+        <div id="beyond"></div>
       </div>
-      <div id="beyond"></div>
-      <p class="case-caveat" id="beyond-note"></p>
-      <p class="case-caveat" id="beyond-more"></p>
+      <details class="fold">
+        <summary>Why these are reported, not ranked<span class="fold-count">and what is absent entirely</span></summary>
+        <p class="case-caveat" id="beyond-note"></p>
+        <p class="case-caveat" id="beyond-more"></p>
+      </details>
     </div>
 
     <div class="settles">
@@ -1840,13 +2079,20 @@ footer p { max-width: 78ch; }
       <p class="exhibit-label">What would change this</p>
       <h3 class="strip-title">Three checks a shortlist validation would run</h3>
       <ol id="next"></ol>
-      <p class="case-caveat" id="next-note"></p>
+      <details class="fold">
+        <summary>Why these three, and not a phase 2</summary>
+        <p class="case-caveat" id="next-note"></p>
+      </details>
     </div>
 
     <div class="page-actions">
-      <button type="button" id="one-pager">Print the brief</button>
+      <button type="button" id="one-pager"><svg class="ico act" viewBox="0 0 16 16"
+        aria-hidden="true"><path d="M4.5 6V2.5h7V6M4.5 12.5h7v-3h-7zM3 6h10v4.5h-1.5"/>
+        <path d="M4.5 10.5H3V6"/></svg>Print the brief</button>
       <span class="hint">Finding, both exhibits and every source — two pages.</span>
-      <button type="button" id="copy-link">Copy link to this view</button>
+      <button type="button" id="copy-link"><svg class="ico act" viewBox="0 0 16 16"
+        aria-hidden="true"><path d="M6.8 9.2a2.6 2.6 0 003.8 0l2-2a2.7 2.7 0 00-3.8-3.8l-.9.9"/>
+        <path d="M9.2 6.8a2.6 2.6 0 00-3.8 0l-2 2a2.7 2.7 0 003.8 3.8l.9-.9"/></svg>Copy link to this view</button>
       <span class="copy-status" id="link-status" role="status"></span>
     </div>
 
@@ -1913,6 +2159,12 @@ const state = {
   // its value, its source and its date — the middle tier between a public
   // measurement and an assumption.
   overrides: {},
+  // Which city has its figures open, by id. Deliberately not part of the
+  // scenario codec: it is where the reader is looking, not what they believe,
+  // so it does not belong in a shared link. Held across renders so that
+  // dragging a weight moves the open ledger under the cursor — watching one
+  // city's contributions change is the point of opening it.
+  open: null,
 };
 
 const isDark = () => {
@@ -2200,6 +2452,16 @@ function render() {
     `${DATA.archetypes[state.archetype].label}: ${ranked.length} cities ranked on your weighting`;
   $("#scope").textContent = `${rows.length} GBS and GCC cities`;
   $("#belief").innerHTML = belief(state.weights);
+  // Created once, and only when a script is running to make it work: without
+  // JS the control would be a button that does nothing.
+  if (!$("#belief-edit")) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "belief-edit";
+    b.id = "belief-edit";
+    b.textContent = "Change weights";
+    $(".belief-row").appendChild(b);
+  }
 
   const host = $("#rows");
   const prev = new Map();
@@ -2207,14 +2469,30 @@ function render() {
 
   host.innerHTML = "";
   const maxScore = Math.max(...ranked.map((x) => x.score), 1e-9);
+  // The measured value behind each normalised score, and which pillars take one
+  // value per country. Both are needed by an opened row and neither survives
+  // normalisation, so they are carried across from the items the scoring saw.
+  const rawById = new Map(items.map((it) => [it.row.id, it.v]));
+  const natlSet = new Set(nationalPillars(items));
+  // A city can only be open if it is still on the board.
+  if (state.open && !ranked.some((r) => r.row.id === state.open)) state.open = null;
   ranked.forEach((r, i) => {
     const f = stab.get(r.row.id) ?? 0;
     const v = verdict(f, r.row);
     const b = band.get(r.row.id);
     const opensBand = i === 0 || band.get(ranked[i - 1].row.id) !== b;
+    const isOpen = state.open === r.row.id;
     const el = document.createElement("div");
-    el.className = "row" + (b === 1 ? " in-top" : "") + (opensBand ? " band-start" : "");
+    el.className = "row" + (b === 1 ? " in-top" : "") + (opensBand ? " band-start" : "")
+      + (isOpen ? " open" : "");
     el.dataset.id = r.row.id;
+    // The row is the control. Announced as one, reachable by keyboard, and it
+    // says what it opens — a reader on a screen reader gets the same offer a
+    // cursor does.
+    el.setAttribute("role", "button");
+    el.tabIndex = 0;
+    el.setAttribute("aria-expanded", isOpen ? "true" : "false");
+    el.setAttribute("aria-controls", `d-${r.row.id}`);
 
     // The country first: a reader should not have to know where Poznań is to
     // read the ranking.
@@ -2251,7 +2529,9 @@ function render() {
     }).join("");
     const bar =
       `<div class="bar-wrap">` +
-        `<div class="bar ${tone}" style="width:${width.toFixed(2)}%"></div>` +
+        `<div class="bar ${tone}" style="width:${width.toFixed(2)}%"` +
+          ` data-name="${escHtml(r.row.name)}" data-score="${r.score.toFixed(3)}"` +
+          ` data-band="${b}"></div>` +
         `<div class="mix" style="width:${width.toFixed(2)}%">${segs}</div>` +
       `</div>`;
 
@@ -2262,7 +2542,8 @@ function render() {
 
     el.innerHTML =
       `<div class="rank">${opensBand ? b : ""}</div>` +
-      `<div class="who"><span class="nm">${flag(r.row.parent)}${r.row.name}</span>`
+      `<div class="who"><span class="nm">${flag(r.row.parent)}${r.row.name}`
+      + `<span class="caret">${isOpen ? "\u25B2" : "\u25BC"}</span></span>`
       + `<span class="sub">${sub}</span></div>` +
       `<div class="bar-cell">${bar}</div>` +
       `<div class="evidence" title="${n == null ? "No postings sample for this city."
@@ -2274,6 +2555,15 @@ function render() {
       `<div class="stab"><span class="pct">${(f * 100).toFixed(0)}%</span>` +
       `<span class="tag ${v}">${v}</span></div>`;
     host.appendChild(el);
+    if (isOpen) {
+      const d = document.createElement("div");
+      d.className = "detail";
+      d.id = `d-${r.row.id}`;
+      d.setAttribute("role", "region");
+      d.setAttribute("aria-label", `${r.row.name}: the figures behind the score`);
+      d.innerHTML = detailHtml(r, rawById.get(r.row.id) || {}, f, b, C, natlSet);
+      host.appendChild(d);
+    }
   });
 
   if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
@@ -2291,8 +2581,13 @@ function render() {
     });
   }
 
-  $("#legend").innerHTML = `<span class="legend-lede">Composition:</span>` + DATA.pillars.map((p) =>
-    `<span><i class="swatch" style="background:${C[p]}"></i>${DATA.pillarLabels[p]}</span>`).join("");
+  // The glyph, not a square: it carries the pillar's meaning and its colour in
+  // one mark. Three of the seven hues sit under 3:1 against white, which the
+  // validator allows only with a secondary encoding — this is that encoding,
+  // and it doubles as the key for the strip and the ledger.
+  $("#legend").innerHTML = `<span class="legend-lede">Composition</span>` + DATA.pillars.map((p) =>
+    `<span title="${escHtml(DATA.pillarNotes[p] || "")}">${icon(p)}`
+    + `<i class="chip" style="background:${C[p]}"></i>${DATA.pillarLabels[p]}</span>`).join("");
 
   renderStrip(ranked, band);
   renderTable(ranked, stab);
@@ -2392,6 +2687,127 @@ function renderCorrelation(items, scaled) {
       + `cities in the same country whatever weight they are given, and the countries `
       + `themselves line up on close to one axis.`
     : `Every pillar varies within at least one country here.`;
+}
+
+/* ---- one city, opened ------------------------------------------------
+   A bar answers "which city", and raises "why". Everything needed to answer
+   the second is already in the payload; the only route to it was the table at
+   the foot of the page, which costs the reader the comparison they were
+   looking at. This is that table for one city, in the gap the row leaves.
+
+   The ledger's columns are the four steps the score actually takes: what was
+   measured, what that became once every city was put on 0–1, what the reader
+   weighted it, and what it therefore contributed. Read across a row and the
+   arithmetic is checkable; read down the last column and the answer to "why
+   is this city here" is the longest bar. */
+function pillarMeasured(p, v) {
+  if (v === null || v === undefined || Number.isNaN(v)) return "—";
+  switch (p) {
+    case "cost": return "$" + Math.round(v).toLocaleString("en-US");
+    case "talent": return v >= 1e5 ? (v / 1e6).toFixed(1) + "m"
+      : Math.round(v).toLocaleString("en-US");
+    case "risk": return v.toFixed(0);
+    case "capability": return (v * 100).toFixed(0) + "%";
+    case "timezone": return v.toFixed(1) + "h";
+    // Stored as the negative of measured wage drift, so that more is better
+    // like every other pillar. Shown as the drift itself, which is the figure
+    // a reader recognises.
+    case "durability": return (-v >= 0 ? "+" : "") + (-v * 100).toFixed(1) + "%";
+    case "depth": return v.toFixed(0);
+    default: return String(v);
+  }
+}
+const PILLAR_UNITS = {
+  cost: "USD per head, month",
+  talent: "relevant workforce",
+  risk: "governance, 0–100",
+  capability: "share of postings",
+  timezone: "hours with your HQ",
+  durability: "wage drift a year",
+  depth: "employers in market",
+};
+
+function detailHtml(r, raw, freq, b, C, natlSet) {
+  const P = DATA.pillars;
+  const wTotal = P.reduce((a, p) => a + state.weights[p], 0) || 1;
+  const maxPart = Math.max(...P.map((p) => r.parts[p]), 1e-9);
+  const row = r.row;
+
+  const head =
+    `<div class="detail-head">`
+    + `<span><span class="dh-t">Band</span> <span class="dh-v">${b}</span></span>`
+    + `<span><span class="dh-t">Score</span> <span class="dh-v">${r.score.toFixed(3)}</span></span>`
+    + `<span><span class="dh-t">Top-3 across reweightings</span> `
+    + `<span class="dh-v">${(freq * 100).toFixed(0)}%</span></span>`
+    + `</div>`;
+
+  const body = P.map((p) => {
+    const off = state.weights[p] <= 0;
+    const isNatl = natlSet.has(p);
+    return `<tr>`
+      + `<td class="l${off ? " off" : ""}">`
+      + `${icon(p)}${DATA.pillarLabels[p]}`
+      // "country-wide", not "national": the cost basis below already uses
+      // "national average" for a different fact — that Mumbai has no city wage —
+      // and two senses of the same word in one panel is one too many.
+      + (isNatl ? `<span class="natl" title="One value for the whole country, so `
+          + `this pillar cannot separate two cities in `
+          + `${escHtml(DATA.marketNames[row.parent] || "the same country")}.">`
+          + `country-wide</span>` : "")
+      + `</td>`
+      + `<td class="${off ? "off" : ""}" title="${escHtml(PILLAR_UNITS[p] || "")}">`
+      + `${pillarMeasured(p, raw[p])}</td>`
+      + `<td class="${off ? "off" : ""}">${r.scaled[p].toFixed(2)}</td>`
+      + `<td class="${off ? "off" : ""}">${(state.weights[p] / wTotal * 100).toFixed(0)}%</td>`
+      + `<td class="${off ? "off" : ""}">${r.parts[p].toFixed(3)}</td>`
+      + `<td class="contrib"><div class="cbar" style="width:${(r.parts[p] / maxPart * 100).toFixed(1)}%;`
+      + `background:${C[p]}"></div></td>`
+      + `</tr>`;
+  }).join("");
+
+  const ledger =
+    `<div class="ledger-scroll"><table class="ledger">`
+    + `<thead><tr><th class="l">Pillar</th><th>Measured</th><th>Score</th>`
+    + `<th>Weight</th><th>Contribution</th><th class="contrib"></th></tr></thead>`
+    + `<tbody>${body}</tbody>`
+    + `<tfoot><tr><td class="l">Total</td><td></td><td></td>`
+    + `<td>100%</td><td>${r.score.toFixed(3)}</td><td class="contrib"></td></tr></tfoot>`
+    + `</table></div>`;
+
+  // The facts a weighting cannot move, and that the ledger has no column for.
+  const n = row.postings;
+  const thin = row.isCity && n != null && n < DATA.evidenceFloor;
+  const evidence = n == null
+    ? "No postings sample for this city."
+    : `${n} of ${row.postingsSeen} postings classified`
+      + (thin ? `<span class="warnmark"> — below the floor of ${DATA.evidenceFloor}, `
+          + `so this city cannot be called robust</span>` : "")
+      + ` · ${row.employers} employers`;
+
+  const ovrW = (state.overrides[row.id] || {}).w;
+  const costBasis = ovrW
+    ? `Your figure: $${Math.round(ovrW.v).toLocaleString("en-US")} — `
+      + `${escHtml(ovrW.source)}, ${escHtml(String(ovrW.date))}`
+    : row.costResolved
+      ? `City level: ${row.regionIndex.toFixed(2)}× the national wage, `
+        + `${row.regionYear || row.costYear}`
+      : `National average, ${row.costYear} — no city-level wage is published for `
+        + `${escHtml(row.name)}, so no city premium sits on either side of it`;
+
+  const notes =
+    `<dl class="detail-notes">`
+    + `<div><dt>Evidence behind capability</dt><dd>${evidence}</dd></div>`
+    + `<div><dt>Cost basis</dt><dd>${costBasis}`
+    + (row.costPpp ? ` · $${Math.round(row.costPpp).toLocaleString("en-US")} at PPP` : "")
+    + `</dd></div>`
+    + `<div><dt>Languages in its postings</dt><dd>`
+    + `${(row.languages || []).map(escHtml).join(", ") || "None asked for"}</dd></div>`
+    + `<div><dt>Already operating there</dt><dd>`
+    + `${(row.operators || []).map(escHtml).join(", ") || "None named in the sample"}</dd></div>`
+    + `</dl>`;
+
+  return head + ledger + notes
+    + `<button type="button" class="detail-close">Close ${escHtml(row.name)}</button>`;
 }
 
 function renderTable(ranked, stab) {
@@ -3048,9 +3464,7 @@ function buildScenarioControls() {
     return;
   }
   refreshScenarioList();
-  note.textContent =
-    "Stored in this browser only. “Copy link” under the exhibits hands "
-    + "this view to someone else.";
+  note.textContent = "This browser only. Use “Copy link” to share a view.";
 
   sel.addEventListener("change", () => {
     const name = sel.value;
@@ -3306,13 +3720,89 @@ function syncSliders(writeInputs = true) {
 /* ---- tooltip ---- */
 const tip = $("#tip");
 document.addEventListener("mousemove", (e) => {
+  // The strip answers "which pillar"; the bar answers "which city, how far".
+  // Both then point at the click, because a hover cannot hold a ledger.
   const seg = e.target.closest(".seg-fill");
-  if (!seg) { tip.classList.remove("on"); return; }
-  const p = seg.dataset.p;
-  tip.innerHTML = `${seg.dataset.name}<br>${DATA.pillarLabels[p]} · ${parseFloat(seg.style.width).toFixed(0)}% of score`;
+  const bar = seg ? null : e.target.closest(".bar");
+  if (!seg && !bar) { tip.classList.remove("on"); return; }
+  if (seg) {
+    const p = seg.dataset.p;
+    tip.innerHTML = `${escHtml(seg.dataset.name)}<br>${DATA.pillarLabels[p]} · `
+      + `${parseFloat(seg.style.width).toFixed(0)}% of score`
+      + `<span class="tip-cta">Click the row for every figure</span>`;
+  } else {
+    const open = state.open === (bar.closest(".row") || {}).dataset?.id;
+    tip.innerHTML = `${escHtml(bar.dataset.name)}<br>Score ${bar.dataset.score} · `
+      + `band ${bar.dataset.band}`
+      + `<span class="tip-cta">${open ? "Click to close" : "Click for every figure"}</span>`;
+  }
   tip.style.left = Math.min(e.clientX + 14, innerWidth - 270) + "px";
   tip.style.top = (e.clientY + 16) + "px";
   tip.classList.add("on");
+});
+
+/* ---- folds in print ------------------------------------------------------
+   The printed brief carries every source, and a fold is a screen affordance
+   only. CSS cannot be trusted to reopen a closed <details>: the content of one
+   is hidden by the element's own rendering, not by a display rule a stylesheet
+   can outrank. So the attribute is set for the duration of the print and put
+   back afterwards, which is the only method that holds in every engine. */
+let foldsForcedOpen = [];
+window.addEventListener("beforeprint", () => {
+  foldsForcedOpen = [...document.querySelectorAll(".fold:not([open])")];
+  foldsForcedOpen.forEach((d) => { d.open = true; });
+});
+window.addEventListener("afterprint", () => {
+  foldsForcedOpen.forEach((d) => { d.open = false; });
+  foldsForcedOpen = [];
+});
+
+/* ---- opening a row --------------------------------------------------------
+   Delegated, because the rows are rebuilt on every weight change. */
+function toggleRow(id) {
+  state.open = state.open === id ? null : id;
+  render();
+  if (state.open) {
+    const el = document.querySelector(`.row[data-id="${state.open}"]`);
+    if (el) el.focus({ preventScroll: true });
+  }
+}
+$("#rows").addEventListener("click", (e) => {
+  if (e.target.closest(".detail-close")) {
+    const d = e.target.closest(".detail");
+    state.open = null;
+    render();
+    // Focus goes back to the row that opened it, not to the top of the page.
+    const el = d && document.querySelector(`.row[data-id="${d.id.slice(2)}"]`);
+    if (el) el.focus({ preventScroll: true });
+    return;
+  }
+  // A click inside the opened panel is a reader selecting a figure, not a
+  // request to close it.
+  if (e.target.closest(".detail")) return;
+  const row = e.target.closest(".row");
+  if (row) toggleRow(row.dataset.id);
+});
+document.addEventListener("click", (e) => {
+  if (!e.target.closest("#belief-edit")) return;
+  const d = $("#adjust");
+  d.open = true;
+  d.scrollIntoView({ block: "nearest" });
+  const first = d.querySelector('input[type="range"]');
+  if (first) first.focus({ preventScroll: true });
+});
+$("#rows").addEventListener("keydown", (e) => {
+  const row = e.target.closest(".row");
+  if (!row) return;
+  if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleRow(row.dataset.id); }
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "Escape" || !state.open) return;
+  const id = state.open;
+  state.open = null;
+  render();
+  const el = document.querySelector(`.row[data-id="${id}"]`);
+  if (el) el.focus({ preventScroll: true });
 });
 
 /* Series colours are chosen in JavaScript, so they only change when the page

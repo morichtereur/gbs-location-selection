@@ -28,13 +28,13 @@ from src.fallback import Scenario
 
 # The page's own paper and ink, so the card and the thing it links to are
 # recognisably one object.
-PAPER = "#e9eae4"
+PAPER = "#f0f1ec"
 INK = "#121a17"
-INK_2 = "#4d554f"
-INK_3 = "#7d857e"
+INK_2 = "#464e49"
+INK_3 = "#676f68"
 RULE = "#b6b9ae"
-ACCENT = "#146b54"
-REST = "#b9b9b4"
+ACCENT = "#0f7a5c"
+REST = "#96c1b2"
 
 WIDTH, HEIGHT, DPI = 1200, 630, 100
 
