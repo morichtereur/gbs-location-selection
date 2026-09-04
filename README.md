@@ -269,3 +269,7 @@ make test
 Also available: `make validate` (is the measured subset representative?), `make leverage` (which pillars decide the answer?), `make correlation` (how independent are the pillars, and what does that do to the reweighting claim?), `make provenance` (what was scraped, when, and how old is each series?), `make centres` (what qualifies as a city, and what the thresholds exclude), `make shot` (render the tool to PNG).
 
 Full numbers in [RESULTS.md](RESULTS.md). Classifier audits in [eval/precision_audit.md](eval/precision_audit.md).
+
+---
+
+Built by [Moritz Richter](https://www.linkedin.com/in/moritz-richter-28297119a/) · Finance & Strategy Consultant · Zürich · [Portfolio](https://morichtereur.github.io/)
