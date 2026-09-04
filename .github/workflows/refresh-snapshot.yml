@@ -34,6 +34,35 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # This study reuses the sibling study's classifiers rather than forking
+      # them, so the two cannot silently diverge — src/delivery.py and
+      # src/centres.py load orgtype.py, and src/population.py loads
+      # taxonomy.py, both by file path, from a repository expected to sit
+      # NEXT TO this one. On a runner nothing sits next to anything, which is
+      # why the first run of this workflow died in the analysis step with
+      # FileNotFoundError on gbs-agentic-shift/src/orgtype.py.
+      #
+      # Only code crosses the boundary. The postings store this study ranks on
+      # is its own (data/gbs_postings.duckdb, restored below); the sibling's
+      # duckdb is gitignored there and is not needed here.
+      - name: Check out the sibling study whose classifiers this one reuses
+        uses: actions/checkout@v4
+        with:
+          repository: morichtereur/gbs-agentic-shift
+          path: _sibling
+
+      # actions/checkout refuses to write outside the workspace, and the path
+      # the code wants is the workspace's parent. So: check out inside, move up.
+      - name: Put it where the code expects to find it
+        run: |
+          target="$(dirname "$GITHUB_WORKSPACE")/gbs-agentic-shift"
+          mv _sibling "$target"
+          test -f "$target/src/orgtype.py" && test -f "$target/src/taxonomy.py" \
+            || { echo "::error::sibling checkout is missing orgtype.py or" \
+                      "taxonomy.py — the analysis step cannot run without them"; \
+                 exit 1; }
+          echo "sibling study in place at $target"
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
